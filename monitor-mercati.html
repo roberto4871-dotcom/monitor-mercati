@@ -335,7 +335,7 @@ function fmtCell(col, row) {
     case 'num2': return fmtN(v, 2);
     case 'pct':  return fmtP(v);
     case 'numS': return fmtS(v);
-    case 'yld':  return v !== null && v !== undefined ? `<span class="pos">${fmtN(v,2)}%</span>` : '<span class="na">N/A</span>';
+    case 'yld':  return v !== null && v !== undefined ? `<span class="pos">${fmtN(v,2)}%</span>` : '<span class="na">—</span>';
     default: return v ?? '';
   }
 }
