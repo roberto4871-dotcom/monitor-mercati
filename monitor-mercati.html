@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor Mercati</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07090f;--bg2:#0d1220;--bg3:#111827;
+  --border:#1e2d45;--accent:#ffd700;--blue:#1a237e;--blue2:#283593;
+  --text:#dce6f5;--text2:#8fa8c8;--text3:#546e7a;
+  --green:#4caf50;--red:#ef5350;--neutral:#607d8b;
+}
+html,body{height:100%}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;min-height:100vh;font-size:13px}
+
+.header{background:linear-gradient(135deg,var(--blue),var(--blue2));border-bottom:2px solid var(--accent);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.header h1{color:var(--accent);font-size:24px;font-weight:800;letter-spacing:3px;text-transform:uppercase}
+.header p{color:#90caf9;font-size:11px;margin-top:2px}
+.header-right{text-align:right}
+.header-datetime{color:#fff;font-size:18px;font-weight:600}
+.header-meta{color:var(--text2);font-size:11px;margin-top:3px}
+.header-countdown{color:var(--accent);font-size:11px}
+
+.tabs{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;padding:0 16px;flex-shrink:0}
+.tab{padding:10px 18px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);border-bottom:3px solid transparent;transition:color .15s,border-color .15s;user-select:none}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+.tab-content{display:none;flex:1;flex-direction:column;overflow:hidden}
+.tab-content.active{display:flex}
+
+.controls{background:var(--bg2);border-bottom:1px solid var(--border);padding:9px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0}
+.controls-label{color:var(--text3);font-size:11px;white-space:nowrap}
+.filter-btn{background:var(--bg3);color:var(--text2);border:1px solid var(--border);padding:4px 12px;border-radius:20px;cursor:pointer;font-size:11px;font-weight:600;transition:all .15s;white-space:nowrap}
+.filter-btn:hover{border-color:var(--accent);color:var(--text)}
+.filter-btn.active{background:var(--blue2);color:#fff;border-color:var(--accent)}
+.search-box{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:4px 12px;border-radius:20px;font-size:11px;width:180px;outline:none;transition:border-color .15s}
+.search-box:focus{border-color:var(--accent)}
+.search-box::placeholder{color:var(--text3)}
+.spacer{flex:1}
+.btn-refresh{background:transparent;border:1px solid var(--accent);color:var(--accent);padding:4px 14px;border-radius:20px;cursor:pointer;font-size:11px;font-weight:600;transition:background .15s}
+.btn-refresh:hover{background:rgba(255,215,0,.1)}
+.btn-refresh:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── MODAL GRAFICO ─────────────────────────────────────────── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:min(860px,96vw);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.6)}
+.modal-header{background:linear-gradient(135deg,var(--blue),var(--blue2));padding:16px 20px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid var(--accent)}
+.modal-title{color:var(--accent);font-size:16px;font-weight:800;letter-spacing:1px}
+.modal-subtitle{color:#90caf9;font-size:11px;margin-top:3px}
+.modal-close{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;opacity:.7;transition:opacity .15s;padding:0 4px}
+.modal-close:hover{opacity:1}
+.modal-stats{display:flex;gap:24px;padding:14px 20px;background:var(--bg3);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat-label{color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+.stat-value{font-size:15px;font-weight:700}
+.modal-body{padding:20px;flex:1;min-height:0}
+.modal-period-btns{display:flex;gap:6px;margin-bottom:14px}
+.period-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:4px 12px;border-radius:16px;cursor:pointer;font-size:11px;font-weight:600;transition:all .15s}
+.period-btn:hover{border-color:var(--accent);color:var(--text)}
+.period-btn.active{background:var(--blue2);color:#fff;border-color:var(--accent)}
+.modal-canvas-wrap{position:relative;height:280px}
+
+/* progress bar */
+.progress-bar-wrap{background:var(--bg2);height:3px;flex-shrink:0;display:none}
+.progress-bar-wrap.visible{display:block}
+.progress-bar{height:3px;background:var(--accent);transition:width .3s;width:0%}
+
+.table-wrapper{flex:1;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:var(--blue);color:var(--accent);padding:8px 10px;text-align:center;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;position:sticky;top:0;z-index:10;border-right:1px solid rgba(255,255,255,.05);cursor:pointer;user-select:none}
+thead th:hover{background:#1f2e9e}
+thead th.sorted-asc::after{content:' ▲';font-size:9px}
+thead th.sorted-desc::after{content:' ▼';font-size:9px}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:hover{background:#141e33!important}
+.section-header td{background:#101830;color:var(--accent);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:1px;padding:5px 12px;border-top:2px solid var(--border)}
+td{padding:6px 10px;text-align:center;white-space:nowrap;border-right:1px solid rgba(255,255,255,.03)}
+td.left{text-align:left}
+td.asset-class{color:var(--text2);font-size:10px}
+td.mercato{font-weight:700;color:#fff}
+td.indice{color:var(--text2);font-size:11px}
+td.ora{color:#64b5f6;font-size:10px}
+.pos{color:var(--green);font-weight:600}
+.neg{color:var(--red);font-weight:600}
+.zero{color:var(--neutral)}
+.na{color:var(--text3);font-style:italic}
+.loading-cell{color:var(--text3);animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+
+/* Charts */
+#tab-charts{padding:16px;gap:16px;overflow-y:auto;flex-wrap:wrap;align-content:flex-start}
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;flex:1;min-width:360px}
+.chart-card h3{color:var(--accent);font-size:11px;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+
+/* Statusbar */
+.statusbar{background:var(--bg2);border-top:1px solid var(--border);padding:5px 16px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--text3);flex-shrink:0}
+.dot-ok{color:var(--green)}.dot-err{color:var(--red)}.dot-loading{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<!-- ════════ MODAL GRAFICO ════════ -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-title">--</div>
+        <div class="modal-subtitle" id="modal-subtitle">--</div>
+      </div>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+    <div class="modal-stats" id="modal-stats"></div>
+    <div class="modal-body">
+      <div class="modal-period-btns">
+        <button class="period-btn active" data-period="1M">1M</button>
+        <button class="period-btn" data-period="3M">3M</button>
+        <button class="period-btn" data-period="YTD">YTD</button>
+        <button class="period-btn" data-period="1A">1A</button>
+        <button class="period-btn" data-period="2A">2A</button>
+        <button class="period-btn" data-period="3A">3A</button>
+        <button class="period-btn" data-period="5A">5A</button>
+        <button class="period-btn" data-period="MAX">Max</button>
+      </div>
+      <div id="modal-perf" style="display:none;font-size:12px;font-weight:700;margin-bottom:8px;padding:4px 10px;border-radius:12px;display:inline-block"></div>
+      <div id="modal-loading" style="display:none;text-align:center;padding:10px;color:var(--accent);font-size:12px">⏳ Caricamento dati storici…</div>
+      <div class="modal-canvas-wrap">
+        <canvas id="modal-chart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="header">
+  <div>
+    <h1>Monitor Mercati</h1>
+    <p>Dashboard Finanziaria — Dati Live Yahoo Finance</p>
+  </div>
+  <div class="header-right">
+    <div class="header-datetime" id="hdr-dt">--</div>
+    <div class="header-meta" id="hdr-upd">Caricamento in corso…</div>
+    <div class="header-countdown" id="hdr-cd"></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="table">Tabella</div>
+  <div class="tab" data-tab="charts">Grafici</div>
+</div>
+
+<div class="tab-content active" id="tab-table">
+  <div class="controls">
+    <span class="controls-label">Filtra:</span>
+    <button class="filter-btn active" data-filter="all">Tutti</button>
+    <button class="filter-btn" data-filter="INDICE AZIONARIO">Azionari</button>
+    <button class="filter-btn" data-filter="INDICE OBBLIGAZIONARIO">Obbligazionari</button>
+    <button class="filter-btn" data-filter="MATERIA PRIMA">Materie Prime</button>
+    <button class="filter-btn" data-filter="VALUTA">Valute</button>
+    <button class="filter-btn" data-filter="VOLATILITA">Volatilità</button>
+    <input class="search-box" id="search-box" placeholder="Cerca…" autocomplete="off">
+    <div class="spacer"></div>
+    <button class="btn-refresh" id="btn-refresh">↻ Aggiorna</button>
+  </div>
+  <div class="progress-bar-wrap" id="prog-wrap"><div class="progress-bar" id="prog-bar"></div></div>
+  <div class="table-wrapper">
+    <table id="main-table">
+      <thead><tr id="thead-row"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="tab-content" id="tab-charts">
+  <div class="chart-card" style="min-width:100%">
+    <h3>Performance YTD in € — Indici Azionari</h3>
+    <canvas id="c-ytd-eur" height="200"></canvas>
+  </div>
+  <div class="chart-card" style="min-width:100%">
+    <h3>Performance Ultimi 7 Giorni — Indici Azionari</h3>
+    <canvas id="c-7gg" height="200"></canvas>
+  </div>
+  <div class="chart-card" style="min-width:100%">
+    <h3>Performance YTD — Materie Prime (in €)</h3>
+    <canvas id="c-comm" height="160"></canvas>
+  </div>
+  <div class="chart-card" style="min-width:100%">
+    <h3>Performance YTD — Valute vs EUR</h3>
+    <canvas id="c-fx" height="160"></canvas>
+  </div>
+</div>
+
+<div class="statusbar">
+  <span id="sb-rows">--</span>
+  <span>Monitor Mercati · Auto-refresh 10 min</span>
+  <span id="sb-status">● --</span>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════
+//  INSTRUMENTS
+// ═══════════════════════════════════════════════════
+// Fields: s=Yahoo symbol, a=asset class, m=mercato, i=indice, c=local currency
+// noEur: true = skip EUR conversion (FX pairs, VIX)
+const INSTRUMENTS = [
+  // ── INDICI AZIONARI ──────────────────────────────
+  {s:'IWRD.AS',   a:'INDICE AZIONARIO', m:'MSCI World',    i:'MSCI World (ETF)',        c:'USD'},
+  {s:'FTSEMIB.MI',a:'INDICE AZIONARIO', m:'ITALIA',        i:'FTSE MIB',                c:'EUR'},
+  {s:'^STOXX50E', a:'INDICE AZIONARIO', m:'EUROPA',        i:'Euro Stoxx 50',           c:'EUR'},
+  {s:'^STOXX',    a:'INDICE AZIONARIO', m:'EUROPA',        i:'STOXX Europe 600',        c:'EUR'},
+  {s:'^FTSE',     a:'INDICE AZIONARIO', m:'GRAN BRETAGNA', i:'FTSE 100',                c:'GBP'},
+  {s:'^GDAXI',    a:'INDICE AZIONARIO', m:'GERMANIA',      i:'DAX',                     c:'EUR'},
+  {s:'^FCHI',     a:'INDICE AZIONARIO', m:'FRANCIA',       i:'CAC 40',                  c:'EUR'},
+  {s:'^SSMI',     a:'INDICE AZIONARIO', m:'SVIZZERA',      i:'SMI',                     c:'CHF'},
+  {s:'^IBEX',     a:'INDICE AZIONARIO', m:'SPAGNA',        i:'IBEX 35',                 c:'EUR'},
+  {s:'^DJI',      a:'INDICE AZIONARIO', m:'STATI UNITI',   i:'Dow Jones',               c:'USD'},
+  {s:'^IXIC',     a:'INDICE AZIONARIO', m:'STATI UNITI',   i:'Nasdaq Composite',        c:'USD'},
+  {s:'^NDX',      a:'INDICE AZIONARIO', m:'STATI UNITI',   i:'Nasdaq 100',              c:'USD'},
+  {s:'^GSPC',     a:'INDICE AZIONARIO', m:'STATI UNITI',   i:'S&P 500',                 c:'USD'},
+  {s:'^BVSP',     a:'INDICE AZIONARIO', m:'BRASILE',       i:'BOVESPA',                 c:'BRL'},
+  {s:'^MXX',      a:'INDICE AZIONARIO', m:'MESSICO',       i:'S&P/BMV IPC',             c:'MXN'},
+  {s:'^N225',     a:'INDICE AZIONARIO', m:'GIAPPONE',      i:'Nikkei 225',              c:'JPY'},
+  {s:'^HSI',      a:'INDICE AZIONARIO', m:'HONG KONG',     i:'Hang Seng',               c:'HKD'},
+  {s:'000001.SS', a:'INDICE AZIONARIO', m:'CINA',          i:'Shanghai Composite',      c:'CNY'},
+  {s:'399001.SZ', a:'INDICE AZIONARIO', m:'CINA',          i:'SZSE Component',          c:'CNY'},
+  {s:'^BSESN',    a:'INDICE AZIONARIO', m:'INDIA',         i:'BSE Sensex',              c:'INR'},
+  {s:'^NSEI',     a:'INDICE AZIONARIO', m:'INDIA',         i:'Nifty 50',                c:'INR'},
+  {s:'^AXJO',     a:'INDICE AZIONARIO', m:'AUSTRALIA',     i:'S&P/ASX 200',             c:'AUD'},
+  // ── VOLATILITÀ ───────────────────────────────────
+  {s:'^VIX',      a:'VOLATILITA',       m:'STATI UNITI',   i:'S&P 500 VIX',             c:'USD', noEur:true, noYTD:true},
+  {s:'^MOVE',     a:'VOLATILITA',       m:'STATI UNITI',   i:'MOVE Index (Bond Vol.)',  c:'USD', noEur:true, noYTD:true},
+  // ── INDICI OBBLIGAZIONARI ────────────────────────
+  {s:'IBTS.AS',   a:'INDICE OBBLIGAZIONARIO', m:'EUROPA',        i:'EUR Govt Bond 1-3Y (ETF)',     c:'EUR'},
+  {s:'IBGL.AS',   a:'INDICE OBBLIGAZIONARIO', m:'EUROPA',        i:'EUR Govt Bond Broad (ETF)',    c:'EUR'},
+  {s:'IEAC.AS',   a:'INDICE OBBLIGAZIONARIO', m:'EUROPA',        i:'EUR Corp Bond IG (ETF)',       c:'EUR'},
+  {s:'XHYA.AS',   a:'INDICE OBBLIGAZIONARIO', m:'EUROPA',        i:'EUR High Yield (ETF)',         c:'EUR'},
+  {s:'TLT',       a:'INDICE OBBLIGAZIONARIO', m:'STATI UNITI',   i:'US Treasury 20+Y (ETF)',       c:'USD'},
+  {s:'IEF',       a:'INDICE OBBLIGAZIONARIO', m:'STATI UNITI',   i:'US Treasury 7-10Y (ETF)',      c:'USD'},
+  {s:'AGG',       a:'INDICE OBBLIGAZIONARIO', m:'STATI UNITI',   i:'US Aggregate Bond (ETF)',      c:'USD'},
+  {s:'HYG',       a:'INDICE OBBLIGAZIONARIO', m:'STATI UNITI',   i:'US High Yield (ETF)',          c:'USD'},
+  {s:'EMB',       a:'INDICE OBBLIGAZIONARIO', m:'EMERGING MKT',  i:'EM Bond USD (ETF)',            c:'USD'},
+  // ── MATERIE PRIME ─────────────────────────────────
+  {s:'GC=F',      a:'MATERIA PRIMA', m:'METALLI',       i:'Oro (Gold)',              c:'USD'},
+  {s:'SI=F',      a:'MATERIA PRIMA', m:'METALLI',       i:'Argento (Silver)',        c:'USD'},
+  {s:'PL=F',      a:'MATERIA PRIMA', m:'METALLI',       i:'Platino',                c:'USD'},
+  {s:'HG=F',      a:'MATERIA PRIMA', m:'METALLI',       i:'Rame (Copper)',           c:'USD'},
+  {s:'CL=F',      a:'MATERIA PRIMA', m:'ENERGIA',       i:'Petrolio WTI',           c:'USD'},
+  {s:'BZ=F',      a:'MATERIA PRIMA', m:'ENERGIA',       i:'Petrolio Brent',         c:'USD'},
+  {s:'NG=F',      a:'MATERIA PRIMA', m:'ENERGIA',       i:'Gas Naturale',           c:'USD'},
+  {s:'ZW=F',      a:'MATERIA PRIMA', m:'AGRICOLTURA',   i:'Grano (Wheat)',           c:'USD'},
+  {s:'ZC=F',      a:'MATERIA PRIMA', m:'AGRICOLTURA',   i:'Mais (Corn)',             c:'USD'},
+  // ── VALUTE vs EUR ─────────────────────────────────
+  {s:'EURUSD=X',  a:'VALUTA', m:'DOLLARO USA',   i:'EUR/USD', c:'USD', noEur:true},
+  {s:'EURGBP=X',  a:'VALUTA', m:'STERLINA',      i:'EUR/GBP', c:'GBP', noEur:true},
+  {s:'EURJPY=X',  a:'VALUTA', m:'YEN',           i:'EUR/JPY', c:'JPY', noEur:true},
+  {s:'EURCHF=X',  a:'VALUTA', m:'FRANCO SV.',    i:'EUR/CHF', c:'CHF', noEur:true},
+  {s:'EURCNY=X',  a:'VALUTA', m:'YUAN',          i:'EUR/CNY', c:'CNY', noEur:true},
+  {s:'EURBRL=X',  a:'VALUTA', m:'REAL BR.',      i:'EUR/BRL', c:'BRL', noEur:true},
+  {s:'EURAUD=X',  a:'VALUTA', m:'DOLLARO AUS.',  i:'EUR/AUD', c:'AUD', noEur:true},
+  {s:'EURCAD=X',  a:'VALUTA', m:'DOLLARO CAN.',  i:'EUR/CAD', c:'CAD', noEur:true},
+  {s:'EURINR=X',  a:'VALUTA', m:'RUPIA IND.',    i:'EUR/INR', c:'INR', noEur:true},
+];
+
+// FX pairs to fetch for EUR conversion of non-EUR assets
+const FX_SYMBOLS = ['EURUSD=X','EURGBP=X','EURJPY=X','EURCHF=X',
+                    'EURCNY=X','EURBRL=X','EURAUD=X','EURCAD=X',
+                    'EURINR=X','EURHKD=X','EURMXN=X'];
+
+// Unix timestamp: Jan 1, 2026 00:00 UTC → last price before this = Dec 31, 2025 close
+const DEC31_TS = 1767225600;
+
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+let rows = [];          // processed data rows
+let fxHist = {};        // { 'USD': { cur, dec31, d7, d22 }, ... }
+let sortCol = null;
+let sortDir = 1;
+let activeFilter = 'all';
+let refreshTimer, cdTimer;
+let charts = {};
+let loading = false;
+
+// ═══════════════════════════════════════════════════
+//  COLUMNS
+// ═══════════════════════════════════════════════════
+const COLS = [
+  {key:'a',        label:'Asset Class',          cls:'left asset-class', fmt:'str'},
+  {key:'m',        label:'Mercato',              cls:'left mercato',     fmt:'str'},
+  {key:'i',        label:'Indice',               cls:'left indice',      fmt:'str'},
+  {key:'ora',      label:'Ultima Rilevazione',   cls:'ora',              fmt:'ora'},
+  {key:'valore',   label:'Valore Attuale',        cls:'num',              fmt:'num2'},
+  {key:'varAtt',   label:'Var. %\nGiornaliera',  cls:'num',              fmt:'pct'},
+  {key:'fine2025', label:'Fine 2025',             cls:'num',              fmt:'num2'},
+  {key:'varYTD',   label:'Var. YTD',             cls:'num',              fmt:'numS'},
+  {key:'ytdLocal', label:'Perf. YTD\nVal. Locale',cls:'num',             fmt:'pct'},
+  {key:'ytdEur',   label:'Perf. YTD\nin €',      cls:'num',              fmt:'pct'},
+  {key:'p30',      label:'Ultimi\n30 Giorni',    cls:'num',              fmt:'pct'},
+  {key:'p7',       label:'Ultima\nSettimana',    cls:'num',              fmt:'pct'},
+  {key:'yld',      label:'Rendimento\n(Yield %)',cls:'num',              fmt:'yld', bondsOnly:true},
+];
+
+// ═══════════════════════════════════════════════════
+//  FORMAT HELPERS
+// ═══════════════════════════════════════════════════
+function fmtN(v, dec) {
+  if (v === null || v === undefined || isNaN(v)) return '<span class="na">N/A</span>';
+  return Number(v).toLocaleString('it-IT', {minimumFractionDigits:dec, maximumFractionDigits:dec});
+}
+function fmtP(v) {
+  if (v === null || v === undefined || isNaN(v)) return '<span class="na">N/A</span>';
+  const n = +v, cls = n > 0.005 ? 'pos' : n < -0.005 ? 'neg' : 'zero';
+  return `<span class="${cls}">${n>0?'+':''}${n.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})}%</span>`;
+}
+function fmtS(v) {
+  if (v === null || v === undefined || isNaN(v)) return '<span class="na">N/A</span>';
+  const n = +v, cls = n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero';
+  return `<span class="${cls}">${n>0?'+':''}${n.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
+}
+function fmtCell(col, row) {
+  if (row._loading && !['a','m','i'].includes(col.key))
+    return '<span class="loading-cell">…</span>';
+  // Rendimento: mostra solo per obbligazionari
+  if (col.key === 'yld' && row.a !== 'INDICE OBBLIGAZIONARIO')
+    return '<span class="na">—</span>';
+  const v = row[col.key];
+  switch(col.fmt) {
+    case 'str':  return v || '';
+    case 'ora':  return v ? `<span class="ora">${v}</span>` : '<span class="na">N/A</span>';
+    case 'num2': return fmtN(v, 2);
+    case 'pct':  return fmtP(v);
+    case 'numS': return fmtS(v);
+    case 'yld':  return v !== null && v !== undefined ? `<span class="pos">${fmtN(v,2)}%</span>` : '<span class="na">N/A</span>';
+    default: return v ?? '';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  YAHOO FINANCE FETCH
+// ═══════════════════════════════════════════════════
+let yfCrumb = '';
+
+// Usa il proxy locale /yf/ (server.py) per evitare blocchi CORS di Yahoo Finance
+function yfUrl(symbol) {
+  return `/yf/${encodeURIComponent(symbol)}?range=3mo&interval=1d`;
+}
+
+async function getYFCrumb() {} // non serve con il proxy
+
+async function fetchChart(symbol) {
+  const r = await fetch(yfUrl(symbol));
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const j = await r.json();
+  if (j.error) throw new Error(j.error);
+  return j;
+}
+
+function extractPairs(res) {
+  const ts = res.timestamp || [];
+  const cl = res.closes   || [];
+  return ts.map((t,i) => ({t, c: cl[i]})).filter(p => p.c !== null && p.c !== undefined);
+}
+
+function priceAtDec31(pairs) {
+  // last price with timestamp < DEC31_TS (Jan 1 2026 00:00 UTC)
+  let last = null;
+  for (const p of pairs) { if (p.t < DEC31_TS) last = p.c; else break; }
+  return last;
+}
+
+function priceNAgo(pairs, n) {
+  if (pairs.length <= n) return null;
+  return pairs[pairs.length - 1 - n].c;
+}
+
+function formatTS(unixSec, tz) {
+  if (!unixSec) return null;
+  try {
+    return new Date(unixSec * 1000).toLocaleString('it-IT', {
+      day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit',
+      timeZone: tz || 'UTC'
+    });
+  } catch { return null; }
+}
+
+// ═══════════════════════════════════════════════════
+//  PROCESS ONE INSTRUMENT
+// ═══════════════════════════════════════════════════
+function processChart(inst, res) {
+  const meta = res.meta;
+  const pairs = extractPairs(res);
+  const cur   = meta.regularMarketPrice;
+  const prev  = meta.chartPreviousClose || meta.regularMarketPreviousClose;
+  const varAtt = (prev && cur) ? (cur / prev - 1) * 100 : null;
+  const fine2025 = priceAtDec31(pairs);
+  const p7raw    = priceNAgo(pairs, 5);   // ~7 giorni calendario = 5 giorni borsa
+  const p30raw   = priceNAgo(pairs, 21);  // ~30 giorni calendario = 21 giorni borsa
+  const varYTD   = (cur !== null && fine2025 !== null) ? cur - fine2025 : null;
+  const ytdLocal = fine2025 ? (cur / fine2025 - 1) * 100 : null;
+  const perf7    = p7raw  ? (cur / p7raw  - 1) * 100 : null;
+  const perf30   = p30raw ? (cur / p30raw - 1) * 100 : null;
+
+  // EUR conversion (requires fxHist data)
+  let ytdEur = null;
+  if (inst.noEur) {
+    ytdEur = null;
+  } else if (inst.c === 'EUR') {
+    ytdEur = ytdLocal;
+  } else {
+    const fx = fxHist[inst.c];
+    if (fx?.dec31 && fx?.cur && fine2025) {
+      const curEur   = cur      / fx.cur;
+      const d31Eur   = fine2025 / fx.dec31;
+      ytdEur = (curEur / d31Eur - 1) * 100;
+    }
+  }
+
+  return {
+    ...inst,
+    ora:      formatTS(meta.regularMarketTime, meta.exchangeTimezoneName),
+    valore:   cur,
+    varAtt,
+    fine2025,
+    varYTD,
+    ytdLocal,
+    ytdEur,
+    p30:      perf30,
+    p7:       perf7,
+    yld:      res.yield_pct ?? null,
+    _hist:    pairs,   // dati storici per il grafico
+    _loading: false,
+    _err:     false,
+  };
+}
+
+// ═══════════════════════════════════════════════════
+//  LOAD ALL
+// ═══════════════════════════════════════════════════
+async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function loadAll() {
+  if (loading) return;
+  loading = true;
+  setLoading(true);
+
+  // Init rows as placeholders
+  rows = INSTRUMENTS.map(inst => ({...inst, _loading: true, _err: false}));
+  renderTable();
+
+  // Step 1: get crumb
+  await getYFCrumb();
+
+  // Step 2: fetch FX historical first (needed for EUR conversion)
+  const fxToFetch = FX_SYMBOLS.filter(s => !INSTRUMENTS.find(i => i.s === s));
+  const allFX = [...FX_SYMBOLS];
+  for (const sym of allFX) {
+    try {
+      const res = await fetchChart(sym);
+      const pairs = extractPairs(res);
+      const ccy = sym.replace('EUR','').replace('=X','');
+      fxHist[ccy] = {
+        cur:   res.meta.regularMarketPrice,
+        dec31: priceAtDec31(pairs),
+        d7:    priceNAgo(pairs, 7),
+        d22:   priceNAgo(pairs, 22),
+      };
+    } catch {}
+    await sleep(150);
+  }
+  fxHist['EUR'] = {cur:1, dec31:1, d7:1, d22:1};
+
+  // Step 3: fetch each instrument, update table row by row
+  let done = 0;
+  const total = INSTRUMENTS.length;
+  setProgress(0);
+
+  for (let idx = 0; idx < INSTRUMENTS.length; idx++) {
+    const inst = INSTRUMENTS[idx];
+    try {
+      const res = await fetchChart(inst.s);
+      rows[idx] = processChart(inst, res);
+    } catch(e) {
+      rows[idx] = {...inst, _loading:false, _err:true,
+        ora:null, valore:null, varAtt:null, fine2025:null,
+        varYTD:null, ytdLocal:null, ytdEur:null, p30:null, p7:null, yld:null};
+    }
+    done++;
+    setProgress(done / total * 100);
+    updateRow(idx);
+    if (done % 5 === 0) renderCharts(); // update charts periodically
+    await sleep(200);
+  }
+
+  const now = new Date().toLocaleTimeString('it-IT');
+  document.getElementById('hdr-upd').textContent = `Ultimo aggiornamento: ${now}`;
+  document.getElementById('sb-rows').textContent = `${rows.length} strumenti monitorati`;
+  setStatus('ok', `● Live — ${now}`);
+  setLoading(false);
+  setProgress(100);
+  setTimeout(() => { document.getElementById('prog-wrap').classList.remove('visible'); }, 800);
+  renderCharts();
+  loading = false;
+  scheduleRefresh();
+}
+
+// ═══════════════════════════════════════════════════
+//  RENDER TABLE
+// ═══════════════════════════════════════════════════
+function buildThead() {
+  const tr = document.getElementById('thead-row');
+  tr.innerHTML = COLS.map(c => {
+    const cls = sortCol === c.key ? (sortDir===1 ? 'sorted-asc':'sorted-desc') : '';
+    return `<th class="${cls}" onclick="doSort('${c.key}')">${c.label.replace('\n','<br>')}</th>`;
+  }).join('');
+}
+
+function renderTable() {
+  buildThead();
+  const filtered = applyFilters(rows);
+  const sorted   = applySort(filtered);
+  buildRows(sorted);
+}
+
+function updateRow(idx) {
+  const tr = document.getElementById(`row-${idx}`);
+  if (!tr) { renderTable(); return; }
+  const row = rows[idx];
+  tr.innerHTML = COLS.map(c => `<td class="${c.cls||''}">${fmtCell(c, row)}</td>`).join('');
+  if (!row._loading && !row._err) {
+    tr.setAttribute('onclick', `openModal(${idx})`);
+    tr.style.cursor = 'pointer';
+  }
+}
+
+function applyFilters(data) {
+  const q = document.getElementById('search-box').value.toLowerCase().trim();
+  return data.filter(r => {
+    const fMatch = activeFilter === 'all' || r.a === activeFilter;
+    const sMatch = !q || (r.m||'').toLowerCase().includes(q) ||
+                         (r.i||'').toLowerCase().includes(q) ||
+                         (r.a||'').toLowerCase().includes(q);
+    return fMatch && sMatch;
+  });
+}
+
+function applySort(data) {
+  if (!sortCol) return data;
+  return [...data].sort((a,b) => {
+    const av = a[sortCol], bv = b[sortCol];
+    if (av === null && bv === null) return 0;
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    if (typeof av === 'number') return (av - bv) * sortDir;
+    return String(av).localeCompare(String(bv),'it') * sortDir;
+  });
+}
+
+function buildRows(data) {
+  const tbody = document.getElementById('tbody');
+  // Group by section
+  const groups = {}, order = [];
+  data.forEach(r => {
+    const k = r.a || 'ALTRO';
+    if (!groups[k]) { groups[k] = []; order.push(k); }
+    groups[k].push(r);
+  });
+
+  const sectionBg = {
+    'INDICE AZIONARIO':'#0c1525',
+    'INDICE OBBLIGAZIONARIO':'#0a140a',
+    'MATERIA PRIMA':'#14100a',
+    'VALUTA':'#0a0a18',
+    'VOLATILITA':'#12050a',
+  };
+
+  let html = '';
+  order.forEach(sec => {
+    html += `<tr class="section-header"><td colspan="${COLS.length}">${sec}</td></tr>`;
+    groups[sec].forEach(r => {
+      // Find original index for id
+      const origIdx = rows.indexOf(r);
+      const bg = sectionBg[sec] || '#0c1525';
+      const tds = COLS.map(c => `<td class="${c.cls||''}">${fmtCell(c,r)}</td>`).join('');
+      const clickable = !r._loading && !r._err ? `onclick="openModal(${origIdx})" style="background:${bg};cursor:pointer"` : `style="background:${bg}"`;
+      html += `<tr id="row-${origIdx}" ${clickable}>${tds}</tr>`;
+    });
+  });
+
+  if (!html) html = `<tr><td colspan="${COLS.length}" style="text-align:center;color:var(--text3);padding:40px">Nessun risultato.</td></tr>`;
+  tbody.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════
+//  CHARTS
+// ═══════════════════════════════════════════════════
+function barColors(vals) {
+  return vals.map(v => v >= 0 ? 'rgba(76,175,80,.75)' : 'rgba(239,83,80,.75)');
+}
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function buildBar(canvasId, labels, values) {
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId);
+  if (!ctx || !values.length) return;
+  charts[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: barColors(values),
+        borderColor: values.map(v => v>=0?'#4caf50':'#ef5350'),
+        borderWidth:1, borderRadius:3
+      }]
+    },
+    options: {
+      responsive: true, animation:{duration:300},
+      plugins: { legend:{display:false}, tooltip:{callbacks:{label:ctx=>`${ctx.parsed.x>=0?'+':''}${ctx.parsed.x.toFixed(2)}%`}} },
+      indexAxis:'y',
+      scales: {
+        x: { ticks:{color:'#8fa8c8',callback:v=>v+'%'}, grid:{color:'#1e2d45'}, border:{color:'#1e2d45'} },
+        y: { ticks:{color:'#dce6f5',font:{size:10}}, grid:{display:false} }
+      }
+    }
+  });
+}
+
+function renderCharts() {
+  const loaded = rows.filter(r => !r._loading && !r._err);
+  const az  = loaded.filter(r => r.a === 'INDICE AZIONARIO');
+  const mat = loaded.filter(r => r.a === 'MATERIA PRIMA');
+  const fx  = loaded.filter(r => r.a === 'VALUTA');
+
+  const sorted = (arr, key) => [...arr].filter(r => r[key]!==null && r[key]!==undefined).sort((a,b)=>a[key]-b[key]);
+
+  const azYtd = sorted(az, 'ytdEur');
+  buildBar('c-ytd-eur', azYtd.map(r=>`${r.m} – ${r.i}`), azYtd.map(r=>r.ytdEur));
+
+  const az7 = sorted(az, 'p7');
+  buildBar('c-7gg', az7.map(r=>`${r.m} – ${r.i}`), az7.map(r=>r.p7));
+
+  const matYtd = sorted(mat, 'ytdEur');
+  buildBar('c-comm', matYtd.map(r=>r.i), matYtd.map(r=>r.ytdEur));
+
+  const fxYtd = sorted(fx, 'ytdLocal');
+  buildBar('c-fx', fxYtd.map(r=>r.i), fxYtd.map(r=>r.ytdLocal));
+}
+
+// ═══════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════
+function setLoading(on) {
+  document.getElementById('btn-refresh').disabled = on;
+  document.getElementById('prog-wrap').classList.toggle('visible', on);
+  if (on) setStatus('loading', '● Caricamento…');
+}
+function setProgress(pct) {
+  document.getElementById('prog-bar').style.width = pct + '%';
+}
+function setStatus(type, text) {
+  const el = document.getElementById('sb-status');
+  el.className = type === 'ok' ? 'dot-ok' : type === 'loading' ? 'dot-loading' : 'dot-err';
+  el.textContent = text;
+}
+
+function scheduleRefresh() {
+  clearTimeout(refreshTimer);
+  clearInterval(cdTimer);
+  let rem = 600;
+  cdTimer = setInterval(() => {
+    rem--;
+    const m = Math.floor(rem/60), s = rem%60;
+    document.getElementById('hdr-cd').textContent = `Prossimo: ${m}:${String(s).padStart(2,'0')}`;
+    if (rem <= 0) clearInterval(cdTimer);
+  }, 1000);
+  refreshTimer = setTimeout(loadAll, 600_000);
+}
+
+function doSort(key) {
+  if (sortCol === key) sortDir *= -1; else { sortCol = key; sortDir = 1; }
+  renderTable();
+}
+
+// ═══════════════════════════════════════════════════
+//  CLOCK
+// ═══════════════════════════════════════════════════
+function tickClock() {
+  const n = new Date();
+  const d = n.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const t = n.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('hdr-dt').textContent = `${d}  –  ${t}`;
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+// ═══════════════════════════════════════════════════
+//  EVENTS
+// ═══════════════════════════════════════════════════
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab,.tab-content').forEach(el=>el.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('tab-'+t.dataset.tab).classList.add('active');
+    if (t.dataset.tab === 'charts') renderCharts();
+  });
+});
+
+document.querySelectorAll('.filter-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    activeFilter = b.dataset.filter;
+    renderTable();
+  });
+});
+
+document.getElementById('search-box').addEventListener('input', renderTable);
+document.getElementById('btn-refresh').addEventListener('click', loadAll);
+
+// ═══════════════════════════════════════════════════
+//  MODAL GRAFICO
+// ═══════════════════════════════════════════════════
+let modalChart  = null;
+let modalRow    = null;
+let modalPeriod = '1M';
+
+// Configurazione periodi: period e interval per yfinance
+const PERIOD_CFG = {
+  '1M':  { src:'hist',  slice: -20  },               // da dati già caricati
+  '3M':  { src:'hist',  slice: null },                // tutti i 3 mesi già caricati
+  'YTD': { src:'hist',  ytd: true   },                // da DEC31 in poi
+  '1A':  { src:'fetch', period:'1y',  interval:'1wk' },
+  '2A':  { src:'fetch', period:'2y',  interval:'1wk' },
+  '3A':  { src:'fetch', period:'3y',  interval:'1wk' },
+  '5A':  { src:'fetch', period:'5y',  interval:'1wk' },
+  'MAX': { src:'fetch', period:'max', interval:'1mo' },
+};
+
+// Cache dati estesi per simbolo: { 'AAPL|2y|1wk': [{t,c}, ...] }
+const extCache = {};
+
+async function openModal(idx) {
+  const row = rows[idx];
+  if (!row || row._loading || row._err || !row._hist?.length) return;
+  modalRow    = row;
+  modalPeriod = '1M';
+
+  // Header
+  document.getElementById('modal-title').textContent    = `${row.m} — ${row.i}`;
+  document.getElementById('modal-subtitle').textContent = row.a;
+
+  // Stats
+  const pct = v => (v !== null && v !== undefined) ? `${v>0?'+':''}${v.toFixed(2)}%` : 'N/A';
+  const cls = v  => v > 0 ? 'pos' : v < 0 ? 'neg' : 'zero';
+  const stats = [
+    {label:'Valore',          value: row.valore ? row.valore.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}) : 'N/A', color:''},
+    {label:'Var. Giornaliera',value: pct(row.varAtt),  color: cls(row.varAtt)},
+    {label:'YTD (€)',         value: pct(row.ytdEur),  color: cls(row.ytdEur)},
+    {label:'Ultimi 30gg',     value: pct(row.p30),     color: cls(row.p30)},
+    {label:'Ultima Sett.',    value: pct(row.p7),      color: cls(row.p7)},
+  ];
+  if (row.yld) stats.push({label:'Rendimento', value: row.yld.toFixed(2)+'%', color:'pos'});
+
+  document.getElementById('modal-stats').innerHTML = stats.map(s =>
+    `<div class="stat"><span class="stat-label">${s.label}</span>
+     <span class="stat-value ${s.color}">${s.value}</span></div>`
+  ).join('');
+
+  // Attiva pulsante 1M
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('[data-period="1M"]').classList.add('active');
+
+  document.getElementById('modal-overlay').classList.add('open');
+  await loadAndDraw(row, '1M');
+}
+
+async function loadAndDraw(row, period) {
+  const cfg = PERIOD_CFG[period];
+  let pairs;
+
+  if (cfg.src === 'hist') {
+    // Usa dati già in memoria
+    pairs = row._hist || [];
+    if (cfg.slice)    pairs = pairs.slice(cfg.slice);
+    if (cfg.ytd)      pairs = pairs.filter(p => p.t >= DEC31_TS);
+  } else {
+    // Fetch dati estesi dal server
+    const cacheKey = `${row.s}|${cfg.period}|${cfg.interval}`;
+    if (extCache[cacheKey]) {
+      pairs = extCache[cacheKey];
+    } else {
+      document.getElementById('modal-loading').style.display = 'block';
+      try {
+        const url = `/yf/${encodeURIComponent(row.s)}?period=${cfg.period}&interval=${cfg.interval}`;
+        const res = await fetch(url);
+        const j   = await res.json();
+        if (j.error) throw new Error(j.error);
+        const ts = j.timestamp || [];
+        const cl = j.closes    || [];
+        pairs = ts.map((t,i) => ({t, c:cl[i]})).filter(p => p.c !== null);
+        extCache[cacheKey] = pairs;
+      } catch(e) {
+        document.getElementById('modal-loading').textContent = '⚠ Dati non disponibili';
+        return;
+      } finally {
+        document.getElementById('modal-loading').style.display = 'none';
+      }
+    }
+  }
+
+  drawModalChart(pairs, period);
+}
+
+function dateLabelFor(ts, period) {
+  const d = new Date(ts * 1000);
+  if (['MAX','5A','3A'].includes(period))
+    return d.toLocaleDateString('it-IT', {month:'short', year:'2-digit'});
+  if (period === '2A')
+    return d.toLocaleDateString('it-IT', {month:'short', year:'2-digit'});
+  return d.toLocaleDateString('it-IT', {day:'2-digit', month:'short'});
+}
+
+function drawModalChart(pairs, period) {
+  if (modalChart) { modalChart.destroy(); modalChart = null; }
+  if (!pairs.length) return;
+
+  const labels = pairs.map(p => dateLabelFor(p.t, period));
+  const values = pairs.map(p => p.c);
+  const first  = values[0], last = values[values.length-1];
+  const isUp   = last >= first;
+  const color  = isUp ? '#4caf50' : '#ef5350';
+  const bgClr  = isUp ? 'rgba(76,175,80,.08)' : 'rgba(239,83,80,.08)';
+
+  // Aggiorna badge performance periodo
+  const perf = first ? ((last / first - 1) * 100) : null;
+  const perfEl = document.getElementById('modal-perf');
+  if (perf !== null) {
+    const sign = perf >= 0 ? '+' : '';
+    perfEl.textContent = `${sign}${perf.toFixed(2)}% nel periodo`;
+    perfEl.style.display = 'inline-block';
+    perfEl.style.background = perf >= 0 ? 'rgba(76,175,80,.15)' : 'rgba(239,83,80,.15)';
+    perfEl.style.color = perf >= 0 ? '#4caf50' : '#ef5350';
+  } else {
+    perfEl.style.display = 'none';
+  }
+
+  const ctx = document.getElementById('modal-chart');
+  modalChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        borderColor: color,
+        borderWidth: 2,
+        backgroundColor: bgClr,
+        fill: true,
+        tension: 0.3,
+        pointRadius: pairs.length > 60 ? 0 : 3,
+        pointHoverRadius: 5,
+        pointBackgroundColor: color,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 200 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.parsed.y;
+              const chg = first ? ((v/first-1)*100) : 0;
+              return [
+                `Valore: ${v.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})}`,
+                `Var periodo: ${chg>=0?'+':''}${chg.toFixed(2)}%`
+              ];
+            }
+          },
+          backgroundColor:'#0d1220', borderColor:'#1e2d45', borderWidth:1,
+          titleColor:'#ffd700', bodyColor:'#dce6f5',
+        }
+      },
+      scales: {
+        x: { ticks:{color:'#546e7a',font:{size:10},maxTicksLimit:10}, grid:{color:'#1e2d45'}, border:{color:'#1e2d45'} },
+        y: { ticks:{color:'#8fa8c8',font:{size:10}, callback: v => v.toLocaleString('it-IT',{maximumFractionDigits:2})}, grid:{color:'#1e2d45'}, border:{color:'#1e2d45'} }
+      }
+    }
+  });
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.getElementById('modal-loading').style.display = 'none';
+  if (modalChart) { modalChart.destroy(); modalChart = null; }
+  modalRow = null;
+}
+
+// Period buttons
+document.querySelectorAll('.period-btn').forEach(btn => {
+  btn.addEventListener('click', async e => {
+    e.stopPropagation();
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    modalPeriod = btn.dataset.period;
+    if (modalRow) await loadAndDraw(modalRow, modalPeriod);
+  });
+});
+
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
+loadAll();
+</script>
+</body>
+</html>
