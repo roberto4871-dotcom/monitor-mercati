@@ -71,6 +71,16 @@ def fetch_symbol(symbol, period='3mo', interval='1d'):
                     yield_pct = round(raw * 100, 3)
             except Exception:
                 pass
+            # Fallback: calcola yield da dividendi degli ultimi 12 mesi
+            if yield_pct is None:
+                try:
+                    divs = ticker.dividends
+                    if not divs.empty:
+                        annual_div = float(divs.last('365D').sum())
+                        if annual_div > 0 and cur_price > 0:
+                            yield_pct = round(annual_div / cur_price * 100, 2)
+                except Exception:
+                    pass
 
         data = {
             'meta': {
