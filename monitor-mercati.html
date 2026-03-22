@@ -309,16 +309,16 @@ const COLS = [
 //  FORMAT HELPERS
 // ═══════════════════════════════════════════════════
 function fmtN(v, dec) {
-  if (v === null || v === undefined || isNaN(v)) return '<span class="na">N/A</span>';
+  if (v === null || v === undefined || isNaN(v)) return '<span class="na">—</span>';
   return Number(v).toLocaleString('it-IT', {minimumFractionDigits:dec, maximumFractionDigits:dec});
 }
 function fmtP(v) {
-  if (v === null || v === undefined || isNaN(v)) return '<span class="na">N/A</span>';
+  if (v === null || v === undefined || isNaN(v)) return '<span class="na">—</span>';
   const n = +v, cls = n > 0.005 ? 'pos' : n < -0.005 ? 'neg' : 'zero';
   return `<span class="${cls}">${n>0?'+':''}${n.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})}%</span>`;
 }
 function fmtS(v) {
-  if (v === null || v === undefined || isNaN(v)) return '<span class="na">N/A</span>';
+  if (v === null || v === undefined || isNaN(v)) return '<span class="na">—</span>';
   const n = +v, cls = n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero';
   return `<span class="${cls}">${n>0?'+':''}${n.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
 }
