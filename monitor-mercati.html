@@ -298,10 +298,10 @@ const COLS = [
   {key:'fine2025', label:'Fine 2025',             cls:'num',              fmt:'num2'},
   {key:'ytdLocal', label:'Perf. YTD\nVal. Locale',cls:'num',             fmt:'pct'},
   {key:'ytdEur',   label:'Perf. YTD\nin €',      cls:'num',              fmt:'pct'},
-  {key:'p90',      label:'Ultimi\n90 Giorni',    cls:'num',              fmt:'pct'},
-  {key:'p60',      label:'Ultimi\n60 Giorni',    cls:'num',              fmt:'pct'},
-  {key:'p30',      label:'Ultimi\n30 Giorni',    cls:'num',              fmt:'pct'},
   {key:'p7',       label:'Ultima\nSettimana',    cls:'num',              fmt:'pct'},
+  {key:'p30',      label:'Ultimi\n30 Giorni',    cls:'num',              fmt:'pct'},
+  {key:'p60',      label:'Ultimi\n60 Giorni',    cls:'num',              fmt:'pct'},
+  {key:'p90',      label:'Ultimi\n90 Giorni',    cls:'num',              fmt:'pct'},
   {key:'yld',      label:'Rendimento\n(Yield %)',cls:'num',              fmt:'yld', bondsOnly:true},
 ];
 
@@ -347,7 +347,7 @@ let yfCrumb = '';
 
 // Usa il proxy locale /yf/ (server.py) per evitare blocchi CORS di Yahoo Finance
 function yfUrl(symbol) {
-  return `/yf/${encodeURIComponent(symbol)}?range=3mo&interval=1d`;
+  return `/yf/${encodeURIComponent(symbol)}?range=6mo&interval=1d`;
 }
 
 async function getYFCrumb() {} // non serve con il proxy
