@@ -28,7 +28,7 @@ CACHE_TTL_LONG = 3600  # 1 ora per 2Y/3Y/5Y/max
 
 def fetch_symbol(symbol, period='3mo', interval='1d'):
     cache_key = f'{symbol}|{period}|{interval}'
-    ttl = CACHE_TTL if period in ('3mo', '1mo') else CACHE_TTL_LONG
+    ttl = CACHE_TTL if period in ('3mo', '6mo', '1mo') else CACHE_TTL_LONG
 
     with _cache_lock:
         cached = _cache.get(cache_key)
@@ -60,9 +60,9 @@ def fetch_symbol(symbol, period='3mo', interval='1d'):
         cur_time   = int(hist.index[-1].timestamp())
         tz         = str(hist.index.tz) if hist.index.tz else 'UTC'
 
-        # Rendimento (yield) — solo per fetch principale 3mo
+        # Rendimento (yield) — solo per fetch principale (non per periodi lunghi del grafico)
         yield_pct = None
-        if period == '3mo':
+        if period in ('3mo', '6mo'):
             try:
                 full_info = ticker.info
                 raw = (full_info.get('yield') or full_info.get('dividendYield')

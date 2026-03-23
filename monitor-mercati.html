@@ -347,7 +347,7 @@ let yfCrumb = '';
 
 // Usa il proxy locale /yf/ (server.py) per evitare blocchi CORS di Yahoo Finance
 function yfUrl(symbol) {
-  return `/yf/${encodeURIComponent(symbol)}?range=6mo&interval=1d`;
+  return `/yf/${encodeURIComponent(symbol)}?period=6mo&interval=1d`;
 }
 
 async function getYFCrumb() {} // non serve con il proxy
