@@ -296,9 +296,10 @@ const COLS = [
 {key:'valore',   label:'Valore Attuale',        cls:'num',              fmt:'num2'},
   {key:'varAtt',   label:'Var. %\nGiornaliera',  cls:'num',              fmt:'pct'},
   {key:'fine2025', label:'Fine 2025',             cls:'num',              fmt:'num2'},
-  {key:'varYTD',   label:'Var. YTD',             cls:'num',              fmt:'numS'},
   {key:'ytdLocal', label:'Perf. YTD\nVal. Locale',cls:'num',             fmt:'pct'},
   {key:'ytdEur',   label:'Perf. YTD\nin €',      cls:'num',              fmt:'pct'},
+  {key:'p90',      label:'Ultimi\n90 Giorni',    cls:'num',              fmt:'pct'},
+  {key:'p60',      label:'Ultimi\n60 Giorni',    cls:'num',              fmt:'pct'},
   {key:'p30',      label:'Ultimi\n30 Giorni',    cls:'num',              fmt:'pct'},
   {key:'p7',       label:'Ultima\nSettimana',    cls:'num',              fmt:'pct'},
   {key:'yld',      label:'Rendimento\n(Yield %)',cls:'num',              fmt:'yld', bondsOnly:true},
@@ -399,10 +400,14 @@ function processChart(inst, res) {
   const fine2025 = priceAtDec31(pairs);
   const p7raw    = priceNAgo(pairs, 5);   // ~7 giorni calendario = 5 giorni borsa
   const p30raw   = priceNAgo(pairs, 21);  // ~30 giorni calendario = 21 giorni borsa
+  const p60raw   = priceNAgo(pairs, 42);  // ~60 giorni calendario = 42 giorni borsa
+  const p90raw   = priceNAgo(pairs, 63);  // ~90 giorni calendario = 63 giorni borsa
   const varYTD   = (cur !== null && fine2025 !== null) ? cur - fine2025 : null;
   const ytdLocal = fine2025 ? (cur / fine2025 - 1) * 100 : null;
   const perf7    = p7raw  ? (cur / p7raw  - 1) * 100 : null;
   const perf30   = p30raw ? (cur / p30raw - 1) * 100 : null;
+  const perf60   = p60raw ? (cur / p60raw - 1) * 100 : null;
+  const perf90   = p90raw ? (cur / p90raw - 1) * 100 : null;
 
   // EUR conversion (requires fxHist data)
   let ytdEur = null;
@@ -429,6 +434,8 @@ function processChart(inst, res) {
     ytdLocal,
     ytdEur,
     p30:      perf30,
+    p60:      perf60,
+    p90:      perf90,
     p7:       perf7,
     yld:      res.yield_pct ?? null,
     _hist:    pairs,   // dati storici per il grafico
@@ -486,7 +493,7 @@ async function loadAll() {
     } catch(e) {
       rows[idx] = {...inst, _loading:false, _err:true,
         ora:null, valore:null, varAtt:null, fine2025:null,
-        varYTD:null, ytdLocal:null, ytdEur:null, p30:null, p7:null, yld:null};
+        varYTD:null, ytdLocal:null, ytdEur:null, p30:null, p60:null, p90:null, p7:null, yld:null};
     }
     done++;
     setProgress(done / total * 100);
