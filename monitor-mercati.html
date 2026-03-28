@@ -166,7 +166,6 @@ td.ora{color:#64b5f6;font-size:10px}
     <button class="filter-btn" data-filter="ETF AZ. MASTER">ETF Azion.</button>
     <button class="filter-btn" data-filter="ETF OBB. MASTER">ETF Obbl.</button>
     <button class="filter-btn" data-filter="ETF COMM. MASTER">ETF Comm.</button>
-    <button class="filter-btn" data-filter="ETF BOND MASTER">ETF Bond</button>
     <button class="filter-btn" data-filter="ETF MEGATREND">Megatrend</button>
     <input class="search-box" id="search-box" placeholder="Cerca…" autocomplete="off">
     <div class="spacer"></div>
@@ -448,9 +447,8 @@ const INSTRUMENTS = [
   {s:'PHAG.AS',   a:'ETF COMM. MASTER', m:'PHAG',  i:'WisdomTree Phys. Silver',    c:'EUR'},
   {s:'COMO.PA',   a:'ETF COMM. MASTER', m:'COMO',  i:'Amundi Bloom. Cmd Ex Agr',   c:'EUR'},
   {s:'BRNT.L',    a:'ETF COMM. MASTER', m:'BRNT',  i:'WisdomTree Brent Crude',     c:'EUR'},
-  // ── ETF BOND MASTER (unici rispetto a ETF MASTER) ────────────
-  {s:'INFL.PA',   a:'ETF BOND MASTER', m:'INFL',   i:'Lyxor EUR 2-10y Inflat.',    c:'EUR'},
-  {s:'INFU.PA',   a:'ETF BOND MASTER', m:'INFU',   i:'Lyxor USD 10Y Inflation',    c:'EUR'},
+  {s:'INFL.PA',   a:'ETF OBB. MASTER', m:'INFL',   i:'Lyxor EUR 2-10y Inflat.',    c:'EUR'},
+  {s:'INFU.PA',   a:'ETF OBB. MASTER', m:'INFU',   i:'Lyxor USD 10Y Inflation',    c:'EUR'},
   // ── ETF MEGATREND ─────────────────────────────────────────────
   {s:'GLUX.PA',   a:'ETF MEGATREND', m:'GLUX',  i:'Amundi S&P Global Luxury',      c:'EUR'},
   {s:'GOAI.PA',   a:'ETF MEGATREND', m:'GOAI',  i:'Amundi Stx Glob AI',            c:'EUR'},
@@ -547,7 +545,7 @@ function fmtCell(col, row) {
   if (row._loading && !['a','m','i'].includes(col.key))
     return '<span class="loading-cell">…</span>';
   // Rendimento: mostra solo per obbligazionari
-  const BOND_CLASSES = new Set(['INDICE OBBLIGAZIONARIO','ETF OBB. MASTER','ETF BOND MASTER']);
+  const BOND_CLASSES = new Set(['INDICE OBBLIGAZIONARIO','ETF OBB. MASTER']);
   if (col.key === 'yld' && !BOND_CLASSES.has(row.a))
     return '<span class="na">—</span>';
   const v = row[col.key];
@@ -832,7 +830,6 @@ function buildRows(data) {
     'ETF AZ. MASTER':      '#050d1a',
     'ETF OBB. MASTER':     '#051a13',
     'ETF COMM. MASTER':    '#1a1505',
-    'ETF BOND MASTER':     '#081a10',
     'ETF MEGATREND':       '#1a0510',
   };
 
@@ -1022,7 +1019,7 @@ async function openModal(idx) {
     {label:'Ultimi 30gg',     value: pct(row.p30),     color: cls(row.p30)},
     {label:'Ultima Sett.',    value: pct(row.p7),      color: cls(row.p7)},
   ];
-  const BOND_CLASSES = new Set(['INDICE OBBLIGAZIONARIO','ETF OBB. MASTER','ETF BOND MASTER']);
+  const BOND_CLASSES = new Set(['INDICE OBBLIGAZIONARIO','ETF OBB. MASTER']);
   if (row.yld && BOND_CLASSES.has(row.a)) stats.push({label:'Rendimento', value: row.yld.toFixed(2)+'%', color:'pos'});
 
   document.getElementById('modal-stats').innerHTML = stats.map(s =>
