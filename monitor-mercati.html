@@ -49,9 +49,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 /* ── MODAL GRAFICO ─────────────────────────────────────────── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
-.modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:min(860px,96vw);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.6);transition:width .25s,max-height .25s}
-.modal.expanded{width:99vw;max-height:99vh;border-radius:8px}
-.modal.expanded .modal-canvas-wrap{height:calc(99vh - 280px) !important}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:min(860px,96vw);min-width:480px;max-height:92vh;overflow:auto;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.6);resize:both}
 .modal-header{background:linear-gradient(135deg,var(--blue),var(--blue2));padding:16px 20px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid var(--accent)}
 .modal-title{color:var(--accent);font-size:16px;font-weight:800;letter-spacing:1px}
 .modal-subtitle{color:#90caf9;font-size:11px;margin-top:3px}
@@ -61,12 +59,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .stat{display:flex;flex-direction:column;gap:2px}
 .stat-label{color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.5px}
 .stat-value{font-size:15px;font-weight:700}
-.modal-body{padding:20px;flex:1;min-height:0}
+.modal-body{padding:20px;flex:1;min-height:0;display:flex;flex-direction:column}
 .modal-period-btns{display:flex;gap:6px;margin-bottom:14px}
 .period-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:4px 12px;border-radius:16px;cursor:pointer;font-size:11px;font-weight:600;transition:all .15s}
 .period-btn:hover{border-color:var(--accent);color:var(--text)}
 .period-btn.active{background:var(--blue2);color:#fff;border-color:var(--accent)}
-.modal-canvas-wrap{position:relative;height:280px}
+.modal-canvas-wrap{position:relative;flex:1;min-height:220px}
 
 /* progress bar */
 .progress-bar-wrap{background:var(--bg2);height:3px;flex-shrink:0;display:none}
@@ -115,7 +113,6 @@ td.ora{color:#64b5f6;font-size:10px}
         <div class="modal-title" id="modal-title">--</div>
         <div class="modal-subtitle" id="modal-subtitle">--</div>
       </div>
-      <button class="modal-close" id="modal-expand" title="Espandi" style="font-size:16px;margin-right:6px">⛶</button>
       <button class="modal-close" id="modal-close">✕</button>
     </div>
     <div class="modal-stats" id="modal-stats"></div>
@@ -1117,8 +1114,7 @@ function drawModalChart(pairs, period) {
 
   // Crea grafico TradingView
   const chart = LightweightCharts.createChart(container, {
-    width:  container.offsetWidth || 800,
-    height: 280,
+    autoSize: true,
     layout: { background:{color:'#0d1220'}, textColor:'#8fa8c8' },
     grid:   { vertLines:{color:'#1e2d45'}, horzLines:{color:'#1e2d45'} },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
@@ -1189,25 +1185,12 @@ function drawModalChart(pairs, period) {
 }
 
 function closeModal() {
-  const modal = document.querySelector('.modal');
-  modal.classList.remove('expanded');
-  document.getElementById('modal-expand').textContent = '⛶';
   document.getElementById('modal-overlay').classList.remove('open');
   document.getElementById('modal-loading').style.display = 'none';
   if (modalChart) { modalChart.remove(); modalChart = null; }
   modalRow = null;
 }
 
-document.getElementById('modal-expand').addEventListener('click', () => {
-  const modal = document.querySelector('.modal');
-  const btn   = document.getElementById('modal-expand');
-  const expanded = modal.classList.toggle('expanded');
-  btn.textContent = expanded ? '⊡' : '⛶';
-  // Ridisegna il grafico con le nuove dimensioni dopo la transizione
-  setTimeout(() => {
-    if (modalChart && modalRow) loadAndDraw(modalRow, modalPeriod);
-  }, 260);
-});
 
 // Period buttons
 document.querySelectorAll('.period-btn').forEach(btn => {
