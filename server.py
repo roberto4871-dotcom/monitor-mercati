@@ -54,6 +54,10 @@ def fetch_symbol(symbol, period='3mo', interval='1d'):
             return {'error': f'Nessun dato per {symbol}'}
 
         closes     = hist['Close'].tolist()
+        opens      = hist['Open'].tolist()
+        highs      = hist['High'].tolist()
+        lows       = hist['Low'].tolist()
+        volumes    = [int(v) if v == v else 0 for v in hist['Volume'].tolist()]
         timestamps = [int(dt.timestamp()) for dt in hist.index]
         cur_price  = float(info.last_price) if hasattr(info, 'last_price') and info.last_price else closes[-1]
         prev_close = float(info.previous_close) if hasattr(info, 'previous_close') and info.previous_close else (closes[-2] if len(closes) > 1 else None)
@@ -92,6 +96,10 @@ def fetch_symbol(symbol, period='3mo', interval='1d'):
             },
             'timestamp': timestamps,
             'closes':    closes,
+            'opens':     opens,
+            'highs':     highs,
+            'lows':      lows,
+            'volumes':   volumes,
             'yield_pct': yield_pct,
         }
 

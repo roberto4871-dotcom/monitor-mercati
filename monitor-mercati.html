@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Monitor Mercati</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -128,9 +129,7 @@ td.ora{color:#64b5f6;font-size:10px}
       </div>
       <div id="modal-perf" style="display:none;font-size:12px;font-weight:700;margin-bottom:8px;padding:4px 10px;border-radius:12px;display:inline-block"></div>
       <div id="modal-loading" style="display:none;text-align:center;padding:10px;color:var(--accent);font-size:12px">⏳ Caricamento dati storici…</div>
-      <div class="modal-canvas-wrap">
-        <canvas id="modal-chart"></canvas>
-      </div>
+      <div class="modal-canvas-wrap" id="modal-chart"></div>
     </div>
   </div>
 </div>
@@ -646,8 +645,27 @@ async function fetchChart(symbol) {
 
 function extractPairs(res) {
   const ts = res.timestamp || [];
-  const cl = res.closes   || [];
-  return ts.map((t,i) => ({t, c: cl[i]})).filter(p => p.c !== null && p.c !== undefined);
+  const cl = res.closes  || [];
+  const op = res.opens   || [];
+  const hi = res.highs   || [];
+  const lo = res.lows    || [];
+  const vo = res.volumes || [];
+  return ts.map((t,i) => ({
+    t, c: cl[i],
+    o: op[i] ?? cl[i],
+    h: hi[i] ?? cl[i],
+    l: lo[i] ?? cl[i],
+    v: vo[i] ?? null,
+  })).filter(p => p.c !== null && p.c !== undefined);
+}
+
+function calcSMA(pairs, period) {
+  const result = [];
+  for (let i = period - 1; i < pairs.length; i++) {
+    const sum = pairs.slice(i - period + 1, i + 1).reduce((a, p) => a + p.c, 0);
+    result.push({ time: pairs[i].t, value: sum / period });
+  }
+  return result;
 }
 
 function priceAtDec31(pairs) {
@@ -1101,8 +1119,16 @@ async function loadAndDraw(row, period) {
         const j   = await res.json();
         if (j.error) throw new Error(j.error);
         const ts = j.timestamp || [];
-        const cl = j.closes    || [];
-        pairs = ts.map((t,i) => ({t, c:cl[i]})).filter(p => p.c !== null);
+        const cl = j.closes  || [];
+        const op = j.opens   || [];
+        const hi = j.highs   || [];
+        const lo = j.lows    || [];
+        const vo = j.volumes || [];
+        pairs = ts.map((t,i) => ({
+          t, c:cl[i],
+          o: op[i] ?? cl[i], h: hi[i] ?? cl[i],
+          l: lo[i] ?? cl[i], v: vo[i] ?? null,
+        })).filter(p => p.c !== null);
         extCache[cacheKey] = pairs;
       } catch(e) {
         document.getElementById('modal-loading').textContent = '⚠ Dati non disponibili';
@@ -1126,79 +1152,105 @@ function dateLabelFor(ts, period) {
 }
 
 function drawModalChart(pairs, period) {
-  if (modalChart) { modalChart.destroy(); modalChart = null; }
+  if (modalChart) { modalChart.remove(); modalChart = null; }
   if (!pairs.length) return;
 
-  const labels = pairs.map(p => dateLabelFor(p.t, period));
-  const values = pairs.map(p => p.c);
-  const first  = values[0], last = values[values.length-1];
-  const isUp   = last >= first;
-  const color  = isUp ? '#4caf50' : '#ef5350';
-  const bgClr  = isUp ? 'rgba(76,175,80,.08)' : 'rgba(239,83,80,.08)';
+  const container = document.getElementById('modal-chart');
+  container.innerHTML = '';
 
-  // Aggiorna badge performance periodo
-  const perf = first ? ((last / first - 1) * 100) : null;
+  const first = pairs[0].c, last = pairs[pairs.length - 1].c;
+  const isUp  = last >= first;
+
+  // Badge performance periodo
+  const perf   = first ? (last / first - 1) * 100 : null;
   const perfEl = document.getElementById('modal-perf');
   if (perf !== null) {
     const sign = perf >= 0 ? '+' : '';
     perfEl.textContent = `${sign}${perf.toFixed(2)}% nel periodo`;
     perfEl.style.display = 'inline-block';
     perfEl.style.background = perf >= 0 ? 'rgba(76,175,80,.15)' : 'rgba(239,83,80,.15)';
-    perfEl.style.color = perf >= 0 ? '#4caf50' : '#ef5350';
+    perfEl.style.color      = perf >= 0 ? '#4caf50' : '#ef5350';
   } else {
     perfEl.style.display = 'none';
   }
 
-  const ctx = document.getElementById('modal-chart');
-  modalChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        data: values,
-        borderColor: color,
-        borderWidth: 2,
-        backgroundColor: bgClr,
-        fill: true,
-        tension: 0.3,
-        pointRadius: pairs.length > 60 ? 0 : 3,
-        pointHoverRadius: 5,
-        pointBackgroundColor: color,
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: { duration: 200 },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: ctx => {
-              const v = ctx.parsed.y;
-              const chg = first ? ((v/first-1)*100) : 0;
-              return [
-                `Valore: ${v.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})}`,
-                `Var periodo: ${chg>=0?'+':''}${chg.toFixed(2)}%`
-              ];
-            }
-          },
-          backgroundColor:'#0d1220', borderColor:'#1e2d45', borderWidth:1,
-          titleColor:'#ffd700', bodyColor:'#dce6f5',
-        }
-      },
-      scales: {
-        x: { ticks:{color:'#546e7a',font:{size:10},maxTicksLimit:10}, grid:{color:'#1e2d45'}, border:{color:'#1e2d45'} },
-        y: { ticks:{color:'#8fa8c8',font:{size:10}, callback: v => v.toLocaleString('it-IT',{maximumFractionDigits:2})}, grid:{color:'#1e2d45'}, border:{color:'#1e2d45'} }
-      }
-    }
+  // Crea grafico TradingView
+  const chart = LightweightCharts.createChart(container, {
+    width:  container.offsetWidth || 800,
+    height: 280,
+    layout: { background:{color:'#0d1220'}, textColor:'#8fa8c8' },
+    grid:   { vertLines:{color:'#1e2d45'}, horzLines:{color:'#1e2d45'} },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    rightPriceScale: { borderColor:'#1e2d45' },
+    timeScale: { borderColor:'#1e2d45', timeVisible:true, secondsVisible:false },
+    handleScroll: true,
+    handleScale:  true,
   });
+  modalChart = chart;
+
+  // Candele se abbiamo dati OHLC reali (high ≠ close su almeno un punto)
+  const hasOHLC = pairs.some(p => p.h !== p.c || p.l !== p.c);
+
+  if (hasOHLC) {
+    const cs = chart.addCandlestickSeries({
+      upColor:'#4caf50', downColor:'#ef5350',
+      borderUpColor:'#4caf50', borderDownColor:'#ef5350',
+      wickUpColor:'#81c784', wickDownColor:'#ef9a9a',
+    });
+    cs.setData(pairs.map(p => ({ time:p.t, open:p.o, high:p.h, low:p.l, close:p.c })));
+    // Margine per il volume in basso
+    chart.priceScale('right').applyOptions({ scaleMargins:{top:0.05, bottom:0.22} });
+  } else {
+    const color = isUp ? '#4caf50' : '#ef5350';
+    const ls = chart.addLineSeries({
+      color, lineWidth:2,
+      crosshairMarkerVisible:true, crosshairMarkerRadius:4,
+    });
+    ls.setData(pairs.map(p => ({ time:p.t, value:p.c })));
+    chart.priceScale('right').applyOptions({ scaleMargins:{top:0.05, bottom:0.22} });
+  }
+
+  // MA 20 (oro)
+  if (pairs.length >= 20) {
+    const ma20 = chart.addLineSeries({
+      color:'#ffd700', lineWidth:1,
+      priceLineVisible:false, lastValueVisible:true,
+      crosshairMarkerVisible:false, title:'MA20',
+    });
+    ma20.setData(calcSMA(pairs, 20));
+  }
+
+  // MA 50 (azzurro)
+  if (pairs.length >= 50) {
+    const ma50 = chart.addLineSeries({
+      color:'#64b5f6', lineWidth:1,
+      priceLineVisible:false, lastValueVisible:true,
+      crosshairMarkerVisible:false, title:'MA50',
+    });
+    ma50.setData(calcSMA(pairs, 50));
+  }
+
+  // Volume (istogramma in basso)
+  const hasVol = pairs.some(p => p.v && p.v > 0);
+  if (hasVol) {
+    const vol = chart.addHistogramSeries({
+      priceFormat:{ type:'volume' },
+      priceScaleId:'vol',
+    });
+    chart.priceScale('vol').applyOptions({ scaleMargins:{top:0.82, bottom:0} });
+    vol.setData(pairs.map(p => ({
+      time: p.t, value: p.v || 0,
+      color: (p.c >= (p.o ?? p.c)) ? 'rgba(76,175,80,0.35)' : 'rgba(239,83,80,0.35)',
+    })));
+  }
+
+  chart.timeScale().fitContent();
 }
 
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
   document.getElementById('modal-loading').style.display = 'none';
-  if (modalChart) { modalChart.destroy(); modalChart = null; }
+  if (modalChart) { modalChart.remove(); modalChart = null; }
   modalRow = null;
 }
 
