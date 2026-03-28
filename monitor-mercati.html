@@ -162,7 +162,6 @@ td.ora{color:#64b5f6;font-size:10px}
     <button class="filter-btn" data-filter="VOLATILITA">Volatilità</button>
     <button class="filter-btn" data-filter="TITOLI EUROPA">Europa</button>
     <button class="filter-btn" data-filter="TITOLI IT BIG CAP">Big Cap IT</button>
-    <button class="filter-btn" data-filter="TITOLI IT MID CAP">Mid Cap IT</button>
     <button class="filter-btn" data-filter="TITOLI USA">Titoli USA</button>
     <button class="filter-btn" data-filter="ETF AZ. MASTER">ETF Azion.</button>
     <button class="filter-btn" data-filter="ETF OBB. MASTER">ETF Obbl.</button>
@@ -363,66 +362,6 @@ const INSTRUMENTS = [
   {s:'TRN.MI',    a:'TITOLI IT BIG CAP', m:'TRN',    i:'Terna',                c:'EUR'},
   {s:'UCG.MI',    a:'TITOLI IT BIG CAP', m:'UCG',    i:'UniCredit',            c:'EUR'},
   {s:'UNI.MI',    a:'TITOLI IT BIG CAP', m:'UNI',    i:'Unipol',               c:'EUR'},
-  // ── TITOLI IT MID CAP ────────────────────────────────────────
-  {s:'ACE.MI',    a:'TITOLI IT MID CAP', m:'ACE',    i:'Acea',                 c:'EUR'},
-  {s:'ARN.MI',    a:'TITOLI IT MID CAP', m:'ARN',    i:'Alerion Cleanpower',   c:'EUR'},
-  {s:'ANIM.MI',   a:'TITOLI IT MID CAP', m:'ANIM',   i:'Anima Holding',        c:'EUR'},
-  {s:'ARIS.MI',   a:'TITOLI IT MID CAP', m:'ARIS',   i:'Ariston Holding',      c:'EUR'},
-  {s:'ASC.MI',    a:'TITOLI IT MID CAP', m:'ASC',    i:'Ascopiave',            c:'EUR'},
-  {s:'BGN.MI',    a:'TITOLI IT MID CAP', m:'BGN',    i:'Banca Generali',       c:'EUR'},
-  {s:'IF.MI',     a:'TITOLI IT MID CAP', m:'IF',     i:'Banca Ifis',           c:'EUR'},
-  {s:'BDB.MI',    a:'TITOLI IT MID CAP', m:'BDB',    i:'Banco Desio Brianza',  c:'EUR'},
-  {s:'BFF.MI',    a:'TITOLI IT MID CAP', m:'BFF',    i:'BFF Bank',             c:'EUR'},
-  {s:'BRE.MI',    a:'TITOLI IT MID CAP', m:'BRE',    i:'Brembo',               c:'EUR'},
-  {s:'CALT.MI',   a:'TITOLI IT MID CAP', m:'CALT',   i:'Caltagirone',          c:'EUR'},
-  {s:'CRL.MI',    a:'TITOLI IT MID CAP', m:'CRL',    i:'Carel Industries',     c:'EUR'},
-  {s:'CMB.MI',    a:'TITOLI IT MID CAP', m:'CMB',    i:'Cembre',               c:'EUR'},
-  {s:'CEM.MI',    a:'TITOLI IT MID CAP', m:'CEM',    i:'Cementir',             c:'EUR'},
-  {s:'CIR.MI',    a:'TITOLI IT MID CAP', m:'CIR',    i:'CIR',                  c:'EUR'},
-  {s:'COM.MI',    a:'TITOLI IT MID CAP', m:'COM',    i:'Comer Industries',     c:'EUR'},
-  {s:'CE.MI',     a:'TITOLI IT MID CAP', m:'CE',     i:'Credito Emiliano',     c:'EUR'},
-  {s:'DIS.MI',    a:'TITOLI IT MID CAP', m:'DIS',    i:"D'Amico",              c:'EUR'},
-  {s:'DAN.MI',    a:'TITOLI IT MID CAP', m:'DAN',    i:'Danieli & C.',         c:'EUR'},
-  {s:'DLG.MI',    a:'TITOLI IT MID CAP', m:'DLG',    i:"De'Longhi",            c:'EUR'},
-  {s:'ELN.MI',    a:'TITOLI IT MID CAP', m:'ELN',    i:'El.En.',               c:'EUR'},
-  {s:'ENAV.MI',   a:'TITOLI IT MID CAP', m:'ENAV',   i:'ENAV',                 c:'EUR'},
-  {s:'ERG.MI',    a:'TITOLI IT MID CAP', m:'ERG',    i:'ERG',                  c:'EUR'},
-  {s:'YACHT.MI',  a:'TITOLI IT MID CAP', m:'YACHT',  i:'Ferretti',             c:'EUR'},
-  {s:'FCT.MI',    a:'TITOLI IT MID CAP', m:'FCT',    i:'Fincantieri',          c:'EUR'},
-  {s:'GHC.MI',    a:'TITOLI IT MID CAP', m:'GHC',    i:'Garofalo Health Care', c:'EUR'},
-  {s:'GVS.MI',    a:'TITOLI IT MID CAP', m:'GVS',    i:'GVS',                  c:'EUR'},
-  {s:'DNR.MI',    a:'TITOLI IT MID CAP', m:'DNR',    i:'Industrie De Nora',    c:'EUR'},
-  {s:'ICOS.MI',   a:'TITOLI IT MID CAP', m:'ICOS',   i:'Intercos',             c:'EUR'},
-  {s:'IRE.MI',    a:'TITOLI IT MID CAP', m:'IRE',    i:'Iren',                 c:'EUR'},
-  {s:'ITM.MI',    a:'TITOLI IT MID CAP', m:'ITM',    i:'Italmobiliare',        c:'EUR'},
-  {s:'JUVE.MI',   a:'TITOLI IT MID CAP', m:'JUVE',   i:'Juventus FC',          c:'EUR'},
-  {s:'LTMC.MI',   a:'TITOLI IT MID CAP', m:'LTMC',   i:'Lottomatica',          c:'EUR'},
-  {s:'LUVE.MI',   a:'TITOLI IT MID CAP', m:'LUVE',   i:'Luve',                 c:'EUR'},
-  {s:'MAIRE.MI',  a:'TITOLI IT MID CAP', m:'MAIRE',  i:'Maire',                c:'EUR'},
-  {s:'MARR.MI',   a:'TITOLI IT MID CAP', m:'MARR',   i:'MARR',                 c:'EUR'},
-  {s:'MFEA.MI',   a:'TITOLI IT MID CAP', m:'MFEA',   i:'MFE-A',                c:'EUR'},
-  {s:'MFEB.MI',   a:'TITOLI IT MID CAP', m:'MFEB',   i:'MFE-B',                c:'EUR'},
-  {s:'MOL.MI',    a:'TITOLI IT MID CAP', m:'MOL',    i:'Moltiply Group',       c:'EUR'},
-  {s:'MN.MI',     a:'TITOLI IT MID CAP', m:'MN',     i:'Mondadori Edit.',      c:'EUR'},
-  {s:'OVS.MI',    a:'TITOLI IT MID CAP', m:'OVS',    i:'OVS',                  c:'EUR'},
-  {s:'PHN.MI',    a:'TITOLI IT MID CAP', m:'PHN',    i:'PharmaNutra',          c:'EUR'},
-  {s:'PHIL.MI',   a:'TITOLI IT MID CAP', m:'PHIL',   i:'Philogen',             c:'EUR'},
-  {s:'PIA.MI',    a:'TITOLI IT MID CAP', m:'PIA',    i:'Piaggio',              c:'EUR'},
-  {s:'RWAY.MI',   a:'TITOLI IT MID CAP', m:'RWAY',   i:'Rai Way',              c:'EUR'},
-  {s:'RCS.MI',    a:'TITOLI IT MID CAP', m:'RCS',    i:'RCS Mediagroup',       c:'EUR'},
-  {s:'REY.MI',    a:'TITOLI IT MID CAP', m:'REY',    i:'Reply',                c:'EUR'},
-  {s:'SFER.MI',   a:'TITOLI IT MID CAP', m:'SFER',   i:'Salvatore Ferragamo',  c:'EUR'},
-  {s:'SL.MI',     a:'TITOLI IT MID CAP', m:'SL',     i:'Sanlorenzo',           c:'EUR'},
-  {s:'SES.MI',    a:'TITOLI IT MID CAP', m:'SES',    i:'SESA',                 c:'EUR'},
-  {s:'SOL.MI',    a:'TITOLI IT MID CAP', m:'SOL',    i:'SOL',                  c:'EUR'},
-  {s:'TIP.MI',    a:'TITOLI IT MID CAP', m:'TIP',    i:'Tamburi Inv. Partners', c:'EUR'},
-  {s:'TGYM.MI',   a:'TITOLI IT MID CAP', m:'TGYM',   i:'Technogym',            c:'EUR'},
-  {s:'TPRO.MI',   a:'TITOLI IT MID CAP', m:'TPRO',   i:'Technoprobe',          c:'EUR'},
-  {s:'TISG.MI',   a:'TITOLI IT MID CAP', m:'TISG',   i:'The Italian Sea Group', c:'EUR'},
-  {s:'TXT.MI',    a:'TITOLI IT MID CAP', m:'TXT',    i:'TXT e-solutions',      c:'EUR'},
-  {s:'WBD.MI',    a:'TITOLI IT MID CAP', m:'WBD',    i:'Webuild',              c:'EUR'},
-  {s:'WIIT.MI',   a:'TITOLI IT MID CAP', m:'WIIT',   i:'WIIT',                 c:'EUR'},
-  {s:'ZV.MI',     a:'TITOLI IT MID CAP', m:'ZV',     i:'Zignago Vetro',        c:'EUR'},
   // ── TITOLI USA ───────────────────────────────────────────────
   {s:'MMM',       a:'TITOLI USA', m:'MMM',    i:'3M Company',           c:'USD'},
   {s:'ADBE',      a:'TITOLI USA', m:'ADBE',   i:'Adobe Systems',        c:'USD'},
@@ -787,21 +726,24 @@ async function loadAll() {
   const total = INSTRUMENTS.length;
   setProgress(0);
 
-  for (let idx = 0; idx < INSTRUMENTS.length; idx++) {
-    const inst = INSTRUMENTS[idx];
-    try {
-      const res = await fetchChart(inst.s);
-      rows[idx] = processChart(inst, res);
-    } catch(e) {
-      rows[idx] = {...inst, _loading:false, _err:true,
-        ora:null, valore:null, varAtt:null, fine2025:null,
-        varYTD:null, ytdLocal:null, ytdEur:null, p30:null, p60:null, p90:null, p7:null, yld:null};
-    }
-    done++;
-    setProgress(done / total * 100);
-    updateRow(idx);
-    if (done % 5 === 0) renderCharts(); // update charts periodically
-    await sleep(200);
+  const BATCH = 5;
+  for (let i = 0; i < INSTRUMENTS.length; i += BATCH) {
+    await Promise.all(INSTRUMENTS.slice(i, i + BATCH).map(async (inst, j) => {
+      const idx = i + j;
+      try {
+        const res = await fetchChart(inst.s);
+        rows[idx] = processChart(inst, res);
+      } catch(e) {
+        rows[idx] = {...inst, _loading:false, _err:true,
+          ora:null, valore:null, varAtt:null, fine2025:null,
+          varYTD:null, ytdLocal:null, ytdEur:null, p30:null, p60:null, p90:null, p7:null, yld:null};
+      }
+      done++;
+      setProgress(done / total * 100);
+      updateRow(idx);
+    }));
+    renderCharts();
+    await sleep(300);
   }
 
   const now = new Date().toLocaleTimeString('it-IT');
@@ -886,7 +828,6 @@ function buildRows(data) {
     'VOLATILITA':          '#12050a',
     'TITOLI EUROPA':       '#0f1a05',
     'TITOLI IT BIG CAP':   '#061a0e',
-    'TITOLI IT MID CAP':   '#150a1a',
     'TITOLI USA':          '#1a0e05',
     'ETF AZ. MASTER':      '#050d1a',
     'ETF OBB. MASTER':     '#051a13',
