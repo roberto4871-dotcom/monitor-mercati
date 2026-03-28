@@ -1011,7 +1011,8 @@ async function openModal(idx) {
     {label:'Ultimi 30gg',     value: pct(row.p30),     color: cls(row.p30)},
     {label:'Ultima Sett.',    value: pct(row.p7),      color: cls(row.p7)},
   ];
-  if (row.yld) stats.push({label:'Rendimento', value: row.yld.toFixed(2)+'%', color:'pos'});
+  const BOND_CLASSES = new Set(['INDICE OBBLIGAZIONARIO','ETF OBB. MASTER','ETF BOND MASTER']);
+  if (row.yld && BOND_CLASSES.has(row.a)) stats.push({label:'Rendimento', value: row.yld.toFixed(2)+'%', color:'pos'});
 
   document.getElementById('modal-stats').innerHTML = stats.map(s =>
     `<div class="stat"><span class="stat-label">${s.label}</span>
