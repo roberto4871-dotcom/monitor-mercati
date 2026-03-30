@@ -111,7 +111,10 @@ td.ora{color:#64b5f6;font-size:10px}
     <div class="modal-header">
       <div>
         <div class="modal-title" id="modal-title">--</div>
-        <div class="modal-subtitle" id="modal-subtitle">--</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:3px">
+          <div class="modal-subtitle" id="modal-subtitle">--</div>
+          <a id="modal-justetf" href="#" target="_blank" rel="noopener" style="display:none;font-size:10px;font-weight:700;color:#00bcd4;background:rgba(0,188,212,.12);border:1px solid rgba(0,188,212,.35);border-radius:10px;padding:2px 8px;text-decoration:none;letter-spacing:.5px;white-space:nowrap">JustETF ↗</a>
+        </div>
       </div>
       <button class="modal-close" id="modal-close">✕</button>
     </div>
@@ -1008,6 +1011,16 @@ async function openModal(idx) {
   // Header
   document.getElementById('modal-title').textContent    = `${row.m} — ${row.i}`;
   document.getElementById('modal-subtitle').textContent = row.a;
+
+  // JustETF link (solo per ETF)
+  const ETF_CLASSES = new Set(['ETF AZ. MASTER','ETF OBB. MASTER','ETF COMM. MASTER','ETF MEGATREND']);
+  const jetfEl = document.getElementById('modal-justetf');
+  if (ETF_CLASSES.has(row.a)) {
+    jetfEl.href = `https://www.justetf.com/it/find-etf.html?query=${encodeURIComponent(row.m)}`;
+    jetfEl.style.display = 'inline-block';
+  } else {
+    jetfEl.style.display = 'none';
+  }
 
   // Stats
   const pct = v => (v !== null && v !== undefined) ? `${v>0?'+':''}${v.toFixed(2)}%` : 'N/A';
