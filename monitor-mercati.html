@@ -1109,6 +1109,7 @@ document.querySelectorAll('.filter-btn').forEach(b => {
     b.classList.add('active');
     activeFilter = b.dataset.filter;
     renderTable();
+    renderTopBottom();
   });
 });
 
@@ -1678,7 +1679,12 @@ function renderTopBottom() {
     document.getElementById('tb-chevron').textContent = '▲';
   }
 
-  const valid = rows.filter(r => !r._loading && !r._err && r.varAtt !== null && r.varAtt !== undefined);
+  const valid = rows.filter(r => {
+    if (r._loading || r._err || r.varAtt === null || r.varAtt === undefined) return false;
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'favorites') return favorites.has(r.s);
+    return r.a === activeFilter;
+  });
   const sorted = [...valid].sort((a, b) => b.varAtt - a.varAtt);
   const top5    = sorted.slice(0, 5);
   const bottom5 = sorted.slice(-5).reverse();
