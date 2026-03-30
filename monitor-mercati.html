@@ -166,6 +166,16 @@ td.ora{color:#64b5f6;font-size:10px}
 /* TA buttons */
 .ta-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:3px 9px;border-radius:11px;cursor:pointer;font-size:10px;font-weight:600;transition:all .15s}
 .ta-btn.on{background:rgba(255,215,0,.12);color:var(--accent);border-color:var(--accent)}
+
+/* ── SPARKLINE ─────────────────────────────────────── */
+.spark-col { padding: 4px 8px !important; }
+.spark-col svg { display:block; }
+
+/* ── MERCATI APERTI ────────────────────────────────── */
+.markets-bar { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+.mkt-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; white-space:nowrap; }
+.mkt-badge.open { background:rgba(76,175,80,.2); color:#81c784; border:1px solid rgba(76,175,80,.4); }
+.mkt-badge.closed { background:rgba(96,125,139,.15); color:#546e7a; border:1px solid rgba(96,125,139,.25); }
 </style>
 </head>
 <body>
@@ -219,6 +229,7 @@ td.ora{color:#64b5f6;font-size:10px}
   <div>
     <h1>Monitor Mercati</h1>
     <p>Dashboard Finanziaria — Dati Live Yahoo Finance</p>
+    <div class="markets-bar" id="markets-bar"></div>
   </div>
   <div class="header-right" style="display:flex;align-items:flex-start;gap:12px">
     <div>
@@ -644,6 +655,7 @@ const COLS = [
   {key:'p30',      label:'Ultimi\n30 Giorni',    cls:'num',              fmt:'pct'},
   {key:'p60',      label:'Ultimi\n60 Giorni',    cls:'num',              fmt:'pct'},
   {key:'p90',      label:'Ultimi\n90 Giorni',    cls:'num',              fmt:'pct'},
+  {key:'spark',    label:'Trend',               cls:'spark-col',         fmt:'spark'},
   {key:'yld',      label:'Rendimento\n(Yield %)',cls:'num',              fmt:'yld', bondsOnly:true},
 ];
 
@@ -664,6 +676,27 @@ function fmtS(v) {
   const n = +v, cls = n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero';
   return `<span class="${cls}">${n>0?'+':''}${n.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
 }
+function buildSparkSVG(hist) {
+  if (!hist || !hist.length) return '<span class="na">—</span>';
+  const pts = hist.slice(-30);
+  if (pts.length < 2) return '<span class="na">—</span>';
+  const vals = pts.map(p => p.c).filter(v => v !== null && v !== undefined && !isNaN(v));
+  if (vals.length < 2) return '<span class="na">—</span>';
+  const W = 60, H = 22, PAD = 2;
+  const mn = Math.min(...vals), mx = Math.max(...vals);
+  const range = mx - mn;
+  const norm = v => range === 0 ? H / 2 : PAD + (1 - (v - mn) / range) * (H - PAD * 2);
+  const points = vals.map((v, i) => {
+    const x = (i / (vals.length - 1)) * W;
+    const y = norm(v);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const color = vals[vals.length - 1] >= vals[0] ? '#4caf50' : '#ef5350';
+  return `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">` +
+    `<polyline points="${points}" stroke="${color}" stroke-width="1.5" fill="none"/>` +
+    `</svg>`;
+}
+
 function fmtCell(col, row) {
   if (row._loading && !['a','m','i'].includes(col.key))
     return '<span class="loading-cell">…</span>';
@@ -679,6 +712,7 @@ function fmtCell(col, row) {
     case 'pct':  return fmtP(v);
     case 'numS': return fmtS(v);
     case 'yld':  return v !== null && v !== undefined ? `<span class="pos">${fmtN(v,2)}%</span>` : '<span class="na">—</span>';
+    case 'spark': return buildSparkSVG(row._hist);
     default: return v ?? '';
   }
 }
@@ -1545,7 +1579,7 @@ function setFontSize(size) {
 // ═══════════════════════════════════════════════════
 //  FEATURE 3: COLONNE NASCONDIBILI
 // ═══════════════════════════════════════════════════
-const HIDEABLE_KEYS = new Set(['valore','varAtt','fine2025','ytdLocal','ytdEur','p7','p30','p60','p90','yld']);
+const HIDEABLE_KEYS = new Set(['valore','varAtt','fine2025','ytdLocal','ytdEur','p7','p30','p60','p90','spark','yld']);
 let hiddenCols = new Set(JSON.parse(localStorage.getItem('mm_hidden_cols') || '[]'));
 
 function buildColsDropdown() {
@@ -1738,6 +1772,41 @@ loadAll = async function() {
   await _origLoadAll();
   renderTopBottom();
 };
+
+// ═══════════════════════════════════════════════════
+//  FEATURE 6: DASHBOARD MERCATI APERTI
+// ═══════════════════════════════════════════════════
+const MARKETS = [
+  { label:'🇮🇹 Milano',   tz:'Europe/Rome',     oh:9,  om:0,  ch:17, cm:30 },
+  { label:'🇩🇪 Xetra',    tz:'Europe/Berlin',   oh:9,  om:0,  ch:17, cm:30 },
+  { label:'🇬🇧 Londra',   tz:'Europe/London',   oh:8,  om:0,  ch:16, cm:30 },
+  { label:'🇺🇸 New York', tz:'America/New_York', oh:9,  om:30, ch:16, cm:0  },
+  { label:'🇯🇵 Tokyo',    tz:'Asia/Tokyo',       oh:9,  om:0,  ch:15, cm:30 },
+];
+
+function isMarketOpen(tz, oh, om, ch, cm) {
+  try {
+    const local = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));
+    const day = local.getDay();
+    if (day === 0 || day === 6) return false;
+    const nowMin = local.getHours() * 60 + local.getMinutes();
+    const openMin  = oh * 60 + om;
+    const closeMin = ch * 60 + cm;
+    return nowMin >= openMin && nowMin < closeMin;
+  } catch { return false; }
+}
+
+function updateMarkets() {
+  const bar = document.getElementById('markets-bar');
+  if (!bar) return;
+  bar.innerHTML = MARKETS.map(m => {
+    const open = isMarketOpen(m.tz, m.oh, m.om, m.ch, m.cm);
+    return `<span class="mkt-badge ${open ? 'open' : 'closed'}">${m.label}</span>`;
+  }).join('');
+}
+
+updateMarkets();
+setInterval(updateMarkets, 60000);
 
 // ═══════════════════════════════════════════════════
 //  INIT
