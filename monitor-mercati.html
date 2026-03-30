@@ -101,6 +101,25 @@ td.ora{color:#64b5f6;font-size:10px}
 /* Statusbar */
 .statusbar{background:var(--bg2);border-top:1px solid var(--border);padding:5px 16px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--text3);flex-shrink:0}
 .dot-ok{color:var(--green)}.dot-err{color:var(--red)}.dot-loading{color:var(--accent)}
+
+/* Watchlist star */
+.fav-star{background:none;border:none;cursor:pointer;font-size:14px;padding:0 2px;color:#546e7a;transition:color .15s}
+.fav-star.on{color:#ffd700}
+
+/* Heatmap */
+#tab-heatmap{padding:16px;overflow-y:auto;flex-direction:column;gap:12px}
+.hm-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.hm-section-title{color:var(--accent);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin:12px 0 6px 0;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.hm-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.hm-tile{min-width:80px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:transform .12s;border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:3px;align-items:center}
+.hm-tile:hover{transform:scale(1.05)}
+.hm-tile-ticker{font-size:11px;font-weight:700;color:#fff}
+.hm-tile-val{font-size:12px;font-weight:700}
+.hm-tile-name{font-size:9px;color:rgba(255,255,255,.6);text-align:center;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* TA buttons */
+.ta-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:3px 9px;border-radius:11px;cursor:pointer;font-size:10px;font-weight:600;transition:all .15s}
+.ta-btn.on{background:rgba(255,215,0,.12);color:var(--accent);border-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -133,9 +152,15 @@ td.ora{color:#64b5f6;font-size:10px}
         </div>
         <a id="modal-justetf-chart" href="#" target="_blank" rel="noopener" style="display:none;font-size:11px;font-weight:700;color:#00bcd4;background:rgba(0,188,212,.12);border:1px solid rgba(0,188,212,.35);border-radius:10px;padding:3px 10px;text-decoration:none;white-space:nowrap;align-self:center">JustETF ↗</a>
       </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="color:var(--text3);font-size:11px">Indicatori:</span>
+        <button class="ta-btn" id="ta-btn-bb" onclick="modalTA.bb=!modalTA.bb;this.classList.toggle('on',modalTA.bb);if(modalRow)loadAndDraw(modalRow,modalPeriod)">BB</button>
+        <button class="ta-btn" id="ta-btn-rsi" onclick="modalTA.rsi=!modalTA.rsi;this.classList.toggle('on',modalTA.rsi);if(modalRow)loadAndDraw(modalRow,modalPeriod)">RSI 14</button>
+      </div>
       <div id="modal-perf" style="display:none;font-size:12px;font-weight:700;margin-bottom:8px;padding:4px 10px;border-radius:12px;display:inline-block"></div>
       <div id="modal-loading" style="display:none;text-align:center;padding:10px;color:var(--accent);font-size:12px">⏳ Caricamento dati storici…</div>
       <div class="modal-canvas-wrap" id="modal-chart"></div>
+      <div id="modal-rsi-chart" style="display:none;height:110px;flex-shrink:0;margin-top:4px"></div>
     </div>
   </div>
 </div>
@@ -155,6 +180,7 @@ td.ora{color:#64b5f6;font-size:10px}
 <div class="tabs">
   <div class="tab active" data-tab="table">Tabella</div>
   <div class="tab" data-tab="charts">Grafici</div>
+  <div class="tab" data-tab="heatmap">🔥 Heatmap</div>
 </div>
 
 <div class="tab-content active" id="tab-table">
@@ -173,6 +199,7 @@ td.ora{color:#64b5f6;font-size:10px}
     <button class="filter-btn" data-filter="ETF OBB. MASTER">ETF Obbl.</button>
     <button class="filter-btn" data-filter="ETF COMM. MASTER">ETF Comm.</button>
     <button class="filter-btn" data-filter="ETF MEGATREND">Megatrend</button>
+    <button class="filter-btn" data-filter="favorites">⭐ Preferiti</button>
     <input class="search-box" id="search-box" placeholder="Cerca…" autocomplete="off">
     <div class="spacer"></div>
     <button class="btn-refresh" id="btn-refresh">↻ Aggiorna</button>
@@ -203,6 +230,16 @@ td.ora{color:#64b5f6;font-size:10px}
     <h3>Performance YTD — Valute vs EUR</h3>
     <canvas id="c-fx" height="160"></canvas>
   </div>
+</div>
+
+<div class="tab-content" id="tab-heatmap">
+  <div class="hm-controls" style="padding:12px 16px 0">
+    <span class="controls-label">Colore per:</span>
+    <button class="filter-btn active" id="hm-btn-var" onclick="heatMetric='varAtt';document.getElementById('hm-btn-var').classList.add('active');document.getElementById('hm-btn-ytd').classList.remove('active');renderHeatmap()">Var. Giornaliera</button>
+    <button class="filter-btn" id="hm-btn-ytd" onclick="heatMetric='ytdEur';document.getElementById('hm-btn-ytd').classList.add('active');document.getElementById('hm-btn-var').classList.remove('active');renderHeatmap()">YTD €</button>
+    <span class="controls-label" id="hm-count"></span>
+  </div>
+  <div id="heatmap-grid" style="padding:4px 16px 16px;overflow-y:auto;flex:1"></div>
 </div>
 
 <div class="statusbar">
@@ -510,6 +547,10 @@ let activeFilter = 'all';
 let refreshTimer, cdTimer;
 let charts = {};
 let loading = false;
+let favorites = new Set(JSON.parse(localStorage.getItem('mm_fav') || '[]'));
+let heatMetric = 'varAtt';
+let modalTA = {bb: false, rsi: false};
+let modalRsiChart = null;
 
 // ═══════════════════════════════════════════════════
 //  COLUMNS
@@ -758,6 +799,7 @@ async function loadAll() {
   setProgress(100);
   setTimeout(() => { document.getElementById('prog-wrap').classList.remove('visible'); }, 800);
   renderCharts();
+  renderHeatmap();
   loading = false;
   scheduleRefresh();
 }
@@ -765,9 +807,16 @@ async function loadAll() {
 // ═══════════════════════════════════════════════════
 //  RENDER TABLE
 // ═══════════════════════════════════════════════════
+function toggleFavorite(sym) {
+  if (favorites.has(sym)) favorites.delete(sym); else favorites.add(sym);
+  localStorage.setItem('mm_fav', JSON.stringify([...favorites]));
+  renderTable();
+}
+
 function buildThead() {
   const tr = document.getElementById('thead-row');
-  tr.innerHTML = COLS.map(c => {
+  const starTh = `<th style="width:30px">★</th>`;
+  tr.innerHTML = starTh + COLS.map(c => {
     const cls = sortCol === c.key ? (sortDir===1 ? 'sorted-asc':'sorted-desc') : '';
     return `<th class="${cls}" onclick="doSort('${c.key}')">${c.label.replace('\n','<br>')}</th>`;
   }).join('');
@@ -784,7 +833,9 @@ function updateRow(idx) {
   const tr = document.getElementById(`row-${idx}`);
   if (!tr) { renderTable(); return; }
   const row = rows[idx];
-  tr.innerHTML = COLS.map(c => `<td class="${c.cls||''}">${fmtCell(c, row)}</td>`).join('');
+  const starOn = favorites.has(row.s) ? 'on' : '';
+  const starTd = `<td style="padding:0 4px"><button class="fav-star ${starOn}" onclick="event.stopPropagation();toggleFavorite('${row.s}')">★</button></td>`;
+  tr.innerHTML = starTd + COLS.map(c => `<td class="${c.cls||''}">${fmtCell(c, row)}</td>`).join('');
   if (!row._loading && !row._err) {
     tr.setAttribute('onclick', `openModal(${idx})`);
     tr.style.cursor = 'pointer';
@@ -794,7 +845,9 @@ function updateRow(idx) {
 function applyFilters(data) {
   const q = document.getElementById('search-box').value.toLowerCase().trim();
   return data.filter(r => {
-    const fMatch = activeFilter === 'all' || r.a === activeFilter;
+    const fMatch = activeFilter === 'all' ? true :
+                   activeFilter === 'favorites' ? favorites.has(r.s) :
+                   r.a === activeFilter;
     const sMatch = !q || (r.m||'').toLowerCase().includes(q) ||
                          (r.i||'').toLowerCase().includes(q) ||
                          (r.a||'').toLowerCase().includes(q);
@@ -841,18 +894,20 @@ function buildRows(data) {
 
   let html = '';
   order.forEach(sec => {
-    html += `<tr class="section-header"><td colspan="${COLS.length}">${sec}</td></tr>`;
+    html += `<tr class="section-header"><td colspan="${COLS.length + 1}">${sec}</td></tr>`;
     groups[sec].forEach(r => {
       // Find original index for id
       const origIdx = rows.indexOf(r);
       const bg = sectionBg[sec] || '#0c1525';
+      const starOn = favorites.has(r.s) ? 'on' : '';
+      const starTd = `<td style="padding:0 4px"><button class="fav-star ${starOn}" onclick="event.stopPropagation();toggleFavorite('${r.s}')">★</button></td>`;
       const tds = COLS.map(c => `<td class="${c.cls||''}">${fmtCell(c,r)}</td>`).join('');
       const clickable = !r._loading && !r._err ? `onclick="openModal(${origIdx})" style="background:${bg};cursor:pointer"` : `style="background:${bg}"`;
-      html += `<tr id="row-${origIdx}" ${clickable}>${tds}</tr>`;
+      html += `<tr id="row-${origIdx}" ${clickable}>${starTd}${tds}</tr>`;
     });
   });
 
-  if (!html) html = `<tr><td colspan="${COLS.length}" style="text-align:center;color:var(--text3);padding:40px">Nessun risultato.</td></tr>`;
+  if (!html) html = `<tr><td colspan="${COLS.length + 1}" style="text-align:center;color:var(--text3);padding:40px">Nessun risultato.</td></tr>`;
   tbody.innerHTML = html;
 }
 
@@ -968,6 +1023,7 @@ document.querySelectorAll('.tab').forEach(t => {
     t.classList.add('active');
     document.getElementById('tab-'+t.dataset.tab).classList.add('active');
     if (t.dataset.tab === 'charts') renderCharts();
+    if (t.dataset.tab === 'heatmap') renderHeatmap();
   });
 });
 
@@ -984,11 +1040,91 @@ document.getElementById('search-box').addEventListener('input', renderTable);
 document.getElementById('btn-refresh').addEventListener('click', loadAll);
 
 // ═══════════════════════════════════════════════════
+//  HEATMAP
+// ═══════════════════════════════════════════════════
+function heatColor(val) {
+  if (val === null || val === undefined || isNaN(val)) return {bg:'#1a1a2e', text:'#546e7a'};
+  if (val <= -5)  return {bg:'#7b1c1c', text:'#ff8a80'};
+  if (val <= -2)  return {bg:'#b71c1c', text:'#ffcdd2'};
+  if (val <= -0.5) return {bg:'#c62828', text:'#ef9a9a'};
+  if (val < 0.5)  return {bg:'#263238', text:'#90a4ae'};
+  if (val < 2)    return {bg:'#1b5e20', text:'#a5d6a7'};
+  if (val < 5)    return {bg:'#388e3c', text:'#c8e6c9'};
+  return {bg:'#1b5e20', text:'#e8f5e9'};
+}
+
+function renderHeatmap() {
+  const loaded = rows.filter(r => !r._loading && !r._err);
+  const groups = {}, order = [];
+  loaded.forEach(r => {
+    const k = r.a || 'ALTRO';
+    if (!groups[k]) { groups[k] = []; order.push(k); }
+    groups[k].push(r);
+  });
+
+  const countEl = document.getElementById('hm-count');
+  if (countEl) countEl.textContent = `${loaded.length} strumenti`;
+
+  let html = '';
+  order.forEach(sec => {
+    html += `<div class="hm-section-title">${sec}</div><div class="hm-grid">`;
+    groups[sec].forEach(r => {
+      const origIdx = rows.indexOf(r);
+      const val = r[heatMetric];
+      const {bg, text} = heatColor(val);
+      const valStr = (val !== null && val !== undefined && !isNaN(val))
+        ? `${val > 0 ? '+' : ''}${val.toFixed(2)}%` : '—';
+      html += `<div class="hm-tile" style="background:${bg}" onclick="openModal(${origIdx})">
+        <span class="hm-tile-ticker" style="color:${text}">${r.m}</span>
+        <span class="hm-tile-val" style="color:${text}">${valStr}</span>
+        <span class="hm-tile-name">${r.i}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  if (!html) html = `<div style="color:var(--text3);padding:40px;text-align:center">Nessun dato disponibile.</div>`;
+  document.getElementById('heatmap-grid').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════
 //  MODAL GRAFICO
 // ═══════════════════════════════════════════════════
 let modalChart  = null;
 let modalRow    = null;
 let modalPeriod = '1M';
+
+function calcRSI(pairs, period = 14) {
+  if (pairs.length < period + 1) return [];
+  const closes = pairs.map(p => p.c);
+  const diffs = [];
+  for (let i = 1; i < closes.length; i++) diffs.push(closes[i] - closes[i - 1]);
+  let avgGain = diffs.slice(0, period).filter(d => d > 0).reduce((a, b) => a + b, 0) / period;
+  let avgLoss = diffs.slice(0, period).filter(d => d < 0).reduce((a, b) => a + Math.abs(b), 0) / period;
+  const result = [];
+  for (let i = period; i < diffs.length; i++) {
+    const gain = diffs[i] > 0 ? diffs[i] : 0;
+    const loss = diffs[i] < 0 ? Math.abs(diffs[i]) : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+    const rsi = 100 - 100 / (1 + rs);
+    result.push({ time: pairs[i + 1].t, value: rsi });
+  }
+  return result;
+}
+
+function calcBB(pairs, period = 20, mult = 2) {
+  const result = [];
+  for (let i = period - 1; i < pairs.length; i++) {
+    const slice = pairs.slice(i - period + 1, i + 1).map(p => p.c);
+    const mid = slice.reduce((a, b) => a + b, 0) / period;
+    const variance = slice.reduce((a, b) => a + (b - mid) ** 2, 0) / period;
+    const std = Math.sqrt(variance);
+    result.push({ time: pairs[i].t, upper: mid + mult * std, mid, lower: mid - mult * std });
+  }
+  return result;
+}
 
 // Configurazione periodi: period e interval per yfinance
 const PERIOD_CFG = {
@@ -1010,6 +1146,11 @@ async function openModal(idx) {
   if (!row || row._loading || row._err || !row._hist?.length) return;
   modalRow    = row;
   modalPeriod = '1M';
+
+  // Reset TA
+  modalTA = {bb: false, rsi: false};
+  document.getElementById('ta-btn-bb').classList.remove('on');
+  document.getElementById('ta-btn-rsi').classList.remove('on');
 
   // Header
   document.getElementById('modal-title').textContent    = `${row.m} — ${row.i}`;
@@ -1107,6 +1248,7 @@ function dateLabelFor(ts, period) {
 
 function drawModalChart(pairs, period) {
   if (modalChart) { modalChart.remove(); modalChart = null; }
+  if (modalRsiChart) { modalRsiChart.remove(); modalRsiChart = null; }
   if (!pairs.length) return;
 
   const container = document.getElementById('modal-chart');
@@ -1197,6 +1339,61 @@ function drawModalChart(pairs, period) {
     })));
   }
 
+  // Bollinger Bands
+  if (modalTA.bb && pairs.length >= 20) {
+    const bbData = calcBB(pairs, 20, 2);
+    const bbUpper = chart.addLineSeries({
+      color: 'rgba(255,255,255,0.4)', lineWidth: 1,
+      priceLineVisible: false, lastValueVisible: false,
+      crosshairMarkerVisible: false, title: 'BB+',
+    });
+    bbUpper.setData(bbData.map(d => ({ time: d.time, value: d.upper })));
+
+    const bbLower = chart.addLineSeries({
+      color: 'rgba(255,255,255,0.4)', lineWidth: 1,
+      priceLineVisible: false, lastValueVisible: false,
+      crosshairMarkerVisible: false, title: 'BB-',
+    });
+    bbLower.setData(bbData.map(d => ({ time: d.time, value: d.lower })));
+
+    const bbMid = chart.addLineSeries({
+      color: 'rgba(255,255,255,0.2)', lineWidth: 1, lineStyle: 1,
+      priceLineVisible: false, lastValueVisible: false,
+      crosshairMarkerVisible: false, title: 'BB mid',
+    });
+    bbMid.setData(bbData.map(d => ({ time: d.time, value: d.mid })));
+  }
+
+  // RSI
+  const rsiContainer = document.getElementById('modal-rsi-chart');
+  if (modalTA.rsi) {
+    rsiContainer.style.display = 'block';
+    const rsiData = calcRSI(pairs, 14);
+    if (rsiData.length) {
+      modalRsiChart = LightweightCharts.createChart(rsiContainer, {
+        autoSize: true,
+        layout: { background: {color: '#0d1220'}, textColor: '#8fa8c8' },
+        grid: { vertLines: {color: '#1e2d45'}, horzLines: {color: '#1e2d45'} },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+        rightPriceScale: { borderColor: '#1e2d45', scaleMargins: {top: 0.1, bottom: 0.1} },
+        timeScale: { borderColor: '#1e2d45', timeVisible: true, secondsVisible: false },
+        handleScroll: false, handleScale: false,
+      });
+      const rsiLine = modalRsiChart.addLineSeries({
+        color: '#ce93d8', lineWidth: 2,
+        priceLineVisible: false, lastValueVisible: true,
+        crosshairMarkerVisible: true, title: 'RSI',
+      });
+      rsiLine.setData(rsiData);
+      // Livelli 70 e 30
+      rsiLine.createPriceLine({ price: 70, color: '#ef5350', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '70' });
+      rsiLine.createPriceLine({ price: 30, color: '#4caf50', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: '30' });
+      modalRsiChart.timeScale().fitContent();
+    }
+  } else {
+    rsiContainer.style.display = 'none';
+  }
+
   chart.timeScale().fitContent();
 }
 
@@ -1204,6 +1401,8 @@ function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
   document.getElementById('modal-loading').style.display = 'none';
   if (modalChart) { modalChart.remove(); modalChart = null; }
+  if (modalRsiChart) { modalRsiChart.remove(); modalRsiChart = null; }
+  document.getElementById('modal-rsi-chart').style.display = 'none';
   modalRow = null;
 }
 
