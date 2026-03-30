@@ -117,6 +117,10 @@ body.light table { background:#fff; }
 .progress-bar-wrap.visible{display:block}
 .progress-bar{height:3px;background:var(--accent);transition:width .3s;width:0%}
 
+/* countdown refresh bar */
+#cd-bar-wrap{height:3px;background:rgba(255,215,0,.1);flex-shrink:0}
+#cd-bar{height:3px;background:linear-gradient(90deg,var(--accent),#ff9800);width:100%;transition:width 1s linear}
+
 .table-wrapper{flex:1;overflow:auto}
 table{width:100%;border-collapse:collapse;font-size:12px}
 thead th{background:var(--blue);color:var(--accent);padding:8px 10px;text-align:center;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;position:sticky;top:0;z-index:10;border-right:1px solid rgba(255,255,255,.05);cursor:pointer;user-select:none}
@@ -240,6 +244,8 @@ td.ora{color:#64b5f6;font-size:10px}
     <button class="btn-theme" id="btn-theme" title="Cambia tema" onclick="toggleTheme()">🌙</button>
   </div>
 </div>
+
+<div id="cd-bar-wrap" title="Prossimo aggiornamento automatico"><div id="cd-bar"></div></div>
 
 <div class="tabs">
   <div class="tab active" data-tab="table">Tabella</div>
@@ -697,6 +703,14 @@ function buildSparkSVG(hist) {
     `</svg>`;
 }
 
+function heatWrap(content, val, maxPct) {
+  if (val === null || val === undefined || isNaN(val)) return content;
+  const intensity = Math.min(Math.abs(val) / maxPct, 1);
+  const alpha = (intensity * 0.35).toFixed(3);
+  const rgb = val >= 0 ? '76,175,80' : '239,83,80';
+  return `<div style="background:rgba(${rgb},${alpha});padding:4px 8px;margin:-6px -10px;min-height:28px;display:flex;align-items:center;justify-content:center">${content}</div>`;
+}
+
 function fmtCell(col, row) {
   if (row._loading && !['a','m','i'].includes(col.key))
     return '<span class="loading-cell">…</span>';
@@ -709,7 +723,13 @@ function fmtCell(col, row) {
     case 'str':  return v || '';
     case 'ora':  return v ? `<span class="ora">${v}</span>` : '<span class="na">N/A</span>';
     case 'num2': return fmtN(v, 2);
-    case 'pct':  return fmtP(v);
+    case 'pct': {
+      const inner = fmtP(v);
+      if (col.key === 'varAtt') return heatWrap(inner, v, 5);
+      if (col.key === 'ytdEur') return heatWrap(inner, v, 30);
+      if (['p7','p30','p60','p90'].includes(col.key)) return heatWrap(inner, v, 15);
+      return inner;
+    }
     case 'numS': return fmtS(v);
     case 'yld':  return v !== null && v !== undefined ? `<span class="pos">${fmtN(v,2)}%</span>` : '<span class="na">—</span>';
     case 'spark': return buildSparkSVG(row._hist);
@@ -912,6 +932,7 @@ async function loadAll() {
   renderHeatmap();
   loading = false;
   scheduleRefresh();
+  startCdBar(600);
 }
 
 // ═══════════════════════════════════════════════════
@@ -1105,6 +1126,24 @@ function scheduleRefresh() {
     if (rem <= 0) clearInterval(cdTimer);
   }, 1000);
   refreshTimer = setTimeout(loadAll, 600_000);
+}
+
+let cdBarInterval = null;
+let cdBarStart = 0;
+let cdBarTotal = 0;
+
+function startCdBar(totalSec) {
+  if (cdBarInterval) clearInterval(cdBarInterval);
+  cdBarStart = Date.now();
+  cdBarTotal = totalSec * 1000;
+  const bar = document.getElementById('cd-bar');
+  if (bar) bar.style.width = '100%';
+  cdBarInterval = setInterval(() => {
+    const elapsed = Date.now() - cdBarStart;
+    const pct = Math.max(0, (1 - elapsed / cdBarTotal) * 100);
+    if (bar) bar.style.width = pct + '%';
+    if (pct <= 0) clearInterval(cdBarInterval);
+  }, 1000);
 }
 
 function doSort(key) {
