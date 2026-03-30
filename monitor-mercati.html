@@ -46,6 +46,52 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .btn-refresh:hover{background:rgba(255,215,0,.1)}
 .btn-refresh:disabled{opacity:.4;cursor:not-allowed}
 
+/* ── TEMA CHIARO ──────────────────────────────────────────── */
+body.light {
+  --bg:#f0f4f8; --bg2:#ffffff; --bg3:#e8edf2;
+  --border:#c5d0dc; --text:#1a2332; --text2:#4a6080; --text3:#8099b3;
+  --blue:#1a237e; --blue2:#283593;
+}
+body.light tbody tr:hover { background:#dce6f0 !important; }
+body.light .section-header td { background:#dce6f0; }
+body.light table { background:#fff; }
+
+/* ── BOTTONI FONT SIZE ─────────────────────────────────────── */
+.font-btn{background:var(--bg3);color:var(--text2);border:1px solid var(--border);width:28px;height:26px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.font-btn:hover{border-color:var(--accent);color:var(--text)}
+.font-btn.active{background:var(--blue2);color:#fff;border-color:var(--accent)}
+
+/* ── BOTTONE TEMA ──────────────────────────────────────────── */
+.btn-theme{background:transparent;border:1px solid var(--border);color:var(--text2);width:32px;height:26px;border-radius:16px;cursor:pointer;font-size:14px;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.btn-theme:hover{border-color:var(--accent);color:var(--text)}
+
+/* ── COLONNE DROPDOWN ──────────────────────────────────────── */
+.cols-dropdown{position:absolute;z-index:500;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;min-width:280px;top:100%;left:0;margin-top:4px}
+.cols-dropdown label{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);cursor:pointer;white-space:nowrap}
+.cols-dropdown label:hover{color:var(--text)}
+.cols-btn-wrap{position:relative}
+
+/* ── TOP/BOTTOM PANEL ──────────────────────────────────────── */
+.tb-panel{background:var(--bg3);border-bottom:1px solid var(--border);padding:0;flex-shrink:0}
+.tb-panel-header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;cursor:pointer;user-select:none}
+.tb-panel-header span{color:var(--accent);font-size:12px;font-weight:700}
+.tb-panel-body{display:flex;gap:16px;padding:8px 16px 12px;overflow:hidden}
+.tb-panel-body.collapsed{display:none}
+.tb-col{flex:1}
+.tb-col-title{font-size:11px;font-weight:700;margin-bottom:6px}
+.tb-item{display:flex;align-items:center;gap:8px;padding:3px 6px;border-radius:6px;cursor:pointer;transition:background .12s}
+.tb-item:hover{background:var(--bg2)}
+.tb-item-ticker{font-size:11px;font-weight:700;color:var(--text);min-width:50px}
+.tb-item-name{font-size:10px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-item-val{font-size:11px;font-weight:700;white-space:nowrap}
+
+/* ── NOTE MODAL ────────────────────────────────────────────── */
+.modal-notes{padding:12px 20px;border-top:1px solid var(--border)}
+.modal-notes-title{font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px}
+.modal-notes textarea{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px;width:100%;resize:vertical;font-size:11px;font-family:inherit;outline:none;transition:border-color .15s}
+.modal-notes textarea:focus{border-color:var(--accent)}
+.note-icon{font-size:10px;cursor:default}
+
 /* ── MODAL GRAFICO ─────────────────────────────────────────── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
@@ -138,6 +184,10 @@ td.ora{color:#64b5f6;font-size:10px}
       <button class="modal-close" id="modal-close">✕</button>
     </div>
     <div class="modal-stats" id="modal-stats"></div>
+    <div class="modal-notes" id="modal-notes">
+      <div class="modal-notes-title">📝 Note personali</div>
+      <textarea id="modal-note-ta" rows="3" placeholder="Aggiungi una nota per questo asset…"></textarea>
+    </div>
     <div class="modal-body">
       <div class="modal-period-btns" style="justify-content:space-between">
         <div style="display:flex;gap:6px">
@@ -170,10 +220,13 @@ td.ora{color:#64b5f6;font-size:10px}
     <h1>Monitor Mercati</h1>
     <p>Dashboard Finanziaria — Dati Live Yahoo Finance</p>
   </div>
-  <div class="header-right">
-    <div class="header-datetime" id="hdr-dt">--</div>
-    <div class="header-meta" id="hdr-upd">Caricamento in corso…</div>
-    <div class="header-countdown" id="hdr-cd"></div>
+  <div class="header-right" style="display:flex;align-items:flex-start;gap:12px">
+    <div>
+      <div class="header-datetime" id="hdr-dt">--</div>
+      <div class="header-meta" id="hdr-upd">Caricamento in corso…</div>
+      <div class="header-countdown" id="hdr-cd"></div>
+    </div>
+    <button class="btn-theme" id="btn-theme" title="Cambia tema" onclick="toggleTheme()">🌙</button>
   </div>
 </div>
 
@@ -201,10 +254,33 @@ td.ora{color:#64b5f6;font-size:10px}
     <button class="filter-btn" data-filter="ETF MEGATREND">Megatrend</button>
     <button class="filter-btn" data-filter="favorites">⭐ Preferiti</button>
     <input class="search-box" id="search-box" placeholder="Cerca…" autocomplete="off">
+    <button class="font-btn" id="font-btn-s" onclick="setFontSize('S')">S</button>
+    <button class="font-btn active" id="font-btn-m" onclick="setFontSize('M')">M</button>
+    <button class="font-btn" id="font-btn-l" onclick="setFontSize('L')">L</button>
+    <div class="cols-btn-wrap" id="cols-btn-wrap">
+      <button class="filter-btn" id="btn-cols" onclick="toggleColsDropdown(event)">⚙ Colonne</button>
+      <div class="cols-dropdown" id="cols-dropdown" style="display:none"></div>
+    </div>
     <div class="spacer"></div>
     <button class="btn-refresh" id="btn-refresh">↻ Aggiorna</button>
   </div>
   <div class="progress-bar-wrap" id="prog-wrap"><div class="progress-bar" id="prog-bar"></div></div>
+  <div class="tb-panel" id="tb-panel">
+    <div class="tb-panel-header" onclick="toggleTbPanel()">
+      <span>📈 Top &amp; Bottom Giornalieri</span>
+      <span id="tb-chevron">▲</span>
+    </div>
+    <div class="tb-panel-body" id="tb-panel-body">
+      <div class="tb-col">
+        <div class="tb-col-title" style="color:var(--green)">🟢 Top 5 Oggi</div>
+        <div id="tb-top"></div>
+      </div>
+      <div class="tb-col">
+        <div class="tb-col-title" style="color:var(--red)">🔴 Bottom 5 Oggi</div>
+        <div id="tb-bottom"></div>
+      </div>
+    </div>
+  </div>
   <div class="table-wrapper">
     <table id="main-table">
       <thead><tr id="thead-row"></tr></thead>
@@ -1423,6 +1499,239 @@ document.getElementById('modal-overlay').addEventListener('click', e => {
   if (e.target === document.getElementById('modal-overlay')) closeModal();
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ═══════════════════════════════════════════════════
+//  FEATURE 1: TEMA CHIARO/SCURO
+// ═══════════════════════════════════════════════════
+function applyTheme(theme) {
+  if (theme === 'light') {
+    document.body.classList.add('light');
+    document.getElementById('btn-theme').textContent = '☀️';
+  } else {
+    document.body.classList.remove('light');
+    document.getElementById('btn-theme').textContent = '🌙';
+  }
+}
+function toggleTheme() {
+  const isLight = document.body.classList.contains('light');
+  const next = isLight ? 'dark' : 'light';
+  localStorage.setItem('mm_theme', next);
+  applyTheme(next);
+}
+// Applica tema salvato
+applyTheme(localStorage.getItem('mm_theme') || 'dark');
+
+// ═══════════════════════════════════════════════════
+//  FEATURE 2: DIMENSIONE FONT TABELLA
+// ═══════════════════════════════════════════════════
+const FONT_SIZES = { S: '10px', M: '12px', L: '14px' };
+function setFontSize(size) {
+  document.getElementById('main-table').style.fontSize = FONT_SIZES[size];
+  localStorage.setItem('mm_fontsize', size);
+  ['S','M','L'].forEach(s => {
+    document.getElementById('font-btn-'+s.toLowerCase()).classList.toggle('active', s === size);
+  });
+}
+// Applica font salvato
+(function() {
+  const saved = localStorage.getItem('mm_fontsize') || 'M';
+  document.getElementById('main-table').style.fontSize = FONT_SIZES[saved];
+  ['S','M','L'].forEach(s => {
+    document.getElementById('font-btn-'+s.toLowerCase()).classList.toggle('active', s === saved);
+  });
+})();
+
+// ═══════════════════════════════════════════════════
+//  FEATURE 3: COLONNE NASCONDIBILI
+// ═══════════════════════════════════════════════════
+const HIDEABLE_KEYS = new Set(['valore','varAtt','fine2025','ytdLocal','ytdEur','p7','p30','p60','p90','yld']);
+let hiddenCols = new Set(JSON.parse(localStorage.getItem('mm_hidden_cols') || '[]'));
+
+function buildColsDropdown() {
+  const dd = document.getElementById('cols-dropdown');
+  dd.innerHTML = COLS.filter(c => HIDEABLE_KEYS.has(c.key)).map(c => `
+    <label>
+      <input type="checkbox" ${hiddenCols.has(c.key) ? '' : 'checked'} onchange="toggleCol('${c.key}',this.checked)">
+      ${c.label.replace('\n',' ')}
+    </label>`).join('');
+}
+
+function toggleCol(key, visible) {
+  if (visible) hiddenCols.delete(key); else hiddenCols.add(key);
+  localStorage.setItem('mm_hidden_cols', JSON.stringify([...hiddenCols]));
+  renderTable();
+}
+
+function toggleColsDropdown(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('cols-dropdown');
+  const isOpen = dd.style.display !== 'none';
+  if (!isOpen) { buildColsDropdown(); }
+  dd.style.display = isOpen ? 'none' : 'grid';
+}
+
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('cols-btn-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('cols-dropdown').style.display = 'none';
+  }
+});
+
+// Override buildThead e buildRows per supportare colonne nascoste
+const _origBuildThead = buildThead;
+buildThead = function() {
+  const tr = document.getElementById('thead-row');
+  const visibleCols = COLS.filter(c => !hiddenCols.has(c.key));
+  const starTh = `<th style="width:30px">★</th>`;
+  tr.innerHTML = starTh + visibleCols.map(c => {
+    const cls = sortCol === c.key ? (sortDir===1 ? 'sorted-asc':'sorted-desc') : '';
+    return `<th class="${cls}" onclick="doSort('${c.key}')">${c.label.replace('\n','<br>')}</th>`;
+  }).join('');
+};
+
+const _origBuildRows = buildRows;
+buildRows = function(data) {
+  const visibleCols = COLS.filter(c => !hiddenCols.has(c.key));
+  const tbody = document.getElementById('tbody');
+  const groups = {}, order = [];
+  data.forEach(r => {
+    const k = r.a || 'ALTRO';
+    if (!groups[k]) { groups[k] = []; order.push(k); }
+    groups[k].push(r);
+  });
+  const sectionBg = {
+    'INDICE AZIONARIO':    '#0c1525',
+    'INDICE OBBLIGAZIONARIO':'#0a140a',
+    'MATERIA PRIMA':       '#14100a',
+    'VALUTA':              '#0a0a18',
+    'VOLATILITA':          '#12050a',
+    'TITOLI EUROPA':       '#0f1a05',
+    'TITOLI IT BIG CAP':   '#061a0e',
+    'TITOLI USA':          '#1a0e05',
+    'ETF AZ. MASTER':      '#050d1a',
+    'ETF OBB. MASTER':     '#051a13',
+    'ETF COMM. MASTER':    '#1a1505',
+    'ETF MEGATREND':       '#1a0510',
+  };
+  let html = '';
+  order.forEach(sec => {
+    html += `<tr class="section-header"><td colspan="${visibleCols.length + 1}">${sec}</td></tr>`;
+    groups[sec].forEach(r => {
+      const origIdx = rows.indexOf(r);
+      const bg = sectionBg[sec] || '#0c1525';
+      const starOn = favorites.has(r.s) ? 'on' : '';
+      const hasNote = localStorage.getItem('mm_note_' + r.s);
+      const noteIcon = hasNote ? ' <span class="note-icon">📝</span>' : '';
+      const starTd = `<td style="padding:0 4px"><button class="fav-star ${starOn}" onclick="event.stopPropagation();toggleFavorite('${r.s}')">★</button></td>`;
+      const tds = visibleCols.map(c => {
+        if (c.key === 'm') {
+          return `<td class="${c.cls||''}">${fmtCell(c,r)}${noteIcon}</td>`;
+        }
+        return `<td class="${c.cls||''}">${fmtCell(c,r)}</td>`;
+      }).join('');
+      const clickable = !r._loading && !r._err ? `onclick="openModal(${origIdx})" style="background:${bg};cursor:pointer"` : `style="background:${bg}"`;
+      html += `<tr id="row-${origIdx}" ${clickable}>${starTd}${tds}</tr>`;
+    });
+  });
+  if (!html) html = `<tr><td colspan="${visibleCols.length + 1}" style="text-align:center;color:var(--text3);padding:40px">Nessun risultato.</td></tr>`;
+  tbody.innerHTML = html;
+};
+
+// Override updateRow per colonne nascoste
+updateRow = function(idx) {
+  const tr = document.getElementById(`row-${idx}`);
+  if (!tr) { renderTable(); return; }
+  const row = rows[idx];
+  const visibleCols = COLS.filter(c => !hiddenCols.has(c.key));
+  const starOn = favorites.has(row.s) ? 'on' : '';
+  const hasNote = localStorage.getItem('mm_note_' + row.s);
+  const noteIcon = hasNote ? ' <span class="note-icon">📝</span>' : '';
+  const starTd = `<td style="padding:0 4px"><button class="fav-star ${starOn}" onclick="event.stopPropagation();toggleFavorite('${row.s}')">★</button></td>`;
+  tr.innerHTML = starTd + visibleCols.map(c => {
+    if (c.key === 'm') return `<td class="${c.cls||''}">${fmtCell(c, row)}${noteIcon}</td>`;
+    return `<td class="${c.cls||''}">${fmtCell(c, row)}</td>`;
+  }).join('');
+  if (!row._loading && !row._err) {
+    tr.setAttribute('onclick', `openModal(${idx})`);
+    tr.style.cursor = 'pointer';
+  }
+};
+
+// ═══════════════════════════════════════════════════
+//  FEATURE 4: TOP 5 / BOTTOM 5
+// ═══════════════════════════════════════════════════
+let tbCollapsed = localStorage.getItem('mm_tb_collapsed') === 'true';
+
+function toggleTbPanel() {
+  tbCollapsed = !tbCollapsed;
+  localStorage.setItem('mm_tb_collapsed', tbCollapsed);
+  document.getElementById('tb-panel-body').classList.toggle('collapsed', tbCollapsed);
+  document.getElementById('tb-chevron').textContent = tbCollapsed ? '▼' : '▲';
+}
+
+function renderTopBottom() {
+  if (tbCollapsed) {
+    document.getElementById('tb-panel-body').classList.add('collapsed');
+    document.getElementById('tb-chevron').textContent = '▼';
+  } else {
+    document.getElementById('tb-panel-body').classList.remove('collapsed');
+    document.getElementById('tb-chevron').textContent = '▲';
+  }
+
+  const valid = rows.filter(r => !r._loading && !r._err && r.varAtt !== null && r.varAtt !== undefined);
+  const sorted = [...valid].sort((a, b) => b.varAtt - a.varAtt);
+  const top5    = sorted.slice(0, 5);
+  const bottom5 = sorted.slice(-5).reverse();
+
+  function itemHtml(r) {
+    const origIdx = rows.indexOf(r);
+    const cls = r.varAtt > 0 ? 'pos' : r.varAtt < 0 ? 'neg' : 'zero';
+    const sign = r.varAtt > 0 ? '+' : '';
+    return `<div class="tb-item" onclick="openModal(${origIdx})">
+      <span class="tb-item-ticker">${r.m}</span>
+      <span class="tb-item-name">${r.i}</span>
+      <span class="tb-item-val ${cls}">${sign}${r.varAtt.toFixed(2)}%</span>
+    </div>`;
+  }
+
+  document.getElementById('tb-top').innerHTML    = top5.map(itemHtml).join('') || '<span style="color:var(--text3);font-size:11px">Nessun dato</span>';
+  document.getElementById('tb-bottom').innerHTML = bottom5.map(itemHtml).join('') || '<span style="color:var(--text3);font-size:11px">Nessun dato</span>';
+}
+
+// ═══════════════════════════════════════════════════
+//  FEATURE 5: ANNOTAZIONI ASSET
+// ═══════════════════════════════════════════════════
+document.getElementById('modal-note-ta').addEventListener('input', function() {
+  if (modalRow) {
+    const key = 'mm_note_' + modalRow.s;
+    if (this.value.trim()) {
+      localStorage.setItem(key, this.value);
+    } else {
+      localStorage.removeItem(key);
+    }
+    // Aggiorna icona nella tabella
+    const origIdx = rows.indexOf(modalRow);
+    if (origIdx >= 0) updateRow(origIdx);
+  }
+});
+
+// ─── Patch openModal per caricare la nota ───────────
+const _origOpenModal = openModal;
+openModal = async function(idx) {
+  await _origOpenModal(idx);
+  // Carica nota per l'asset aperto
+  if (modalRow) {
+    const note = localStorage.getItem('mm_note_' + modalRow.s) || '';
+    document.getElementById('modal-note-ta').value = note;
+  }
+};
+
+// ─── Patch loadAll per chiamare renderTopBottom ─────
+const _origLoadAll = loadAll;
+loadAll = async function() {
+  await _origLoadAll();
+  renderTopBottom();
+};
 
 // ═══════════════════════════════════════════════════
 //  INIT
