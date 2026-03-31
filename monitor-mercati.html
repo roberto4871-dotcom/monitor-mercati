@@ -1423,10 +1423,10 @@ function drawModalChart(pairs, period) {
   // Crea grafico TradingView
   const chart = LightweightCharts.createChart(container, {
     autoSize: true,
-    layout: { background:{color:'#0d1220'}, textColor:'#8fa8c8', fontSize:10 },
+    layout: { background:{color:'#0d1220'}, textColor:'#8fa8c8', fontSize:8 },
     grid:   { vertLines:{color:'#1e2d45'}, horzLines:{color:'#1e2d45'} },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    rightPriceScale: { borderColor:'#1e2d45' },
+    rightPriceScale: { borderColor:'#1e2d45', minimumWidth:58 },
     timeScale: { borderColor:'#1e2d45', timeVisible:true, secondsVisible:false },
     handleScroll: true,
     handleScale:  true,
