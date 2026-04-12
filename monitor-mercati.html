@@ -905,7 +905,7 @@ async function loadAll() {
   const allSymbols = [...FX_SYMBOLS, ...INSTRUMENTS.map(i => i.s)];
   let batchData = {};
   try {
-    const r = await fetch(`/yf/batch?syms=${allSymbols.join(',')}&period=3mo&interval=1d`);
+    const r = await fetch(`/yf/batch?syms=${encodeURIComponent(allSymbols.join(','))}&period=3mo&interval=1d`);
     batchData = await r.json();
   } catch(e) {
     console.warn('Batch fetch fallito, uso fetch individuale come fallback', e);
@@ -1326,7 +1326,7 @@ const extCache = {};
 
 async function openModal(idx) {
   const row = rows[idx];
-  if (!row || row._loading || row._err || !row._hist?.length) return;
+  if (!row || row._loading || row._err) return;
   modalRow    = row;
   modalPeriod = '1M';
 
@@ -1602,9 +1602,7 @@ document.querySelectorAll('.period-btn').forEach(btn => {
 });
 
 document.getElementById('modal-close').addEventListener('click', closeModal);
-document.getElementById('modal-overlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('modal-overlay')) closeModal();
-});
+// Chiudi solo con ✕ o Escape — niente click-outside che confligge col resize
 
 // ── Resize manuale modal ──────────────────────────────
 (function() {

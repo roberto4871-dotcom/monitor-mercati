@@ -126,16 +126,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def handle_batch(self):
-        parts = self.path[len('/yf/batch'):].split('?', 1)
-        params = {}
-        if len(parts) > 1:
-            for kv in parts[1].split('&'):
-                k, _, v = kv.partition('=')
-                params[k] = urllib.parse.unquote(v)
-
-        symbols  = [s.strip() for s in params.get('syms', '').split(',') if s.strip()]
-        period   = params.get('period', '3mo')
-        interval = params.get('interval', '1d')
+        parsed   = urllib.parse.urlparse(self.path)
+        params   = urllib.parse.parse_qs(parsed.query)
+        syms_raw = params.get('syms', [''])[0]
+        symbols  = [s.strip() for s in syms_raw.split(',') if s.strip()]
+        period   = params.get('period',   ['3mo'])[0]
+        interval = params.get('interval', ['1d'])[0]
 
         results = {}
         with ThreadPoolExecutor(max_workers=50) as ex:
