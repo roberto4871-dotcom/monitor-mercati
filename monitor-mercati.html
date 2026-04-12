@@ -949,7 +949,9 @@ async function loadAll() {
 
   // Salva in localStorage per mostrare subito al prossimo caricamento
   try {
-    localStorage.setItem('mm_rows_cache', JSON.stringify({ts: Date.now(), data: rows}));
+    // Salva senza _hist (troppo grande per localStorage) — sparkline rigenerate al refresh
+    const slim = rows.map(({_hist, ...r}) => r);
+    localStorage.setItem('mm_rows_cache', JSON.stringify({ts: Date.now(), data: slim}));
   } catch {}
 
   const now = new Date().toLocaleTimeString('it-IT');
@@ -1610,12 +1612,19 @@ document.getElementById('modal-overlay').addEventListener('click', e => {
   const modalEl = document.querySelector('.modal');
   let active = false, startX, startY, startW, startH;
 
+  function blockNextClick(e) {
+    e.stopPropagation();
+    document.removeEventListener('click', blockNextClick, true);
+  }
+
   handle.addEventListener('mousedown', e => {
     e.preventDefault();
     e.stopPropagation();
     active = true;
     startX = e.clientX; startY = e.clientY;
     startW = modalEl.offsetWidth; startH = modalEl.offsetHeight;
+    // Blocca il click finale che il browser genera dopo il drag
+    document.addEventListener('click', blockNextClick, true);
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup',   onUp);
   });
