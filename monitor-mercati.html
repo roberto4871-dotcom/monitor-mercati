@@ -1598,8 +1598,13 @@ document.querySelectorAll('.period-btn').forEach(btn => {
 });
 
 document.getElementById('modal-close').addEventListener('click', closeModal);
-document.getElementById('modal-overlay').addEventListener('pointerdown', e => {
-  if (e.target === document.getElementById('modal-overlay')) closeModal();
+let _overlayMouseDown = false;
+document.getElementById('modal-overlay').addEventListener('mousedown', e => {
+  _overlayMouseDown = (e.target === document.getElementById('modal-overlay'));
+});
+document.getElementById('modal-overlay').addEventListener('mouseup', e => {
+  if (_overlayMouseDown && e.target === document.getElementById('modal-overlay')) closeModal();
+  _overlayMouseDown = false;
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
