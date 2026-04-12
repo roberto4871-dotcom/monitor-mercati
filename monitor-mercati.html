@@ -1598,7 +1598,16 @@ document.querySelectorAll('.period-btn').forEach(btn => {
 });
 
 document.getElementById('modal-close').addEventListener('click', closeModal);
+let _modalJustResized = false;
+let _modalResizeTimer = null;
+new ResizeObserver(() => {
+  _modalJustResized = true;
+  clearTimeout(_modalResizeTimer);
+  _modalResizeTimer = setTimeout(() => { _modalJustResized = false; }, 400);
+}).observe(document.querySelector('.modal'));
+
 document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (_modalJustResized) return;
   if (e.target === document.getElementById('modal-overlay')) closeModal();
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
