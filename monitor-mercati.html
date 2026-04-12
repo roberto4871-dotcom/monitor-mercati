@@ -865,14 +865,38 @@ function processChart(inst, res) {
 // ═══════════════════════════════════════════════════
 async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+function loadCachedRows() {
+  try {
+    const raw = localStorage.getItem('mm_rows_cache');
+    if (!raw) return false;
+    const {ts, data} = JSON.parse(raw);
+    if (Date.now() - ts > 20 * 60 * 1000) return false; // scaduta dopo 20 min
+    rows = data;
+    renderTable();
+    renderCharts();
+    renderHeatmap();
+    renderTopBottom();
+    const age = Math.round((Date.now() - ts) / 1000);
+    const ageStr = age < 60 ? `${age}s fa` : `${Math.round(age/60)}min fa`;
+    setStatus('ok', `● Cache — aggiornato ${ageStr}`);
+    document.getElementById('hdr-upd').textContent = `Dati cache (${ageStr}) — aggiornamento in corso…`;
+    return true;
+  } catch { return false; }
+}
+
 async function loadAll() {
   if (loading) return;
   loading = true;
   setLoading(true);
 
-  // Init rows as placeholders
-  rows = INSTRUMENTS.map(inst => ({...inst, _loading: true, _err: false}));
-  renderTable();
+  // Mostra subito i dati dalla cache se disponibili
+  const hadCache = loadCachedRows();
+
+  // Init rows come placeholder solo se non c'è cache
+  if (!hadCache) {
+    rows = INSTRUMENTS.map(inst => ({...inst, _loading: true, _err: false}));
+    renderTable();
+  }
 
   // Step 1: batch fetch FX + tutti gli strumenti in una sola richiesta al server
   setProgress(10);
@@ -920,6 +944,11 @@ async function loadAll() {
     updateRow(idx);
   });
   renderCharts();
+
+  // Salva in localStorage per mostrare subito al prossimo caricamento
+  try {
+    localStorage.setItem('mm_rows_cache', JSON.stringify({ts: Date.now(), data: rows}));
+  } catch {}
 
   const now = new Date().toLocaleTimeString('it-IT');
   document.getElementById('hdr-upd').textContent = `Ultimo aggiornamento: ${now}`;

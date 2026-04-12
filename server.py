@@ -138,7 +138,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         interval = params.get('interval', '1d')
 
         results = {}
-        with ThreadPoolExecutor(max_workers=30) as ex:
+        with ThreadPoolExecutor(max_workers=50) as ex:
             futures = {ex.submit(fetch_symbol, sym, period, interval): sym for sym in symbols}
             for future in as_completed(futures):
                 sym = futures[future]
