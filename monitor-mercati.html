@@ -874,15 +874,23 @@ async function loadAll() {
   rows = INSTRUMENTS.map(inst => ({...inst, _loading: true, _err: false}));
   renderTable();
 
-  // Step 1: get crumb
-  await getYFCrumb();
+  // Step 1: batch fetch FX + tutti gli strumenti in una sola richiesta al server
+  setProgress(10);
+  const allSymbols = [...FX_SYMBOLS, ...INSTRUMENTS.map(i => i.s)];
+  let batchData = {};
+  try {
+    const r = await fetch(`/yf/batch?syms=${allSymbols.join(',')}&period=3mo&interval=1d`);
+    batchData = await r.json();
+  } catch(e) {
+    console.warn('Batch fetch fallito, uso fetch individuale come fallback', e);
+  }
+  setProgress(60);
 
-  // Step 2: fetch FX historical first (needed for EUR conversion)
-  const fxToFetch = FX_SYMBOLS.filter(s => !INSTRUMENTS.find(i => i.s === s));
-  const allFX = [...FX_SYMBOLS];
-  for (const sym of allFX) {
+  // Step 2: processa FX
+  for (const sym of FX_SYMBOLS) {
     try {
-      const res = await fetchChart(sym);
+      const res = batchData[sym] || await fetchChart(sym);
+      if (res.error) continue;
       const pairs = extractPairs(res);
       const ccy = sym.replace('EUR','').replace('=X','');
       fxHist[ccy] = {
@@ -892,34 +900,26 @@ async function loadAll() {
         d22:   priceNAgo(pairs, 22),
       };
     } catch {}
-    await sleep(150);
   }
   fxHist['EUR'] = {cur:1, dec31:1, d7:1, d22:1};
 
-  // Step 3: fetch each instrument, update table row by row
+  // Step 3: processa strumenti
   let done = 0;
   const total = INSTRUMENTS.length;
-  setProgress(0);
-
-  const BATCH = 5;
-  for (let i = 0; i < INSTRUMENTS.length; i += BATCH) {
-    await Promise.all(INSTRUMENTS.slice(i, i + BATCH).map(async (inst, j) => {
-      const idx = i + j;
-      try {
-        const res = await fetchChart(inst.s);
-        rows[idx] = processChart(inst, res);
-      } catch(e) {
-        rows[idx] = {...inst, _loading:false, _err:true,
-          ora:null, valore:null, varAtt:null, fine2025:null,
-          varYTD:null, ytdLocal:null, ytdEur:null, p30:null, p60:null, p90:null, p7:null, yld:null};
-      }
-      done++;
-      setProgress(done / total * 100);
-      updateRow(idx);
-    }));
-    renderCharts();
-    await sleep(300);
-  }
+  INSTRUMENTS.forEach((inst, idx) => {
+    const res = batchData[inst.s];
+    if (res && !res.error) {
+      rows[idx] = processChart(inst, res);
+    } else {
+      rows[idx] = {...inst, _loading:false, _err:true,
+        ora:null, valore:null, varAtt:null, fine2025:null,
+        varYTD:null, ytdLocal:null, ytdEur:null, p30:null, p60:null, p90:null, p7:null, yld:null};
+    }
+    done++;
+    setProgress(60 + done / total * 40);
+    updateRow(idx);
+  });
+  renderCharts();
 
   const now = new Date().toLocaleTimeString('it-IT');
   document.getElementById('hdr-upd').textContent = `Ultimo aggiornamento: ${now}`;

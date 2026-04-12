@@ -10,6 +10,7 @@ import os
 import time
 import threading
 import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 try:
     import yfinance as yf
@@ -117,10 +118,42 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         print(f'  {args[1]}  {path}')
 
     def do_GET(self):
-        if self.path.startswith('/yf/'):
+        if self.path.startswith('/yf/batch'):
+            self.handle_batch()
+        elif self.path.startswith('/yf/'):
             self.handle_yf()
         else:
             super().do_GET()
+
+    def handle_batch(self):
+        parts = self.path[len('/yf/batch'):].split('?', 1)
+        params = {}
+        if len(parts) > 1:
+            for kv in parts[1].split('&'):
+                k, _, v = kv.partition('=')
+                params[k] = urllib.parse.unquote(v)
+
+        symbols  = [s.strip() for s in params.get('syms', '').split(',') if s.strip()]
+        period   = params.get('period', '3mo')
+        interval = params.get('interval', '1d')
+
+        results = {}
+        with ThreadPoolExecutor(max_workers=30) as ex:
+            futures = {ex.submit(fetch_symbol, sym, period, interval): sym for sym in symbols}
+            for future in as_completed(futures):
+                sym = futures[future]
+                try:
+                    results[sym] = future.result()
+                except Exception as e:
+                    results[sym] = {'error': str(e)}
+
+        body = json.dumps(results).encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def handle_yf(self):
         parts  = self.path[4:].split('?', 1)
