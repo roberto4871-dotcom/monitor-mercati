@@ -95,7 +95,8 @@ body.light table { background:#fff; }
 /* ── MODAL GRAFICO ─────────────────────────────────────────── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
-.modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:min(860px,96vw);min-width:480px;max-height:92vh;overflow:auto;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.6);resize:both}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:min(860px,96vw);min-width:480px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.6);position:relative}
+.modal-resize-handle{position:absolute;bottom:0;right:0;width:18px;height:18px;cursor:se-resize;z-index:20;background:linear-gradient(135deg,transparent 40%,rgba(255,215,0,.4) 40%);border-radius:0 0 14px 0}
 .modal-header{background:linear-gradient(135deg,var(--blue),var(--blue2));padding:16px 20px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid var(--accent)}
 .modal-title{color:var(--accent);font-size:16px;font-weight:800;letter-spacing:1px}
 .modal-subtitle{color:#90caf9;font-size:11px;margin-top:3px}
@@ -197,6 +198,7 @@ td.ora{color:#64b5f6;font-size:10px}
       </div>
       <button class="modal-close" id="modal-close">✕</button>
     </div>
+  <div class="modal-resize-handle" id="modal-resize-handle"></div>
     <div class="modal-stats" id="modal-stats"></div>
     <div class="modal-notes" id="modal-notes">
       <div class="modal-notes-title">📝 Note personali</div>
@@ -1598,14 +1600,39 @@ document.querySelectorAll('.period-btn').forEach(btn => {
 });
 
 document.getElementById('modal-close').addEventListener('click', closeModal);
-let _overlayMouseDown = false;
-document.getElementById('modal-overlay').addEventListener('mousedown', e => {
-  _overlayMouseDown = (e.target === document.getElementById('modal-overlay'));
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
 });
-document.getElementById('modal-overlay').addEventListener('mouseup', e => {
-  if (_overlayMouseDown && e.target === document.getElementById('modal-overlay')) closeModal();
-  _overlayMouseDown = false;
-});
+
+// ── Resize manuale modal ──────────────────────────────
+(function() {
+  const handle  = document.getElementById('modal-resize-handle');
+  const modalEl = document.querySelector('.modal');
+  let active = false, startX, startY, startW, startH;
+
+  handle.addEventListener('mousedown', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    active = true;
+    startX = e.clientX; startY = e.clientY;
+    startW = modalEl.offsetWidth; startH = modalEl.offsetHeight;
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+  });
+
+  function onMove(e) {
+    if (!active) return;
+    modalEl.style.width  = Math.max(480, startW + e.clientX - startX) + 'px';
+    modalEl.style.height = Math.max(400, startH + e.clientY - startY) + 'px';
+    modalEl.style.maxHeight = 'none';
+  }
+
+  function onUp() {
+    active = false;
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup',   onUp);
+  }
+})();
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
 // ═══════════════════════════════════════════════════
