@@ -112,6 +112,122 @@ def fetch_symbol(symbol, period='3mo', interval='1d'):
         return {'error': str(e)}
 
 
+def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
+    """Scarica tutti i simboli con una sola chiamata yf.download() — molto più veloce."""
+    results = {}
+    to_fetch = []
+    ttl = CACHE_TTL if period in ('3mo', '6mo', '1mo') else CACHE_TTL_LONG
+
+    with _cache_lock:
+        for sym in symbols:
+            key = f'{sym}|{period}|{interval}'
+            c = _cache.get(key)
+            if c and (time.time() - c['ts']) < ttl:
+                results[sym] = c['data']
+            else:
+                to_fetch.append(sym)
+
+    if not to_fetch:
+        return results
+
+    LONG_PERIODS = {'1y': 1, '2y': 2, '3y': 3, '5y': 5, '10y': 10}
+    today = datetime.date.today()
+
+    def safe_float(v):
+        try:
+            f = float(v)
+            return None if f != f else f  # NaN → None
+        except Exception:
+            return None
+
+    try:
+        if period in LONG_PERIODS:
+            start = today.replace(year=today.year - LONG_PERIODS[period])
+            raw = yf.download(to_fetch, start=str(start), end=str(today),
+                              interval=interval, auto_adjust=True,
+                              group_by='ticker', progress=False, threads=True)
+        elif period == 'max':
+            raw = yf.download(to_fetch, start='1970-01-01', end=str(today),
+                              interval=interval, auto_adjust=True,
+                              group_by='ticker', progress=False, threads=True)
+        else:
+            # Partiamo sempre dal 26 dic dell'anno precedente (prima dell'ultimo
+            # giorno di borsa dell'anno) così il dato "Fine Anno" è garantito
+            start = datetime.date(today.year - 1, 12, 26)
+            raw = yf.download(to_fetch, start=str(start), end=str(today),
+                              interval=interval, auto_adjust=True,
+                              group_by='ticker', progress=False, threads=True)
+    except Exception as e:
+        print(f'  [batch] yf.download fallito ({e}), uso fetch individuale')
+        with ThreadPoolExecutor(max_workers=20) as ex:
+            futures = {ex.submit(fetch_symbol, sym, period, interval): sym for sym in to_fetch}
+            for future in as_completed(futures):
+                sym = futures[future]
+                try:
+                    results[sym] = future.result()
+                except Exception as e2:
+                    results[sym] = {'error': str(e2)}
+        return results
+
+    import pandas as pd
+    is_multi = isinstance(raw.columns, pd.MultiIndex)
+
+    for sym in to_fetch:
+        try:
+            if is_multi:
+                try:
+                    hist = raw[sym].copy()
+                except KeyError:
+                    results[sym] = {'error': f'Nessun dato per {sym}'}
+                    continue
+            else:
+                # Un solo simbolo: colonne piatte (Open, High, Low, Close, Volume)
+                hist = raw.copy()
+
+            hist = hist.dropna(subset=['Close'])
+            if hist.empty:
+                results[sym] = {'error': f'Nessun dato per {sym}'}
+                continue
+
+            closes     = [safe_float(v) for v in hist['Close'].tolist()]
+            opens      = [safe_float(v) for v in hist['Open'].tolist()]
+            highs      = [safe_float(v) for v in hist['High'].tolist()]
+            lows       = [safe_float(v) for v in hist['Low'].tolist()]
+            volumes    = [int(v) if v == v else 0 for v in hist['Volume'].tolist()]
+            timestamps = [int(dt.timestamp()) for dt in hist.index]
+
+            cur_price  = closes[-1]
+            prev_close = closes[-2] if len(closes) > 1 else None
+            cur_time   = timestamps[-1]
+            tz         = str(hist.index.tz) if hist.index.tz else 'UTC'
+
+            data = {
+                'meta': {
+                    'regularMarketPrice':   cur_price,
+                    'chartPreviousClose':   prev_close,
+                    'regularMarketTime':    cur_time,
+                    'exchangeTimezoneName': tz,
+                    'currency': 'N/A',
+                },
+                'timestamp': timestamps,
+                'closes':    closes,
+                'opens':     opens,
+                'highs':     highs,
+                'lows':      lows,
+                'volumes':   volumes,
+                'yield_pct': None,
+            }
+
+            results[sym] = data
+            with _cache_lock:
+                _cache[f'{sym}|{period}|{interval}'] = {'data': data, 'ts': time.time()}
+
+        except Exception as e:
+            results[sym] = {'error': str(e)}
+
+    return results
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):
         path = self.path[4:] if self.path.startswith('/yf/') else self.path
@@ -133,15 +249,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         period   = params.get('period',   ['3mo'])[0]
         interval = params.get('interval', ['1d'])[0]
 
-        results = {}
-        with ThreadPoolExecutor(max_workers=50) as ex:
-            futures = {ex.submit(fetch_symbol, sym, period, interval): sym for sym in symbols}
-            for future in as_completed(futures):
-                sym = futures[future]
-                try:
-                    results[sym] = future.result()
-                except Exception as e:
-                    results[sym] = {'error': str(e)}
+        results = fetch_batch_bulk(symbols, period, interval)
 
         body = json.dumps(results).encode()
         self.send_response(200)

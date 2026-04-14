@@ -95,8 +95,8 @@ body.light table { background:#fff; }
 /* ── MODAL GRAFICO ─────────────────────────────────────────── */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
-.modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:min(860px,96vw);min-width:480px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.6);position:relative}
-.modal-resize-handle{position:absolute;bottom:0;right:0;width:18px;height:18px;cursor:se-resize;z-index:20;background:linear-gradient(135deg,transparent 40%,rgba(255,215,0,.4) 40%);border-radius:0 0 14px 0}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:min(860px,96vw);min-width:480px;min-height:400px;max-height:95vh;overflow:auto;resize:both;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.6);position:relative}
+.modal-resize-handle{display:none}
 .modal-header{background:linear-gradient(135deg,var(--blue),var(--blue2));padding:16px 20px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid var(--accent)}
 .modal-title{color:var(--accent);font-size:16px;font-weight:800;letter-spacing:1px}
 .modal-subtitle{color:#90caf9;font-size:11px;margin-top:3px}
@@ -1312,7 +1312,7 @@ function calcBB(pairs, period = 20, mult = 2) {
 // Configurazione periodi: period e interval per yfinance
 const PERIOD_CFG = {
   '1M':  { src:'hist',  slice: -20  },               // da dati già caricati
-  '3M':  { src:'hist',  slice: null },                // tutti i 3 mesi già caricati
+  '3M':  { src:'hist',  slice: -63  },                // ultimi ~63 giorni borsa ≈ 3 mesi
   'YTD': { src:'hist',  ytd: true   },                // da DEC31 in poi
   '1A':  { src:'fetch', period:'1y',  interval:'1wk' },
   '2A':  { src:'fetch', period:'2y',  interval:'1wk' },
@@ -1380,10 +1380,23 @@ async function loadAndDraw(row, period) {
   let pairs;
 
   if (cfg.src === 'hist') {
-    // Usa dati già in memoria
     pairs = row._hist || [];
-    if (cfg.slice)    pairs = pairs.slice(cfg.slice);
-    if (cfg.ytd)      pairs = pairs.filter(p => p.t >= DEC31_TS);
+    // Se _hist non è disponibile (riga da cache), fetch individuale
+    if (!pairs.length) {
+      document.getElementById('modal-loading').style.display = 'block';
+      try {
+        const url = `/yf/${encodeURIComponent(row.s)}?period=6mo&interval=1d`;
+        const res = await fetch(url);
+        const j   = await res.json();
+        if (!j.error) {
+          row._hist = extractPairs(j);
+          pairs = row._hist;
+        }
+      } catch(e) {}
+      finally { document.getElementById('modal-loading').style.display = 'none'; }
+    }
+    if (cfg.slice) pairs = pairs.slice(cfg.slice);
+    if (cfg.ytd)   pairs = pairs.filter(p => p.t >= DEC31_TS);
   } else {
     // Fetch dati estesi dal server
     const cacheKey = `${row.s}|${cfg.period}|${cfg.interval}`;
@@ -1590,6 +1603,16 @@ function closeModal() {
 }
 
 
+// Guardia globale: blocca qualsiasi click che arrivi fuori dal modale quando è aperto
+document.addEventListener('click', e => {
+  const overlay = document.getElementById('modal-overlay');
+  if (!overlay.classList.contains('open')) return;
+  if (!overlay.contains(e.target)) {
+    e.stopPropagation();
+    e.preventDefault();
+  }
+}, true);
+
 // Period buttons
 document.querySelectorAll('.period-btn').forEach(btn => {
   btn.addEventListener('click', async e => {
@@ -1604,42 +1627,7 @@ document.querySelectorAll('.period-btn').forEach(btn => {
 document.getElementById('modal-close').addEventListener('click', closeModal);
 // Chiudi solo con ✕ o Escape — niente click-outside che confligge col resize
 
-// ── Resize manuale modal ──────────────────────────────
-(function() {
-  const handle  = document.getElementById('modal-resize-handle');
-  const modalEl = document.querySelector('.modal');
-  let active = false, startX, startY, startW, startH;
-
-  function blockNextClick(e) {
-    e.stopPropagation();
-    document.removeEventListener('click', blockNextClick, true);
-  }
-
-  handle.addEventListener('mousedown', e => {
-    e.preventDefault();
-    e.stopPropagation();
-    active = true;
-    startX = e.clientX; startY = e.clientY;
-    startW = modalEl.offsetWidth; startH = modalEl.offsetHeight;
-    // Blocca il click finale che il browser genera dopo il drag
-    document.addEventListener('click', blockNextClick, true);
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup',   onUp);
-  });
-
-  function onMove(e) {
-    if (!active) return;
-    modalEl.style.width  = Math.max(480, startW + e.clientX - startX) + 'px';
-    modalEl.style.height = Math.max(400, startH + e.clientY - startY) + 'px';
-    modalEl.style.maxHeight = 'none';
-  }
-
-  function onUp() {
-    active = false;
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup',   onUp);
-  }
-})();
+// Resize gestito nativamente dal browser via CSS resize:both sul .modal
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
 // ═══════════════════════════════════════════════════
