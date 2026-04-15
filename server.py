@@ -151,10 +151,10 @@ def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
                               interval=interval, auto_adjust=True,
                               group_by='ticker', progress=False, threads=True)
         else:
-            # Partiamo sempre dal 26 dic dell'anno precedente (prima dell'ultimo
-            # giorno di borsa dell'anno) così il dato "Fine Anno" è garantito
+            # Partiamo dal 26 dic anno precedente; end=domani per includere barra di oggi
             start = datetime.date(today.year - 1, 12, 26)
-            raw = yf.download(to_fetch, start=str(start), end=str(today),
+            end   = today + datetime.timedelta(days=1)
+            raw = yf.download(to_fetch, start=str(start), end=str(end),
                               interval=interval, auto_adjust=True,
                               group_by='ticker', progress=False, threads=True)
     except Exception as e:
@@ -171,21 +171,6 @@ def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
 
     import pandas as pd
     is_multi = isinstance(raw.columns, pd.MultiIndex)
-
-    # Prezzi in tempo reale via fast_info (parallelo, solo cur+prev — molto veloce)
-    def get_rt(sym):
-        try:
-            info = yf.Ticker(sym).fast_info
-            cur  = float(info.last_price)      if getattr(info,'last_price',None)      else None
-            prev = float(info.previous_close)  if getattr(info,'previous_close',None)  else None
-            return sym, cur, prev
-        except Exception:
-            return sym, None, None
-
-    rt_map = {}
-    with ThreadPoolExecutor(max_workers=20) as ex:
-        for sym, cur, prev in ex.map(get_rt, to_fetch):
-            rt_map[sym] = (cur, prev)
 
     for sym in to_fetch:
         try:
@@ -210,9 +195,8 @@ def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
             volumes    = [int(v) if v == v else 0 for v in hist['Volume'].tolist()]
             timestamps = [int(dt.timestamp()) for dt in hist.index]
 
-            rt_cur, rt_prev = rt_map.get(sym, (None, None))
-            cur_price  = rt_cur  or closes[-1]
-            prev_close = rt_prev or (closes[-2] if len(closes) > 1 else None)
+            cur_price  = closes[-1]
+            prev_close = closes[-2] if len(closes) > 1 else None
             cur_time   = timestamps[-1]
             tz         = str(hist.index.tz) if hist.index.tz else 'UTC'
 
