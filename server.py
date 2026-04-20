@@ -30,7 +30,6 @@ CACHE_TTL_LONG = 3600  # 1 ora per 2Y/3Y/5Y/max
 _fund_cache = {}; _fund_lock = threading.Lock(); FUND_TTL = 3600
 _news_cache = {}; _news_lock = threading.Lock(); NEWS_TTL = 900
 _cal_cache  = {}; _cal_lock  = threading.Lock(); CAL_TTL  = 1800
-_ai_cache   = {}; _ai_lock   = threading.Lock(); AI_TTL   = 3600
 
 
 def fetch_symbol(symbol, period='3mo', interval='1d'):
@@ -328,56 +327,6 @@ def fetch_calendar():
     return data
 
 
-def fetch_ai_analysis(symbol, name):
-    """Analisi AI tramite Claude — cache 1h."""
-    with _ai_lock:
-        c = _ai_cache.get(symbol)
-        if c and (time.time() - c['ts']) < AI_TTL:
-            return c['data']
-    api_key = os.environ.get('ANTHROPIC_API_KEY')
-    if not api_key:
-        return {'error': 'ANTHROPIC_API_KEY non configurata nelle variabili d\'ambiente'}
-    try:
-        import anthropic as ant
-        today = datetime.date.today()
-        start = today.replace(year=today.year - 1, month=1, day=1)
-        hist  = yf.Ticker(symbol).history(start=str(start), end=str(today), interval='1d', auto_adjust=True)
-        ctx = ''
-        if not hist.empty:
-            closes = hist['Close']
-            cur    = float(closes.iloc[-1])
-            ytd_p  = float(closes.iloc[0])
-            m3_p   = float(closes.iloc[max(0, len(closes)-63)])
-            m1_p   = float(closes.iloc[max(0, len(closes)-21)])
-            hi52   = float(hist['High'].max())
-            lo52   = float(hist['Low'].min())
-            perf1m = (cur / m1_p - 1) * 100
-            perf3m = (cur / m3_p - 1) * 100
-            perfYTD= (cur / ytd_p - 1) * 100
-            ctx = (f'Prezzo: {cur:.4f} | Perf 1M: {perf1m:+.2f}% | '
-                   f'Perf 3M: {perf3m:+.2f}% | YTD: {perfYTD:+.2f}% | '
-                   f'52W High: {hi52:.4f} | 52W Low: {lo52:.4f}')
-        client = ant.Anthropic(api_key=api_key)
-        msg = client.messages.create(
-            model='claude-opus-4-5',
-            max_tokens=450,
-            messages=[{'role': 'user', 'content':
-                f'Sei un analista finanziario senior. Analizza {name} (ticker: {symbol}) '
-                f'in modo professionale e conciso in italiano.\n\nDati recenti: {ctx}\n\n'
-                'Struttura la risposta con:\n'
-                '1. Trend tecnico (2-3 righe)\n'
-                '2. Punti di attenzione (2-3 righe)\n'
-                '3. Outlook di breve periodo (1-2 righe)\n\n'
-                'Sii diretto e basato sui dati. Evita disclaimer generici.'}]
-        )
-        data = {'analysis': msg.content[0].text,
-                'generated_at': datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}
-    except Exception as e:
-        data = {'error': str(e)}
-    with _ai_lock:
-        _ai_cache[symbol] = {'data': data, 'ts': time.time()}
-    return data
-
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):
@@ -406,15 +355,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json(fetch_news(sym))
         elif self.path.startswith('/calendar'):
             self._json(fetch_calendar())
-        elif self.path.startswith('/ai/'):
-            parts = self.path[len('/ai/'):].split('?', 1)
-            sym  = urllib.parse.unquote(parts[0])
-            params = {}
-            if len(parts) > 1:
-                for kv in parts[1].split('&'):
-                    k, _, v = kv.partition('=')
-                    params[k] = urllib.parse.unquote_plus(v)
-            self._json(fetch_ai_analysis(sym, params.get('name', sym)))
         else:
             super().do_GET()
 

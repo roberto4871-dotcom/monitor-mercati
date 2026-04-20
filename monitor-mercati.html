@@ -259,7 +259,6 @@ td.ora{color:#64b5f6;font-size:10px}
       <button class="modal-tab active" data-mtab="chart">📊 Grafico</button>
       <button class="modal-tab" data-mtab="fundamentals">📈 Fondamentali</button>
       <button class="modal-tab" data-mtab="news">📰 News</button>
-      <button class="modal-tab" data-mtab="ai">🤖 AI</button>
     </div>
 
     <!-- ─ Tab: Grafico ─ -->
@@ -305,17 +304,6 @@ td.ora{color:#64b5f6;font-size:10px}
     <div class="mtab-panel" id="mtab-news">
       <div class="news-wrap" id="modal-news-content">
         <div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📰 News per caricare le ultime notizie</div>
-      </div>
-    </div>
-
-    <!-- ─ Tab: AI ─ -->
-    <div class="mtab-panel" id="mtab-ai">
-      <div class="ai-wrap" id="modal-ai-wrap">
-        <div style="color:var(--text2);font-size:12px;line-height:1.6">
-          Analisi tecnica e fondamentale generata da <strong>Claude AI</strong> in base ai dati storici recenti.
-        </div>
-        <button class="ai-analyze-btn" id="ai-analyze-btn">🤖 Analizza con AI</button>
-        <div id="modal-ai-result"></div>
       </div>
     </div>
 
@@ -2036,9 +2024,6 @@ function resetModalTabs() {
     '<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📈 Fondamentali per caricare i dati</div>';
   document.getElementById('modal-news-content').innerHTML =
     '<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📰 News per caricare le ultime notizie</div>';
-  document.getElementById('modal-ai-result').innerHTML = '';
-  document.getElementById('ai-analyze-btn').textContent = '🤖 Analizza con AI';
-  document.getElementById('ai-analyze-btn').disabled = false;
 }
 
 // Integra resetModalTabs in openModal
@@ -2139,32 +2124,6 @@ function renderNews(articles) {
     </div>`;
   }).join('');
 }
-
-// ═══════════════════════════════════════════════════
-//  AI ANALISI
-// ═══════════════════════════════════════════════════
-document.getElementById('ai-analyze-btn').addEventListener('click', async function() {
-  if (!modalRow) return;
-  this.disabled = true;
-  this.textContent = '⏳ Analisi in corso…';
-  const result = document.getElementById('modal-ai-result');
-  result.innerHTML = '';
-  try {
-    const name = encodeURIComponent(`${modalRow.m} — ${modalRow.i}`);
-    const r = await fetch(`/ai/${encodeURIComponent(modalRow.s)}?name=${name}`);
-    const d = await r.json();
-    if (d.error) throw new Error(d.error);
-    result.innerHTML =
-      `<div class="ai-result-box">${d.analysis}</div>` +
-      (d.generated_at ? `<div class="ai-gen-time">Generato il ${d.generated_at}</div>` : '') +
-      `<div class="ai-disclaimer">⚠ Analisi generata da AI. Non costituisce consulenza finanziaria.</div>`;
-  } catch(e) {
-    result.innerHTML = `<div style="color:var(--red);font-size:12px">⚠ ${e.message}</div>`;
-  } finally {
-    this.disabled = false;
-    this.textContent = '🔄 Rigenera analisi';
-  }
-});
 
 // ═══════════════════════════════════════════════════
 //  CALENDARIO ECONOMICO
