@@ -260,7 +260,7 @@ def fetch_fundamentals(symbol):
             'avgVolume':         info.get('averageVolume'),
             'totalExpenseRatio': info.get('annualReportExpenseRatio'),
             'currency':          info.get('currency'),
-            'description':       (info.get('longBusinessSummary') or '')[:600],
+            'description':       _translate_it((info.get('longBusinessSummary') or '')[:800]),
             'sector':            info.get('sector'),
             'industry':          info.get('industry'),
             'country':           info.get('country'),
@@ -335,7 +335,7 @@ def _translate_it(text):
         import requests as req
         r = req.get(
             'https://translate.googleapis.com/translate_a/single',
-            params={'client': 'gtx', 'sl': 'auto', 'tl': 'it', 'dt': 't', 'q': text[:500]},
+            params={'client': 'gtx', 'sl': 'auto', 'tl': 'it', 'dt': 't', 'q': text[:800]},
             timeout=5, headers={'User-Agent': 'Mozilla/5.0'}
         )
         data = r.json()
