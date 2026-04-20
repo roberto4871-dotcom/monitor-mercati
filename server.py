@@ -242,8 +242,10 @@ def fetch_fundamentals(symbol):
         if c and (time.time() - c['ts']) < FUND_TTL:
             return c['data']
     try:
-        info = yf.Ticker(symbol).info
-        dy = info.get('dividendYield')
+        import math
+        t   = yf.Ticker(symbol)
+        info = t.info
+        dy  = info.get('dividendYield')
         # yfinance a volte restituisce decimale (0.018) a volte già percentuale (1.8)
         data = {
             'trailingPE':        info.get('trailingPE'),
@@ -267,6 +269,48 @@ def fetch_fundamentals(symbol):
             'revenueGrowth':     info.get('revenueGrowth'),
             'earningsGrowth':    info.get('earningsGrowth'),
         }
+
+        # ── Ultimi 4 trimestri (conto economico) ──────────────────
+        try:
+            qi = t.quarterly_income_stmt
+            quarters = []
+            if qi is not None and not qi.empty and len(qi.columns) > 0:
+                for col in list(qi.columns[:4]):
+                    def _safe(row_name, _col=col):
+                        try:
+                            v = qi.loc[row_name, _col]
+                            return None if (v is None or (isinstance(v, float) and math.isnan(v))) else float(v)
+                        except Exception:
+                            return None
+                    eps = _safe('Diluted EPS') or _safe('Basic EPS')
+                    quarters.append({
+                        'date':      col.strftime('%Y-%m-%d') if hasattr(col, 'strftime') else str(col)[:10],
+                        'revenue':   _safe('Total Revenue'),
+                        'netIncome': _safe('Net Income'),
+                        'opIncome':  _safe('Operating Income'),
+                        'eps':       eps,
+                    })
+            data['quarters'] = quarters
+        except Exception:
+            data['quarters'] = []
+
+        # ── Prossima trimestrale (calendar) ───────────────────────
+        try:
+            cal    = t.calendar
+            dates  = cal.get('Earnings Date', [])
+            next_d = dates[0] if dates else None
+            data['nextEarnings'] = {
+                'date':    next_d.strftime('%Y-%m-%d') if (next_d and hasattr(next_d, 'strftime')) else None,
+                'epsAvg':  cal.get('Earnings Average'),
+                'epsHigh': cal.get('Earnings High'),
+                'epsLow':  cal.get('Earnings Low'),
+                'revAvg':  cal.get('Revenue Average'),
+                'revHigh': cal.get('Revenue High'),
+                'revLow':  cal.get('Revenue Low'),
+            }
+        except Exception:
+            data['nextEarnings'] = {}
+
     except Exception as e:
         data = {'error': str(e)}
     with _fund_lock:

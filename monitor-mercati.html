@@ -89,6 +89,9 @@ body.light .period-btn.active { background:var(--blue2); color:#fff; }
 body.light .ta-btn { background:var(--bg3); border-color:var(--border); color:var(--text2); }
 body.light .fund-item { background:var(--bg3) !important; border-color:var(--border) !important; }
 body.light .fund-desc { border-top-color:var(--border); color:var(--text2); }
+body.light .next-earn-box { background:var(--bg3) !important; border-color:var(--border) !important; }
+body.light .next-earn-item { background:var(--bg2) !important; border-color:var(--border) !important; }
+body.light .earnings-table td { border-bottom-color:rgba(0,0,0,.05); }
 body.light .news-item { border-bottom-color:var(--border); }
 body.light .news-item:hover { background:var(--bg3); }
 body.light .news-title { color:var(--text); }
@@ -238,6 +241,21 @@ td.ora{color:#64b5f6;font-size:10px}
 .fund-label{display:block;font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
 .fund-value{display:block;font-size:13px;font-weight:700;color:var(--text)}
 .fund-desc{font-size:11px;color:var(--text2);line-height:1.65;border-top:1px solid var(--border);padding-top:12px;margin-top:4px}
+.fund-section-title{font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.7px;margin:16px 0 8px;padding-top:12px;border-top:1px solid var(--border)}
+.next-earn-box{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:4px}
+.next-earn-date{font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px}
+.next-earn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.next-earn-item{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px 10px}
+.next-earn-lbl{display:block;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.next-earn-val{display:block;font-size:12px;font-weight:700;color:var(--text)}
+.next-earn-range{font-size:10px;font-weight:400;color:var(--text3);margin-left:4px}
+.earnings-table{width:100%;border-collapse:collapse;font-size:11.5px;margin-bottom:4px}
+.earnings-table th{text-align:left;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:5px 8px;border-bottom:1px solid var(--border)}
+.earnings-table td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--text)}
+.earnings-table tr:last-child td{border-bottom:none}
+.earnings-table tr:hover td{background:var(--bg3)}
+.earnings-table td.earn-neg{color:var(--red)}
+.earnings-table td.earn-pos{color:var(--green)}
 
 /* ── NEWS ───────────────────────────────────────── */
 .news-wrap{flex:1;overflow-y:auto}
@@ -2554,15 +2572,29 @@ async function loadFundamentals(row) {
 
 function renderFundamentals(d) {
   const el = document.getElementById('modal-fund-content');
-  const N = (v, dec=2) => (v != null && !isNaN(v)) ? Number(v).toLocaleString('it-IT',{minimumFractionDigits:dec,maximumFractionDigits:dec}) : '—';
-  const P = v => (v != null && !isNaN(v)) ? `${(v*100).toFixed(2)}%` : '—';
+  const N  = (v, dec=2) => (v != null && !isNaN(v)) ? Number(v).toLocaleString('it-IT',{minimumFractionDigits:dec,maximumFractionDigits:dec}) : '—';
+  const P  = v => (v != null && !isNaN(v)) ? `${(v*100).toFixed(2)}%` : '—';
   const MC = v => {
-    if (!v) return '—';
-    if (v >= 1e12) return (v/1e12).toFixed(2)+' T';
-    if (v >= 1e9)  return (v/1e9).toFixed(2)+' Mld';
-    if (v >= 1e6)  return (v/1e6).toFixed(2)+' Mln';
+    if (v == null || isNaN(v)) return '—';
+    const abs = Math.abs(v);
+    const sign = v < 0 ? '−' : '';
+    if (abs >= 1e12) return sign+(abs/1e12).toFixed(2)+' T';
+    if (abs >= 1e9)  return sign+(abs/1e9).toFixed(2)+' Mld';
+    if (abs >= 1e6)  return sign+(abs/1e6).toFixed(2)+' Mln';
     return v.toLocaleString('it-IT');
   };
+  const fDate = s => {
+    if (!s) return '—';
+    const [y,m,g] = s.split('-').map(Number);
+    return new Date(y, m-1, g).toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
+  };
+  const fQ = s => {
+    if (!s) return '—';
+    const [y,m] = s.split('-').map(Number);
+    return `Q${Math.ceil(m/3)} ${y}`;
+  };
+
+  // ── Griglia metriche principali ──────────────────────────────
   const items = [
     {l:'P/E Trailing',     v: N(d.trailingPE)},
     {l:'P/E Forward',      v: N(d.forwardPE)},
@@ -2582,6 +2614,48 @@ function renderFundamentals(d) {
   let html = '<div class="fund-grid">';
   html += items.map(i => `<div class="fund-item"><span class="fund-label">${i.l}</span><span class="fund-value">${i.v}</span></div>`).join('');
   html += '</div>';
+
+  // ── Prossima trimestrale ─────────────────────────────────────
+  const ne = d.nextEarnings || {};
+  if (ne.date) {
+    html += `<div class="fund-section-title">📅 Prossima Trimestrale</div>`;
+    html += `<div class="next-earn-box">`;
+    html += `<div class="next-earn-date">📆 ${fDate(ne.date)}</div>`;
+    html += `<div class="next-earn-grid">`;
+    if (ne.epsAvg != null) {
+      const range = (ne.epsLow != null && ne.epsHigh != null)
+        ? `<span class="next-earn-range">(${N(ne.epsLow)} – ${N(ne.epsHigh)})</span>` : '';
+      html += `<div class="next-earn-item"><span class="next-earn-lbl">EPS Stimato</span>
+               <span class="next-earn-val">${N(ne.epsAvg)}${range}</span></div>`;
+    }
+    if (ne.revAvg != null) {
+      const range = (ne.revLow != null && ne.revHigh != null)
+        ? `<span class="next-earn-range">(${MC(ne.revLow)} – ${MC(ne.revHigh)})</span>` : '';
+      html += `<div class="next-earn-item"><span class="next-earn-lbl">Ricavi Stimati</span>
+               <span class="next-earn-val">${MC(ne.revAvg)}${range}</span></div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // ── Ultimi trimestri ─────────────────────────────────────────
+  if (d.quarters && d.quarters.length > 0) {
+    html += `<div class="fund-section-title">📊 Ultimi Trimestri</div>`;
+    html += `<table class="earnings-table">
+      <thead><tr>
+        <th>Trimestre</th><th>Ricavi</th><th>Utile Netto</th><th>EPS</th>
+      </tr></thead><tbody>`;
+    for (const q of d.quarters) {
+      const niCls = q.netIncome == null ? '' : (q.netIncome >= 0 ? 'earn-pos' : 'earn-neg');
+      html += `<tr>
+        <td style="font-weight:600">${fQ(q.date)}</td>
+        <td>${MC(q.revenue)}</td>
+        <td class="${niCls}">${MC(q.netIncome)}</td>
+        <td>${q.eps != null ? N(q.eps) : '—'}</td>
+      </tr>`;
+    }
+    html += `</tbody></table>`;
+  }
+
   if (d.description) html += `<div class="fund-desc">${d.description}</div>`;
   el.innerHTML = html;
 }
