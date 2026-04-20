@@ -31,6 +31,7 @@ _fund_cache    = {}; _fund_lock    = threading.Lock(); FUND_TTL    = 3600
 _news_cache    = {}; _news_lock    = threading.Lock(); NEWS_TTL    = 900
 _cal_cache     = {}; _cal_lock     = threading.Lock(); CAL_TTL     = 1800
 _monthly_cache = {}; _monthly_lock = threading.Lock(); MONTHLY_TTL = 3600
+_weekly_cache  = {}; _weekly_lock  = threading.Lock(); WEEKLY_TTL  = 3600
 
 
 def fetch_symbol(symbol, period='3mo', interval='1d'):
@@ -371,6 +372,44 @@ def fetch_monthly(symbol):
     return result
 
 
+def fetch_weekly(symbol):
+    """Rendimenti settimanali ultimi 3 anni — cache 1h."""
+    with _weekly_lock:
+        c = _weekly_cache.get(symbol)
+        if c and (time.time() - c['ts']) < WEEKLY_TTL:
+            return c['data']
+    try:
+        today = datetime.date.today()
+        start = datetime.date(today.year - 3, 1, 1)
+        hist  = yf.Ticker(symbol).history(
+            start=str(start), end=str(today), interval='1wk', auto_adjust=True
+        )
+        if hist.empty:
+            return {'error': 'Nessun dato settimanale'}
+
+        closes = [float(v) for v in hist['Close'].tolist()]
+        dates  = hist.index.tolist()
+
+        weekly = {}
+        for i in range(1, len(closes)):
+            dt   = dates[i]
+            year = str(dt.year)
+            week = str(dt.isocalendar()[1])  # numero settimana ISO
+            ret  = round((closes[i] / closes[i - 1] - 1) * 100, 2)
+            if year not in weekly:
+                weekly[year] = {}
+            weekly[year][week] = ret
+
+        years = sorted(weekly.keys())
+        result = {'data': weekly, 'years': years}
+    except Exception as e:
+        result = {'error': str(e)}
+
+    with _weekly_lock:
+        _weekly_cache[symbol] = {'data': result, 'ts': time.time()}
+    return result
+
+
 def fetch_calendar():
     """Calendario macro alto impatto da ForexFactory — cache 30 min."""
     with _cal_lock:
@@ -419,6 +458,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.handle_batch()
         elif self.path.startswith('/yf/'):
             self.handle_yf()
+        elif self.path.startswith('/weekly/'):
+            sym = urllib.parse.unquote(self.path[len('/weekly/'):].split('?')[0])
+            self._json(fetch_weekly(sym))
         elif self.path.startswith('/monthly/'):
             sym = urllib.parse.unquote(self.path[len('/monthly/'):].split('?')[0])
             self._json(fetch_monthly(sym))

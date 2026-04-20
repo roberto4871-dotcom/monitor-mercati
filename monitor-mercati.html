@@ -224,7 +224,14 @@ td.ora{color:#64b5f6;font-size:10px}
 .cal-loading{color:var(--text3);font-size:11px;padding:4px 0}
 
 /* ── PERFORMANCE MENSILE ─────────────────────────── */
-.monthly-wrap{flex:1;overflow:auto;padding:16px 20px}
+.monthly-wrap{flex:1;overflow-y:auto;padding:16px 20px}
+.perf-section-title{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.8px;margin:0 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.weekly-table{border-collapse:collapse;font-size:9.5px;width:100%}
+.weekly-table th{background:var(--blue);color:var(--accent);padding:4px 5px;text-align:center;font-size:9px;font-weight:700;white-space:nowrap;position:sticky;top:0;z-index:2}
+.weekly-table th:first-child{left:0;z-index:3;min-width:40px}
+.weekly-table td{padding:3px 4px;text-align:center;white-space:nowrap;border:1px solid rgba(255,255,255,.03);font-weight:600;font-size:9.5px;min-width:36px}
+.weekly-table td:first-child{background:var(--bg3);color:var(--text2);font-weight:700;font-size:11px;position:sticky;left:0;z-index:1;border-right:1px solid var(--border)}
+.weekly-scroll{overflow-x:auto;margin-bottom:12px}
 .monthly-table{border-collapse:collapse;font-size:11px;width:100%}
 .monthly-table th{background:var(--blue);color:var(--accent);padding:5px 8px;text-align:center;font-size:10px;font-weight:700;white-space:nowrap;position:sticky;top:0;z-index:2}
 .monthly-table th:first-child{left:0;z-index:3;min-width:44px}
@@ -276,7 +283,7 @@ td.ora{color:#64b5f6;font-size:10px}
       <button class="modal-tab active" data-mtab="chart">📊 Grafico</button>
       <button class="modal-tab" data-mtab="fundamentals">📈 Fondamentali</button>
       <button class="modal-tab" data-mtab="news">📰 News</button>
-      <button class="modal-tab" data-mtab="monthly">📅 Mensile</button>
+      <button class="modal-tab" data-mtab="monthly">📅 Performance</button>
     </div>
 
     <!-- ─ Tab: Grafico ─ -->
@@ -311,10 +318,10 @@ td.ora{color:#64b5f6;font-size:10px}
       </div>
     </div>
 
-    <!-- ─ Tab: Mensile ─ -->
+    <!-- ─ Tab: Performance (mensile + settimanale) ─ -->
     <div class="mtab-panel" id="mtab-monthly">
       <div class="monthly-wrap" id="modal-monthly-content">
-        <div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📅 Mensile per caricare i dati</div>
+        <div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📅 Performance per caricare i dati</div>
       </div>
     </div>
 
@@ -1964,7 +1971,7 @@ document.querySelectorAll('.modal-tab').forEach(t => {
       loadNews(modalRow);
     }
     if (t.dataset.mtab === 'monthly' && modalRow && !document.getElementById('modal-monthly-content').dataset.loaded) {
-      loadMonthly(modalRow);
+      loadPerformance(modalRow);
     }
   });
 });
@@ -1983,7 +1990,7 @@ function resetModalTabs() {
   document.getElementById('modal-news-content').innerHTML =
     '<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📰 News per caricare le ultime notizie</div>';
   document.getElementById('modal-monthly-content').innerHTML =
-    '<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📅 Mensile per caricare i dati</div>';
+    '<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📅 Performance per caricare i dati</div>';
 }
 
 // Integra resetModalTabs in openModal
@@ -2046,14 +2053,26 @@ function updateExtLinks(row) {
 // ═══════════════════════════════════════════════════
 //  PERFORMANCE MENSILE
 // ═══════════════════════════════════════════════════
-async function loadMonthly(row) {
+async function loadPerformance(row) {
   const el = document.getElementById('modal-monthly-content');
-  el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:40px">⏳ Caricamento dati mensili…</div>';
+  el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:40px">⏳ Caricamento dati…</div>';
   try {
-    const r = await fetch(`/monthly/${encodeURIComponent(row.s)}`);
-    const d = await r.json();
-    if (d.error) throw new Error(d.error);
-    renderMonthly(d);
+    const [rm, rw] = await Promise.all([
+      fetch(`/monthly/${encodeURIComponent(row.s)}`).then(r => r.json()),
+      fetch(`/weekly/${encodeURIComponent(row.s)}`).then(r => r.json()),
+    ]);
+    let html = '';
+    if (!rm.error) {
+      html += '<div class="perf-section-title">Rendimenti Mensili</div>';
+      html += buildMonthlyTable(rm);
+    }
+    html += '<div class="perf-section-title" style="margin-top:20px">Rendimenti Settimanali</div>';
+    if (!rw.error) {
+      html += '<div class="weekly-scroll">' + buildWeeklyTable(rw) + '</div>';
+    } else {
+      html += `<div style="color:var(--red);font-size:11px">⚠ ${rw.error}</div>`;
+    }
+    el.innerHTML = html;
     el.dataset.loaded = '1';
   } catch(e) {
     el.innerHTML = `<div style="color:var(--red);padding:20px;font-size:12px">⚠ ${e.message}</div>`;
@@ -2070,36 +2089,46 @@ function mretClass(v) {
   return 'mret-zero';
 }
 
-function renderMonthly(d) {
-  const el = document.getElementById('modal-monthly-content');
-  const years = d.years.slice().reverse(); // più recente in cima
-
-  let html = '<table class="monthly-table"><thead><tr>';
-  html += '<th>Anno</th>';
+function buildMonthlyTable(d) {
+  const years = d.years.slice().reverse();
+  let html = '<table class="monthly-table"><thead><tr><th>Anno</th>';
   MONTHS_IT.forEach(m => html += `<th>${m}</th>`);
   html += '<th class="ytd-col">YTD</th></tr></thead><tbody>';
-
   years.forEach(year => {
     html += `<tr><td>${year}</td>`;
     for (let m = 1; m <= 12; m++) {
       const v = (d.data[year] || {})[String(m)];
-      if (v === undefined) {
-        html += '<td class="empty">—</td>';
-      } else {
-        const cls = mretClass(v);
-        const sign = v > 0 ? '+' : '';
-        html += `<td class="${cls}">${sign}${v.toFixed(2)}%</td>`;
-      }
+      if (v === undefined) { html += '<td class="empty">—</td>'; }
+      else { const s = v>0?'+':''; html += `<td class="${mretClass(v)}">${s}${v.toFixed(2)}%</td>`; }
     }
     const ytd = d.ytd[year];
-    const ytdCls = mretClass(ytd);
-    const ytdSign = ytd > 0 ? '+' : '';
-    html += `<td class="ytd-col ${ytdCls}">${ytd !== undefined ? ytdSign+ytd.toFixed(2)+'%' : '—'}</td>`;
+    const ys = ytd>0?'+':'';
+    html += `<td class="ytd-col ${mretClass(ytd)}">${ytd!==undefined?ys+ytd.toFixed(2)+'%':'—'}</td></tr>`;
+  });
+  return html + '</tbody></table>';
+}
+
+function buildWeeklyTable(d) {
+  const years = d.years.slice().reverse();
+  // Trova il massimo numero di settimana presente
+  const maxWeek = Math.max(...years.map(y => Math.max(...Object.keys(d.data[y]||{}).map(Number))));
+  const weeks = Array.from({length: maxWeek}, (_, i) => i + 1);
+  let html = '<table class="weekly-table"><thead><tr><th>Anno</th>';
+  weeks.forEach(w => html += `<th>W${String(w).padStart(2,'0')}</th>`);
+  html += '</tr></thead><tbody>';
+  years.forEach(year => {
+    html += `<tr><td>${year}</td>`;
+    weeks.forEach(w => {
+      const v = (d.data[year] || {})[String(w)];
+      if (v === undefined) { html += '<td class="empty" style="font-size:8px">—</td>'; }
+      else {
+        const s = v>0?'+':'';
+        html += `<td class="${mretClass(v)}" title="W${w} ${year}: ${s}${v.toFixed(2)}%">${s}${v.toFixed(1)}%</td>`;
+      }
+    });
     html += '</tr>';
   });
-
-  html += '</tbody></table>';
-  el.innerHTML = html;
+  return html + '</tbody></table>';
 }
 
 // ═══════════════════════════════════════════════════
