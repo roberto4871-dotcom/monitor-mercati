@@ -1609,6 +1609,78 @@ function showMaLegend(btn) {
   setTimeout(() => document.addEventListener('click', close), 50);
 }
 
+function showMomentumLegend(btn) {
+  const existing = document.getElementById('momentum-legend-popup');
+  if (existing) { existing.remove(); return; }
+
+  const popup = document.createElement('div');
+  popup.id = 'momentum-legend-popup';
+
+  const mkGauge = (score, label, color) =>
+    `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)">
+       <div style="flex-shrink:0;width:38px;text-align:center">
+         <span style="background:${color}22;color:${color};font-size:12px;font-weight:800;padding:2px 6px;border-radius:6px">${score}</span>
+       </div>
+       <div style="font-size:12px;color:var(--text)">${label}</div>
+     </div>`;
+
+  const mkPeriod = (lbl, win, w) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:11px">
+       <span style="color:var(--text2)">${lbl} (±${win}%)</span>
+       <span style="color:var(--accent);font-weight:700">${w}%</span>
+     </div>`;
+
+  popup.innerHTML =
+    `<div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px">Come funziona il Momentum Score</div>` +
+
+    `<div style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.5">
+       Misura la <b style="color:var(--text)">forza del trend</b> su più orizzonti temporali.<br>
+       Combina le performance recenti in un punteggio unico <b style="color:var(--text)">0–100</b>.
+     </div>` +
+
+    `<div style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Periodi e pesi</div>` +
+    `<div style="margin-bottom:12px;background:var(--bg3);border-radius:8px;padding:8px 10px">` +
+    mkPeriod('Ultima settimana', 10, 15) +
+    mkPeriod('Ultimi 30 giorni', 15, 25) +
+    mkPeriod('Ultimi 60 giorni', 20, 30) +
+    mkPeriod('Ultimi 90 giorni', 25, 30) +
+    `</div>` +
+
+    `<div style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Interpretazione</div>` +
+    mkGauge('75-100', 'Momentum forte &mdash; trend rialzista solido', '#4caf50') +
+    mkGauge('55-74',  'Momentum positivo &mdash; leggera pressione al rialzo', '#8bc34a') +
+    mkGauge('45-54',  'Momentum neutro &mdash; mercato indeciso', '#ffd700') +
+    mkGauge('25-44',  'Momentum negativo &mdash; pressione ribassista', '#ff7043') +
+    mkGauge('0-24',   'Momentum debole &mdash; trend ribassista forte', '#ef5350') +
+
+    `<div style="font-size:10px;color:var(--text3);margin-top:10px;line-height:1.4">
+       ℹ Ogni periodo viene normalizzato su scala 0-100<br>rispetto alla sua finestra di variazione tipica.
+     </div>`;
+
+  Object.assign(popup.style, {
+    position:'fixed', zIndex:'9999',
+    background:'var(--bg2)', border:'1px solid var(--border)',
+    borderRadius:'10px', padding:'14px 16px',
+    boxShadow:'0 8px 32px rgba(0,0,0,.5)', minWidth:'300px',
+  });
+  document.body.appendChild(popup);
+
+  const rect = btn.getBoundingClientRect();
+  const pw = popup.offsetWidth;
+  let left = rect.right - pw;
+  if (left < 8) left = 8;
+  popup.style.top  = (rect.bottom + 8) + 'px';
+  popup.style.left = left + 'px';
+
+  const close = (e) => {
+    if (!popup.contains(e.target) && e.target !== btn) {
+      popup.remove();
+      document.removeEventListener('click', close);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', close), 50);
+}
+
 // ═══════════════════════════════════════════════════
 //  RENDER TABLE
 // ═══════════════════════════════════════════════════
@@ -2540,6 +2612,8 @@ buildThead = function() {
     const cls = sortCol === c.key ? (sortDir===1 ? 'sorted-asc':'sorted-desc') : '';
     const lbl = c.key === 'ma'
       ? `MA<br>50/200&thinsp;<span onclick="event.stopPropagation();showMaLegend(this)" title="Legenda" style="cursor:pointer;font-size:10px;opacity:.7;vertical-align:middle;user-select:none">ℹ</span>`
+      : c.key === '_momentum'
+      ? `Momentum<br>Score&thinsp;<span onclick="event.stopPropagation();showMomentumLegend(this)" title="Come funziona il Momentum Score" style="cursor:pointer;font-size:10px;opacity:.7;vertical-align:middle;user-select:none">ℹ</span>`
       : c.label.replace('\n','<br>');
     return `<th class="${cls}" onclick="doSort('${c.key}')">${lbl}</th>`;
   }).join('');
