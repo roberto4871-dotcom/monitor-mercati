@@ -27,9 +27,10 @@ CACHE_TTL = 300  # 5 minuti (periodi lunghi durano di più)
 CACHE_TTL_LONG = 3600  # 1 ora per 2Y/3Y/5Y/max
 
 # Cache per fondamentali, news, calendario, AI
-_fund_cache = {}; _fund_lock = threading.Lock(); FUND_TTL = 3600
-_news_cache = {}; _news_lock = threading.Lock(); NEWS_TTL = 900
-_cal_cache  = {}; _cal_lock  = threading.Lock(); CAL_TTL  = 1800
+_fund_cache    = {}; _fund_lock    = threading.Lock(); FUND_TTL    = 3600
+_news_cache    = {}; _news_lock    = threading.Lock(); NEWS_TTL    = 900
+_cal_cache     = {}; _cal_lock     = threading.Lock(); CAL_TTL     = 1800
+_monthly_cache = {}; _monthly_lock = threading.Lock(); MONTHLY_TTL = 3600
 
 
 def fetch_symbol(symbol, period='3mo', interval='1d'):
@@ -325,6 +326,51 @@ def fetch_news(symbol):
     return data
 
 
+def fetch_monthly(symbol):
+    """Rendimenti mensili per matrice anno×mese — cache 1h."""
+    with _monthly_lock:
+        c = _monthly_cache.get(symbol)
+        if c and (time.time() - c['ts']) < MONTHLY_TTL:
+            return c['data']
+    try:
+        today = datetime.date.today()
+        start = datetime.date(today.year - 5, 1, 1)
+        hist  = yf.Ticker(symbol).history(
+            start=str(start), end=str(today), interval='1mo', auto_adjust=True
+        )
+        if hist.empty:
+            return {'error': 'Nessun dato mensile disponibile'}
+
+        closes = [float(v) for v in hist['Close'].tolist()]
+        dates  = hist.index.tolist()
+
+        monthly = {}
+        for i in range(1, len(closes)):
+            dt    = dates[i]
+            year  = str(dt.year)
+            month = str(dt.month)
+            ret   = round((closes[i] / closes[i - 1] - 1) * 100, 2)
+            if year not in monthly:
+                monthly[year] = {}
+            monthly[year][month] = ret
+
+        # YTD composto per ogni anno
+        ytd = {}
+        for year, months in monthly.items():
+            c = 1.0
+            for m in sorted(months.keys(), key=int):
+                c *= 1 + months[m] / 100
+            ytd[year] = round((c - 1) * 100, 2)
+
+        result = {'data': monthly, 'years': sorted(monthly.keys()), 'ytd': ytd}
+    except Exception as e:
+        result = {'error': str(e)}
+
+    with _monthly_lock:
+        _monthly_cache[symbol] = {'data': result, 'ts': time.time()}
+    return result
+
+
 def fetch_calendar():
     """Calendario macro alto impatto da ForexFactory — cache 30 min."""
     with _cal_lock:
@@ -373,6 +419,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.handle_batch()
         elif self.path.startswith('/yf/'):
             self.handle_yf()
+        elif self.path.startswith('/monthly/'):
+            sym = urllib.parse.unquote(self.path[len('/monthly/'):].split('?')[0])
+            self._json(fetch_monthly(sym))
         elif self.path.startswith('/fundamentals/'):
             sym = urllib.parse.unquote(self.path[len('/fundamentals/'):].split('?')[0])
             self._json(fetch_fundamentals(sym))
