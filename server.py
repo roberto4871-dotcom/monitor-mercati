@@ -32,6 +32,7 @@ _news_cache    = {}; _news_lock    = threading.Lock(); NEWS_TTL    = 900
 _cal_cache     = {}; _cal_lock     = threading.Lock(); CAL_TTL     = 1800
 _monthly_cache = {}; _monthly_lock = threading.Lock(); MONTHLY_TTL = 3600
 _weekly_cache  = {}; _weekly_lock  = threading.Lock(); WEEKLY_TTL  = 3600
+_ma_cache      = {}; _ma_lock      = threading.Lock(); MA_TTL      = 300
 # ISIN cache — permanente (ISIN non cambia mai)
 
 
@@ -231,6 +232,119 @@ def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
 
         except Exception as e:
             results[sym] = {'error': str(e)}
+
+    return results
+
+
+def fetch_ma_batch(symbols):
+    """Calcola MA50/MA200 per una lista di simboli — cache 5 min.
+    Scarica 365 giorni di dati per avere ≥200 barre di borsa.
+    Restituisce {sym: {above50: bool|null, above200: bool|null, ma50: float|null, ma200: float|null}}
+    """
+    results = {}
+    to_fetch = []
+
+    with _ma_lock:
+        for sym in symbols:
+            c = _ma_cache.get(sym)
+            if c and (time.time() - c['ts']) < MA_TTL:
+                results[sym] = c['data']
+            else:
+                to_fetch.append(sym)
+
+    if not to_fetch:
+        return results
+
+    today = datetime.date.today()
+    start = today - datetime.timedelta(days=365)
+
+    def safe_float(v):
+        try:
+            f = float(v)
+            return None if f != f else f  # NaN → None
+        except Exception:
+            return None
+
+    def calc_ma(sym, closes):
+        n = len(closes)
+        if n == 0:
+            return {'above50': None, 'above200': None, 'ma50': None, 'ma200': None}
+        cur   = closes[-1]
+        ma50  = round(sum(closes[-50:])  / 50,  6) if n >= 50  else None
+        ma200 = round(sum(closes[-200:]) / 200, 6) if n >= 200 else None
+        return {
+            'above50':  (cur > ma50)  if ma50  is not None else None,
+            'above200': (cur > ma200) if ma200 is not None else None,
+            'ma50':     ma50,
+            'ma200':    ma200,
+            'cur':      round(cur, 6),
+        }
+
+    try:
+        import pandas as pd
+        raw = yf.download(
+            to_fetch,
+            start=str(start),
+            end=str(today + datetime.timedelta(days=1)),
+            interval='1d',
+            auto_adjust=True,
+            group_by='ticker',
+            progress=False,
+            threads=True,
+        )
+
+        is_multi = isinstance(raw.columns, pd.MultiIndex)
+
+        for sym in to_fetch:
+            try:
+                if is_multi:
+                    try:
+                        hist = raw[sym].copy()
+                    except KeyError:
+                        data = {'above50': None, 'above200': None, 'ma50': None, 'ma200': None}
+                        results[sym] = data
+                        with _ma_lock:
+                            _ma_cache[sym] = {'data': data, 'ts': time.time()}
+                        continue
+                else:
+                    hist = raw.copy()
+
+                hist   = hist.dropna(subset=['Close'])
+                closes = [safe_float(v) for v in hist['Close'].tolist()]
+                closes = [c for c in closes if c is not None]
+
+                data = calc_ma(sym, closes)
+                results[sym] = data
+                with _ma_lock:
+                    _ma_cache[sym] = {'data': data, 'ts': time.time()}
+
+            except Exception as e:
+                data = {'above50': None, 'above200': None, 'ma50': None, 'ma200': None}
+                results[sym] = data
+
+    except Exception as e:
+        print(f'  [ma] yf.download fallito ({e}), uso fetch individuale')
+
+        def _fetch_one(sym):
+            try:
+                today_l = datetime.date.today()
+                start_l = today_l - datetime.timedelta(days=365)
+                hist = yf.Ticker(sym).history(
+                    start=str(start_l), end=str(today_l),
+                    interval='1d', auto_adjust=True
+                )
+                if hist.empty:
+                    return sym, {'above50': None, 'above200': None, 'ma50': None, 'ma200': None}
+                closes = [float(v) for v in hist['Close'].tolist() if v == v]
+                return sym, calc_ma(sym, closes)
+            except Exception:
+                return sym, {'above50': None, 'above200': None, 'ma50': None, 'ma200': None}
+
+        with ThreadPoolExecutor(max_workers=10) as ex:
+            for sym, data in ex.map(_fetch_one, to_fetch):
+                results[sym] = data
+                with _ma_lock:
+                    _ma_cache[sym] = {'data': data, 'ts': time.time()}
 
     return results
 
@@ -507,6 +621,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def end_headers(self):
+        # Impedisce la cache del browser per HTML e JS
+        if not self.path.startswith('/yf') and not self.path.startswith('/ma') \
+                and not self.path.startswith('/fundamentals') and not self.path.startswith('/news') \
+                and not self.path.startswith('/weekly') and not self.path.startswith('/monthly') \
+                and not self.path.startswith('/calendar'):
+            self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
+            self.send_header('Pragma', 'no-cache')
+        super().end_headers()
+
     def do_GET(self):
         if self.path.startswith('/yf/batch'):
             self.handle_batch()
@@ -526,6 +650,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json(fetch_news(sym))
         elif self.path.startswith('/calendar'):
             self._json(fetch_calendar())
+        elif self.path.startswith('/ma'):
+            parsed   = urllib.parse.urlparse(self.path)
+            params   = urllib.parse.parse_qs(parsed.query)
+            syms_raw = params.get('syms', [''])[0]
+            symbols  = [s.strip() for s in syms_raw.split(',') if s.strip()]
+            self._json(fetch_ma_batch(symbols))
         else:
             super().do_GET()
 

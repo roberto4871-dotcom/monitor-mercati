@@ -218,6 +218,7 @@ td.ora{color:#64b5f6;font-size:10px}
 /* ── SPARKLINE ─────────────────────────────────────── */
 .spark-col { padding: 4px 8px !important; }
 .spark-col svg { display:block; }
+.ma-col { width:58px; padding:4px 6px !important; }
 
 /* ── MERCATI APERTI ────────────────────────────────── */
 .markets-bar { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
@@ -1011,6 +1012,7 @@ const COLS = [
   {key:'p60',      label:'Ultimi\n60 Giorni',    cls:'num',              fmt:'pct'},
   {key:'p90',      label:'Ultimi\n90 Giorni',    cls:'num',              fmt:'pct'},
   {key:'spark',    label:'Trend',               cls:'spark-col',         fmt:'spark'},
+  {key:'ma',       label:'MA\n50/200',          cls:'num ma-col',        fmt:'ma'},
   {key:'yld',      label:'Rendimento\n(Yield %)',cls:'num',              fmt:'yld', bondsOnly:true},
 ];
 
@@ -1101,6 +1103,21 @@ function fmtCell(col, row) {
     case 'numS': return fmtS(v);
     case 'yld':  return v !== null && v !== undefined ? `<span class="pos">${fmtN(v,2)}%</span>` : '<span class="na">—</span>';
     case 'spark': return buildSparkSVG(row._hist);
+    case 'ma': {
+      // _ma50/_ma200: undefined = non ancora caricato, null = dati insufficienti, true/false
+      if (row._loading) return '<span class="loading-cell">…</span>';
+      if (row._ma50 === undefined && row._ma200 === undefined)
+        return '<span class="na" style="font-size:10px">·</span>';
+      const mkDot = (val, label) => {
+        const col = val === null ? 'var(--text3)' : val ? 'var(--green)' : 'var(--red)';
+        const tip = val === null ? `MA${label}: dati insuff.` : val ? `MA${label}: ↑ sopra` : `MA${label}: ↓ sotto`;
+        return `<span title="${tip}" style="display:inline-flex;flex-direction:column;align-items:center;gap:1px">` +
+               `<span style="width:9px;height:9px;border-radius:50%;background:${col};display:block"></span>` +
+               `<span style="font-size:8px;color:${col};line-height:1;font-weight:700">${label}</span>` +
+               `</span>`;
+      };
+      return `<div style="display:flex;gap:6px;justify-content:center;align-items:center">${mkDot(row._ma50,'50')}${mkDot(row._ma200,'200')}</div>`;
+    }
     default: return v ?? '';
   }
 }
@@ -1314,8 +1331,9 @@ async function loadAll() {
 
   // Salva in localStorage per mostrare subito al prossimo caricamento
   try {
-    // Salva senza _hist (troppo grande per localStorage) — sparkline rigenerate al refresh
-    const slim = rows.map(({_hist, ...r}) => r);
+    // Salva senza _hist (troppo grande) né _ma50/_ma200 (ricaricarti freschi)
+    // eslint-disable-next-line no-unused-vars
+    const slim = rows.map(({_hist, _ma50, _ma200, ...r}) => r);
     localStorage.setItem('mm_rows_cache', JSON.stringify({ts: Date.now(), data: slim}));
   } catch {}
 
@@ -1331,6 +1349,42 @@ async function loadAll() {
   loading = false;
   scheduleRefresh();
   startCdBar(600);
+  // Carica MA50/MA200 in background (richiede ~365 giorni di dati)
+  loadMA();
+}
+
+// ═══════════════════════════════════════════════════
+//  MA50/MA200 SEMAPHORE — caricamento asincrono
+// ═══════════════════════════════════════════════════
+async function loadMA() {
+  const symbols = INSTRUMENTS.map(i => i.s);
+  // Costruisci indice sym → row idx (un simbolo può apparire più volte)
+  const symToIdxs = {};
+  INSTRUMENTS.forEach((inst, idx) => {
+    if (!symToIdxs[inst.s]) symToIdxs[inst.s] = [];
+    symToIdxs[inst.s].push(idx);
+  });
+
+  const CHUNK = 60; // max simboli per richiesta
+  for (let start = 0; start < symbols.length; start += CHUNK) {
+    const chunk = [...new Set(symbols.slice(start, start + CHUNK))]; // deduplica
+    try {
+      const r = await fetch(`/ma?syms=${encodeURIComponent(chunk.join(','))}`);
+      if (!r.ok) continue;
+      const data = await r.json();
+      for (const [sym, ma] of Object.entries(data)) {
+        const idxs = symToIdxs[sym] || [];
+        for (const idx of idxs) {
+          if (!rows[idx]) continue;
+          rows[idx]._ma50  = ma.above50  ?? null;
+          rows[idx]._ma200 = ma.above200 ?? null;
+          updateRow(idx);
+        }
+      }
+    } catch (e) {
+      console.warn('[MA] fetch fallita per chunk', start, e);
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -1362,9 +1416,11 @@ function updateRow(idx) {
   const tr = document.getElementById(`row-${idx}`);
   if (!tr) { renderTable(); return; }
   const row = rows[idx];
+  // Usa solo le colonne visibili (coerente con buildRows override)
+  const visCols = (typeof hiddenCols !== 'undefined') ? COLS.filter(c => !hiddenCols.has(c.key)) : COLS;
   const starOn = favorites.has(row.s) ? 'on' : '';
   const starTd = `<td style="padding:0 4px"><button class="fav-star ${starOn}" onclick="event.stopPropagation();toggleFavorite('${row.s}')">★</button></td>`;
-  tr.innerHTML = starTd + COLS.map(c => `<td class="${c.cls||''}">${fmtCell(c, row)}</td>`).join('');
+  tr.innerHTML = starTd + visCols.map(c => `<td class="${c.cls||''}">${fmtCell(c, row)}</td>`).join('');
   if (!row._loading && !row._err) {
     tr.setAttribute('onclick', `openModal(${idx})`);
     tr.style.cursor = 'pointer';
