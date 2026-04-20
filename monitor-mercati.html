@@ -319,6 +319,31 @@ td.ora{color:#64b5f6;font-size:10px}
 .mret-neg-lo{background:rgba(239,83,80,.14);color:#ef9a9a}
 .mret-zero{background:rgba(96,125,139,.1);color:var(--text3)}
 
+/* ── MARKET BREADTH PANEL ────────────────────────── */
+#breadth-panel{background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0}
+.breadth-inner{padding:8px 16px 10px}
+.breadth-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px}
+.breadth-title>span:first-child{font-size:12px;font-weight:700;color:var(--accent)}
+.breadth-sentiment{font-size:11px;color:var(--text2)}
+.breadth-stats{display:flex;gap:16px;flex-wrap:wrap}
+.breadth-stat{flex:1;min-width:120px}
+
+/* ── STAGIONALITÀ ─────────────────────────────────── */
+.seasonal-wrap{flex:1;overflow-y:auto;padding:16px 20px}
+.seas-avg-bar{display:flex;gap:4px;align-items:flex-end;height:120px;margin-bottom:8px}
+.seas-month-col{display:flex;flex-direction:column;align-items:center;flex:1;min-width:0}
+.seas-month-col .bar-fill{width:100%;border-radius:3px 3px 0 0;transition:height .4s}
+.seas-month-col .bar-fill-neg{border-radius:0 0 3px 3px}
+.seas-month-label{font-size:9px;color:var(--text3);margin-top:3px;white-space:nowrap}
+.seas-month-val{font-size:9px;font-weight:700;margin-bottom:2px}
+.seas-pos-rate{font-size:8px;color:var(--text3);margin-top:1px}
+.seas-table{border-collapse:collapse;font-size:10px;width:100%;margin-top:12px}
+.seas-table th{background:var(--blue);color:var(--accent);padding:4px 6px;text-align:center;font-size:9px;font-weight:700;white-space:nowrap;position:sticky;top:0;z-index:2}
+.seas-table th:first-child{left:0;z-index:3;min-width:40px}
+.seas-table td{padding:3px 5px;text-align:center;border:1px solid rgba(255,255,255,.03);font-weight:600;font-size:10px}
+.seas-table td:first-child{background:var(--bg3);color:var(--text2);font-weight:700;position:sticky;left:0;z-index:1;border-right:1px solid var(--border)}
+.seas-scroll{overflow-x:auto}
+
 /* ── LINK ESTERNI ────────────────────────────────── */
 .ext-links{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap}
 .ext-link{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-decoration:none;letter-spacing:.4px;white-space:nowrap;transition:opacity .15s}
@@ -356,6 +381,7 @@ td.ora{color:#64b5f6;font-size:10px}
       <button class="modal-tab" data-mtab="fundamentals">📈 Fondamentali</button>
       <button class="modal-tab" data-mtab="news">📰 News</button>
       <button class="modal-tab" data-mtab="monthly">📅 Performance</button>
+      <button class="modal-tab" data-mtab="seasonal">🌿 Stagionalità</button>
     </div>
 
     <!-- ─ Tab: Grafico ─ -->
@@ -432,6 +458,13 @@ td.ora{color:#64b5f6;font-size:10px}
       </div>
     </div>
 
+    <!-- ─ Tab: Stagionalità ─ -->
+    <div class="mtab-panel" id="mtab-seasonal">
+      <div class="seasonal-wrap" id="modal-seasonal-content">
+        <div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 🌿 Stagionalità per caricare i dati</div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -502,6 +535,9 @@ td.ora{color:#64b5f6;font-size:10px}
       <div class="cal-loading" id="cal-events">Caricamento eventi…</div>
     </div>
   </div>
+
+  <!-- ── Market Breadth Panel ── -->
+  <div id="breadth-panel" style="display:none"></div>
 
   <div class="table-wrapper">
     <table id="main-table">
@@ -1013,6 +1049,7 @@ const COLS = [
   {key:'p90',      label:'Ultimi\n90 Giorni',    cls:'num',              fmt:'pct'},
   {key:'spark',    label:'Trend',               cls:'spark-col',         fmt:'spark'},
   {key:'ma',       label:'MA\n50/200',          cls:'num ma-col',        fmt:'ma'},
+  {key:'_momentum',label:'Momentum\nScore',     cls:'num',               fmt:'momentum'},
   {key:'yld',      label:'Rendimento\n(Yield %)',cls:'num',              fmt:'yld', bondsOnly:true},
 ];
 
@@ -1102,6 +1139,15 @@ function fmtCell(col, row) {
     }
     case 'numS': return fmtS(v);
     case 'yld':  return v !== null && v !== undefined ? `<span class="pos">${fmtN(v,2)}%</span>` : '<span class="na">—</span>';
+    case 'momentum': {
+      if (v === null || v === undefined) return '<span class="na">—</span>';
+      const score = Math.round(v);
+      const hue   = Math.round(score * 1.2); // 0→red(0°), 50→yellow(60°), 100→green(120°)
+      const bg    = `hsl(${hue},80%,28%)`;
+      const fc    = `hsl(${hue},90%,68%)`;
+      const bar   = `<div style="width:${score}%;height:3px;background:${fc};border-radius:2px;margin-top:2px"></div>`;
+      return `<div style="text-align:center"><span style="background:${bg};color:${fc};font-size:11px;font-weight:700;padding:2px 7px;border-radius:8px">${score}</span>${bar}</div>`;
+    }
     case 'spark': return buildSparkSVG(row._hist);
     case 'ma': {
       // _ma50/_ma200: undefined = non ancora caricato, null = dati insufficienti, true/false
@@ -1332,6 +1378,9 @@ async function loadAll() {
   // Carica rendimento (yield) per strumenti obbligazionari — fetch individuali parallele
   await loadYields();
 
+  // Calcola Score Momentum Composito (client-side, dai dati p7/p30/p60/p90 già disponibili)
+  computeMomentumScores();
+
   // Salva in localStorage (yield già valorizzati)
   try {
     // Salva senza _hist (troppo grande) né _ma50/_ma200 (ricaricarti freschi)
@@ -1388,6 +1437,8 @@ async function loadMA() {
       console.warn('[MA] fetch fallita per chunk', start, e);
     }
   }
+  // Aggiorna il Market Breadth Panel dopo aver caricato tutte le MA
+  updateBreadthPanel();
 }
 
 // ═══════════════════════════════════════════════════
@@ -1422,6 +1473,92 @@ async function loadYields() {
       });
     } catch(e) { /* silenzioso */ }
   }));
+}
+
+// ═══════════════════════════════════════════════════
+//  FEATURE 2 — SCORE MOMENTUM COMPOSITO (0-100)
+// ═══════════════════════════════════════════════════
+function momentumScore(row) {
+  // Normalizza ogni periodo a 0-100 con clamp lineare simmetrico
+  const norm = (v, maxPct) => {
+    if (v === null || v === undefined || isNaN(v)) return null;
+    return Math.min(100, Math.max(0, (v / maxPct) * 50 + 50));
+  };
+  const s7  = norm(row.p7,  10);
+  const s30 = norm(row.p30, 15);
+  const s60 = norm(row.p60, 20);
+  const s90 = norm(row.p90, 25);
+  const valid = [s7, s30, s60, s90].filter(x => x !== null);
+  if (!valid.length) return null;
+  // Pesi: p7=15%, p30=25%, p60=30%, p90=30%  (ridistribuiti sulle disponibili)
+  const weights = [
+    [s7,  0.15], [s30, 0.25],
+    [s60, 0.30], [s90, 0.30],
+  ];
+  let wsum = 0, wtot = 0;
+  for (const [val, w] of weights) {
+    if (val !== null) { wsum += val * w; wtot += w; }
+  }
+  return wtot > 0 ? wsum / wtot : null;
+}
+
+function computeMomentumScores() {
+  rows.forEach((row, idx) => {
+    const score = momentumScore(row);
+    rows[idx]._momentum = score;
+    updateRow(idx);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  FEATURE 5 — MARKET BREADTH PANEL
+// ═══════════════════════════════════════════════════
+function updateBreadthPanel() {
+  const panel = document.getElementById('breadth-panel');
+  if (!panel) return;
+  // Considera solo strumenti con MA calcolata (esclude bond-only, forex pair ecc. se si vuole, ma qui usa tutti)
+  const withMA = rows.filter(r => r._ma50 !== undefined && r._ma200 !== undefined && !r._loading);
+  if (!withMA.length) { panel.style.display = 'none'; return; }
+
+  const n       = withMA.length;
+  const ab50    = withMA.filter(r => r._ma50  === true).length;
+  const ab200   = withMA.filter(r => r._ma200 === true).length;
+  const abBoth  = withMA.filter(r => r._ma50  === true && r._ma200 === true).length;
+  const pct50   = Math.round(ab50  / n * 100);
+  const pct200  = Math.round(ab200 / n * 100);
+  const pctBoth = Math.round(abBoth/ n * 100);
+
+  const bar = (pct, color) =>
+    `<div style="flex:1;background:var(--bg3);border-radius:4px;height:6px;overflow:hidden">
+       <div style="width:${pct}%;height:100%;background:${color};border-radius:4px;transition:width .4s"></div>
+     </div>`;
+  const stat = (label, pct, color, count) =>
+    `<div class="breadth-stat">
+       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px">
+         <span style="font-size:10px;color:var(--text3)">${label}</span>
+         <span style="font-size:13px;font-weight:700;color:${color}">${pct}%</span>
+       </div>
+       ${bar(pct, color)}
+       <div style="font-size:9px;color:var(--text3);margin-top:2px">${count}/${n}</div>
+     </div>`;
+
+  const sentiment = pctBoth >= 65 ? {icon:'🟢', txt:'Mercato in trend rialzista'} :
+                    pctBoth >= 45 ? {icon:'🟡', txt:'Mercato neutro/misto'} :
+                                    {icon:'🔴', txt:'Mercato in pressione ribassista'};
+
+  panel.style.display = '';
+  panel.innerHTML =
+    `<div class="breadth-inner">
+       <div class="breadth-title">
+         <span>📡 Market Breadth — % Strumenti Sopra MA</span>
+         <span class="breadth-sentiment">${sentiment.icon} ${sentiment.txt}</span>
+       </div>
+       <div class="breadth-stats">
+         ${stat('Sopra MA<b>50</b>',   pct50,   '#29b6f6', ab50)}
+         ${stat('Sopra MA<b>200</b>',  pct200,  '#66bb6a', ab200)}
+         ${stat('Sopra MA<b>50+200</b>', pctBoth, '#ffd700', abBoth)}
+       </div>
+     </div>`;
 }
 
 function showMaLegend(btn) {
@@ -2360,7 +2497,7 @@ function setFontSize(size) {
 // ═══════════════════════════════════════════════════
 //  FEATURE 3: COLONNE NASCONDIBILI
 // ═══════════════════════════════════════════════════
-const HIDEABLE_KEYS = new Set(['valore','varAtt','fine2025','ytdLocal','ytdEur','p7','p30','p60','p90','spark','yld']);
+const HIDEABLE_KEYS = new Set(['valore','varAtt','fine2025','ytdLocal','ytdEur','p7','p30','p60','p90','spark','ma','_momentum','yld']);
 let hiddenCols = new Set(JSON.parse(localStorage.getItem('mm_hidden_cols') || '[]'));
 
 function buildColsDropdown() {
@@ -2544,6 +2681,9 @@ document.querySelectorAll('.modal-tab').forEach(t => {
     if (t.dataset.mtab === 'monthly' && modalRow && !document.getElementById('modal-monthly-content').dataset.loaded) {
       loadPerformance(modalRow);
     }
+    if (t.dataset.mtab === 'seasonal' && modalRow && !document.getElementById('modal-seasonal-content').dataset.loaded) {
+      loadSeasonal(modalRow);
+    }
   });
 });
 
@@ -2562,6 +2702,9 @@ function resetModalTabs() {
     '<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📰 News per caricare le ultime notizie</div>';
   document.getElementById('modal-monthly-content').innerHTML =
     '<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📅 Performance per caricare i dati</div>';
+  document.getElementById('modal-seasonal-content').removeAttribute('data-loaded');
+  document.getElementById('modal-seasonal-content').innerHTML =
+    '<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 🌿 Stagionalità per caricare i dati</div>';
 }
 
 // Integra resetModalTabs in openModal
@@ -2619,6 +2762,130 @@ function updateExtLinks(row) {
   } else {
     biEl.style.display = 'none';
   }
+}
+
+// ═══════════════════════════════════════════════════
+//  STAGIONALITÀ
+// ═══════════════════════════════════════════════════
+async function loadSeasonal(row) {
+  const el = document.getElementById('modal-seasonal-content');
+  el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:40px">⏳ Caricamento dati stagionali (10 anni)…</div>';
+  try {
+    const r = await fetch(`/seasonal/${encodeURIComponent(row.s)}`);
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    renderSeasonal(d, row);
+    el.dataset.loaded = '1';
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--red);padding:20px;font-size:12px">⚠ ${e.message}</div>`;
+  }
+}
+
+function renderSeasonal(d, row) {
+  const el = document.getElementById('modal-seasonal-content');
+  const MONTHS_IT = d.months || ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  const avg     = d.avg     || {};
+  const posRate = d.posRate || {};
+  const yearly  = d.yearly  || {};
+  const years   = (d.years  || []).slice().reverse();
+
+  // Trova max per scaling barre
+  const vals = Object.values(avg).filter(v => v !== null);
+  const maxAbs = Math.max(...vals.map(Math.abs), 0.1);
+
+  // Colori barre
+  const barColor = (v) => v >= 0 ? 'rgba(76,175,80,.85)' : 'rgba(239,83,80,.85)';
+
+  // Barre divergenti orizzontali con linea centrale
+  const BAR_H = 80; // px totali per area +
+  let barsHtml = '<div style="margin-bottom:16px">';
+  barsHtml += '<div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px">Rendimento Medio Mensile (10 anni)</div>';
+  // Container con baseline centrale
+  barsHtml += `<div style="display:flex;gap:3px;align-items:flex-end;padding:0 0 4px">`;
+  for (let m = 1; m <= 12; m++) {
+    const v  = avg[String(m)];
+    const pr = posRate[String(m)];
+    if (v === null || v === undefined) {
+      barsHtml += `<div class="seas-month-col" style="flex:1"><div style="height:${BAR_H*2}px"></div><div class="seas-month-label">${MONTHS_IT[m-1]}</div></div>`;
+      continue;
+    }
+    const ratio   = Math.abs(v) / maxAbs;
+    const fillH   = Math.round(ratio * BAR_H);
+    const posH    = v >= 0 ? fillH : 0;
+    const negH    = v <  0 ? fillH : 0;
+    const valStr  = `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+    const prStr   = pr !== null && pr !== undefined ? `${Math.round(pr)}%↑` : '';
+    const fc      = barColor(v);
+    barsHtml +=
+      `<div class="seas-month-col" style="flex:1;display:flex;flex-direction:column;align-items:center" title="${MONTHS_IT[m-1]}: ${valStr} (${prStr} degli anni positivo)">
+         <div class="seas-month-val" style="color:${v>=0?'var(--green)':'var(--red)'};font-size:8px">${valStr}</div>
+         <div style="height:${posH}px;width:90%;background:${v>=0?fc:'transparent'};border-radius:3px 3px 0 0"></div>
+         <div style="height:2px;width:100%;background:var(--border)"></div>
+         <div style="height:${negH}px;width:90%;background:${v<0?fc:'transparent'};border-radius:0 0 3px 3px"></div>
+         <div class="seas-month-label">${MONTHS_IT[m-1]}</div>
+         <div class="seas-pos-rate">${prStr}</div>
+       </div>`;
+  }
+  barsHtml += '</div></div>';
+
+  // Top 3 mesi migliori / peggiori
+  const sorted = Object.entries(avg)
+    .filter(([,v]) => v !== null)
+    .sort(([,a],[,b]) => b - a);
+  const top3 = sorted.slice(0, 3);
+  const bot3 = sorted.slice(-3).reverse();
+  const mkPill = ([m, v]) => {
+    const fc = v >= 0 ? '#4caf50' : '#ef5350';
+    const bg = v >= 0 ? 'rgba(76,175,80,.15)' : 'rgba(239,83,80,.15)';
+    return `<span style="background:${bg};color:${fc};border:1px solid ${fc}40;border-radius:8px;padding:3px 9px;font-size:11px;font-weight:700">
+      ${MONTHS_IT[+m-1]} <b>${v>=0?'+':''}${v.toFixed(2)}%</b>
+    </span>`;
+  };
+  const summaryHtml =
+    `<div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:16px">
+       <div>
+         <div style="font-size:10px;color:var(--text3);margin-bottom:6px">🏆 Mesi Migliori</div>
+         <div style="display:flex;gap:6px;flex-wrap:wrap">${top3.map(mkPill).join('')}</div>
+       </div>
+       <div>
+         <div style="font-size:10px;color:var(--text3);margin-bottom:6px">⚠ Mesi Peggiori</div>
+         <div style="display:flex;gap:6px;flex-wrap:wrap">${bot3.map(mkPill).join('')}</div>
+       </div>
+     </div>`;
+
+  // Tabella anno × mese (ultimi 10 anni, stile monthly)
+  let tableHtml = '';
+  if (years.length) {
+    tableHtml += '<div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">Storico Anno × Mese</div>';
+    tableHtml += '<div class="seas-scroll"><table class="seas-table"><thead><tr><th>Anno</th>';
+    MONTHS_IT.forEach(m => tableHtml += `<th>${m}</th>`);
+    tableHtml += '</tr></thead><tbody>';
+    years.forEach(year => {
+      tableHtml += `<tr><td>${year}</td>`;
+      for (let m = 1; m <= 12; m++) {
+        const v = (yearly[year] || {})[String(m)];
+        if (v === undefined) { tableHtml += '<td style="color:var(--text3)">—</td>'; }
+        else {
+          const s = v > 0 ? '+' : '';
+          tableHtml += `<td class="${mretClass(v)}">${s}${v.toFixed(2)}%</td>`;
+        }
+      }
+      tableHtml += '</tr>';
+    });
+    // Riga media
+    tableHtml += `<tr style="border-top:2px solid var(--border)"><td style="color:var(--accent);font-weight:700">Media</td>`;
+    for (let m = 1; m <= 12; m++) {
+      const v = avg[String(m)];
+      if (v === null || v === undefined) { tableHtml += '<td style="color:var(--text3)">—</td>'; }
+      else {
+        const s = v > 0 ? '+' : '';
+        tableHtml += `<td class="${mretClass(v)}" style="font-weight:800">${s}${v.toFixed(2)}%</td>`;
+      }
+    }
+    tableHtml += '</tr></tbody></table></div>';
+  }
+
+  el.innerHTML = `<div class="seasonal-wrap">${barsHtml}${summaryHtml}${tableHtml}</div>`;
 }
 
 // ═══════════════════════════════════════════════════

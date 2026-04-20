@@ -33,6 +33,7 @@ _cal_cache     = {}; _cal_lock     = threading.Lock(); CAL_TTL     = 1800
 _monthly_cache = {}; _monthly_lock = threading.Lock(); MONTHLY_TTL = 3600
 _weekly_cache  = {}; _weekly_lock  = threading.Lock(); WEEKLY_TTL  = 3600
 _ma_cache      = {}; _ma_lock      = threading.Lock(); MA_TTL      = 300
+_seasonal_cache= {}; _seasonal_lock= threading.Lock(); SEASONAL_TTL= 21600  # 6 ore
 # ISIN cache — permanente (ISIN non cambia mai)
 
 
@@ -642,6 +643,59 @@ def fetch_weekly(symbol):
     return result
 
 
+def fetch_seasonal(symbol):
+    """Stagionalità: rendimento medio mensile su 10 anni — cache 6h."""
+    with _seasonal_lock:
+        c = _seasonal_cache.get(symbol)
+        if c and (time.time() - c['ts']) < SEASONAL_TTL:
+            return c['data']
+    try:
+        today = datetime.date.today()
+        start = datetime.date(today.year - 10, 1, 1)
+        hist  = yf.Ticker(symbol).history(
+            start=str(start), end=str(today), interval='1mo', auto_adjust=True
+        )
+        if hist.empty:
+            result = {'error': 'Nessun dato stagionale disponibile'}
+        else:
+            closes = [float(v) for v in hist['Close'].tolist()]
+            dates  = hist.index.tolist()
+
+            MONTHS_IT = ['Gen','Feb','Mar','Apr','Mag','Giu',
+                         'Lug','Ago','Set','Ott','Nov','Dic']
+            by_month = {m: [] for m in range(1, 13)}
+            yearly   = {}
+            for i in range(1, len(closes)):
+                dt  = dates[i]
+                ret = round((closes[i] / closes[i - 1] - 1) * 100, 2)
+                by_month[dt.month].append(ret)
+                year = str(dt.year)
+                if year not in yearly:
+                    yearly[year] = {}
+                yearly[year][str(dt.month)] = ret
+
+            avg_by_month = {}
+            pos_rate     = {}
+            for m in range(1, 13):
+                vals = by_month[m]
+                avg_by_month[str(m)] = round(sum(vals) / len(vals), 2) if vals else None
+                pos_rate[str(m)]     = round(sum(1 for v in vals if v > 0) / len(vals) * 100, 0) if vals else None
+
+            result = {
+                'avg':     avg_by_month,
+                'posRate': pos_rate,
+                'months':  MONTHS_IT,
+                'yearly':  yearly,
+                'years':   sorted(yearly.keys()),
+            }
+    except Exception as e:
+        result = {'error': str(e)}
+
+    with _seasonal_lock:
+        _seasonal_cache[symbol] = {'data': result, 'ts': time.time()}
+    return result
+
+
 def fetch_calendar():
     """Calendario macro alto impatto da ForexFactory — cache 30 min."""
     with _cal_lock:
@@ -720,6 +774,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             syms_raw = params.get('syms', [''])[0]
             symbols  = [s.strip() for s in syms_raw.split(',') if s.strip()]
             self._json(fetch_ma_batch(symbols))
+        elif self.path.startswith('/seasonal/'):
+            sym = urllib.parse.unquote(self.path[len('/seasonal/'):].split('?')[0])
+            self._json(fetch_seasonal(sym))
         else:
             super().do_GET()
 
