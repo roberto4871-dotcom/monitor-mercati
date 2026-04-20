@@ -26,6 +26,12 @@ _cache_lock = threading.Lock()
 CACHE_TTL = 300  # 5 minuti (periodi lunghi durano di più)
 CACHE_TTL_LONG = 3600  # 1 ora per 2Y/3Y/5Y/max
 
+# Cache per fondamentali, news, calendario, AI
+_fund_cache = {}; _fund_lock = threading.Lock(); FUND_TTL = 3600
+_news_cache = {}; _news_lock = threading.Lock(); NEWS_TTL = 900
+_cal_cache  = {}; _cal_lock  = threading.Lock(); CAL_TTL  = 1800
+_ai_cache   = {}; _ai_lock   = threading.Lock(); AI_TTL   = 3600
+
 
 def fetch_symbol(symbol, period='3mo', interval='1d'):
     cache_key = f'{symbol}|{period}|{interval}'
@@ -227,16 +233,188 @@ def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
     return results
 
 
+def fetch_fundamentals(symbol):
+    """Dati fondamentali via yfinance — cache 1h."""
+    with _fund_lock:
+        c = _fund_cache.get(symbol)
+        if c and (time.time() - c['ts']) < FUND_TTL:
+            return c['data']
+    try:
+        info = yf.Ticker(symbol).info
+        dy = info.get('dividendYield')
+        data = {
+            'trailingPE':        info.get('trailingPE'),
+            'forwardPE':         info.get('forwardPE'),
+            'priceToBook':       info.get('priceToBook'),
+            'dividendYield':     round(dy * 100, 2) if dy else None,
+            'marketCap':         info.get('marketCap'),
+            'beta':              info.get('beta'),
+            'fiftyTwoWeekHigh':  info.get('fiftyTwoWeekHigh'),
+            'fiftyTwoWeekLow':   info.get('fiftyTwoWeekLow'),
+            'volume':            info.get('volume'),
+            'avgVolume':         info.get('averageVolume'),
+            'totalExpenseRatio': info.get('annualReportExpenseRatio'),
+            'currency':          info.get('currency'),
+            'description':       (info.get('longBusinessSummary') or '')[:600],
+            'sector':            info.get('sector'),
+            'industry':          info.get('industry'),
+            'country':           info.get('country'),
+            'website':           info.get('website'),
+            'profitMargins':     info.get('profitMargins'),
+            'revenueGrowth':     info.get('revenueGrowth'),
+            'earningsGrowth':    info.get('earningsGrowth'),
+        }
+    except Exception as e:
+        data = {'error': str(e)}
+    with _fund_lock:
+        _fund_cache[symbol] = {'data': data, 'ts': time.time()}
+    return data
+
+
+def fetch_news(symbol):
+    """Ultime news via yfinance — cache 15 min."""
+    with _news_lock:
+        c = _news_cache.get(symbol)
+        if c and (time.time() - c['ts']) < NEWS_TTL:
+            return c['data']
+    data = []
+    try:
+        news = yf.Ticker(symbol).news or []
+        for n in news[:8]:
+            # Supporta sia il formato vecchio che il nuovo (content nested)
+            cnt = n.get('content', {}) or {}
+            title     = cnt.get('title')     or n.get('title', '')
+            summary   = (cnt.get('summary')  or n.get('summary', ''))[:250]
+            url_obj   = cnt.get('canonicalUrl') or {}
+            url       = url_obj.get('url') if isinstance(url_obj, dict) else n.get('link', '')
+            publisher = (cnt.get('provider') or {}).get('displayName') if cnt.get('provider') else n.get('publisher', '')
+            pub_time  = cnt.get('pubDate') or n.get('providerPublishTime', '')
+            if not title:
+                continue
+            data.append({'title': title, 'summary': summary, 'url': url or '',
+                         'publisher': publisher or '', 'time': pub_time})
+    except Exception:
+        pass
+    with _news_lock:
+        _news_cache[symbol] = {'data': data, 'ts': time.time()}
+    return data
+
+
+def fetch_calendar():
+    """Calendario macro alto impatto da ForexFactory — cache 30 min."""
+    with _cal_lock:
+        c = _cal_cache.get('cal')
+        if c and (time.time() - c['ts']) < CAL_TTL:
+            return c['data']
+    data = []
+    try:
+        import requests as req
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        events = []
+        for url in ['https://nfs.faireconomy.media/ff_calendar_thisweek.json',
+                    'https://nfs.faireconomy.media/ff_calendar_nextweek.json']:
+            try:
+                r = req.get(url, timeout=8, headers=headers)
+                events.extend(r.json())
+            except Exception:
+                pass
+        high = [e for e in events if e.get('impact') == 'High']
+        high.sort(key=lambda e: e.get('date', ''))
+        data = high[:40]
+    except Exception:
+        pass
+    with _cal_lock:
+        _cal_cache['cal'] = {'data': data, 'ts': time.time()}
+    return data
+
+
+def fetch_ai_analysis(symbol, name):
+    """Analisi AI tramite Claude — cache 1h."""
+    with _ai_lock:
+        c = _ai_cache.get(symbol)
+        if c and (time.time() - c['ts']) < AI_TTL:
+            return c['data']
+    api_key = os.environ.get('ANTHROPIC_API_KEY')
+    if not api_key:
+        return {'error': 'ANTHROPIC_API_KEY non configurata nelle variabili d\'ambiente'}
+    try:
+        import anthropic as ant
+        today = datetime.date.today()
+        start = today.replace(year=today.year - 1, month=1, day=1)
+        hist  = yf.Ticker(symbol).history(start=str(start), end=str(today), interval='1d', auto_adjust=True)
+        ctx = ''
+        if not hist.empty:
+            closes = hist['Close']
+            cur    = float(closes.iloc[-1])
+            ytd_p  = float(closes.iloc[0])
+            m3_p   = float(closes.iloc[max(0, len(closes)-63)])
+            m1_p   = float(closes.iloc[max(0, len(closes)-21)])
+            hi52   = float(hist['High'].max())
+            lo52   = float(hist['Low'].min())
+            perf1m = (cur / m1_p - 1) * 100
+            perf3m = (cur / m3_p - 1) * 100
+            perfYTD= (cur / ytd_p - 1) * 100
+            ctx = (f'Prezzo: {cur:.4f} | Perf 1M: {perf1m:+.2f}% | '
+                   f'Perf 3M: {perf3m:+.2f}% | YTD: {perfYTD:+.2f}% | '
+                   f'52W High: {hi52:.4f} | 52W Low: {lo52:.4f}')
+        client = ant.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model='claude-opus-4-5',
+            max_tokens=450,
+            messages=[{'role': 'user', 'content':
+                f'Sei un analista finanziario senior. Analizza {name} (ticker: {symbol}) '
+                f'in modo professionale e conciso in italiano.\n\nDati recenti: {ctx}\n\n'
+                'Struttura la risposta con:\n'
+                '1. Trend tecnico (2-3 righe)\n'
+                '2. Punti di attenzione (2-3 righe)\n'
+                '3. Outlook di breve periodo (1-2 righe)\n\n'
+                'Sii diretto e basato sui dati. Evita disclaimer generici.'}]
+        )
+        data = {'analysis': msg.content[0].text,
+                'generated_at': datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}
+    except Exception as e:
+        data = {'error': str(e)}
+    with _ai_lock:
+        _ai_cache[symbol] = {'data': data, 'ts': time.time()}
+    return data
+
+
 class Handler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):
         path = self.path[4:] if self.path.startswith('/yf/') else self.path
         print(f'  {args[1]}  {path}')
+
+    def _json(self, data):
+        body = json.dumps(data, default=str).encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_GET(self):
         if self.path.startswith('/yf/batch'):
             self.handle_batch()
         elif self.path.startswith('/yf/'):
             self.handle_yf()
+        elif self.path.startswith('/fundamentals/'):
+            sym = urllib.parse.unquote(self.path[len('/fundamentals/'):].split('?')[0])
+            self._json(fetch_fundamentals(sym))
+        elif self.path.startswith('/news/'):
+            sym = urllib.parse.unquote(self.path[len('/news/'):].split('?')[0])
+            self._json(fetch_news(sym))
+        elif self.path.startswith('/calendar'):
+            self._json(fetch_calendar())
+        elif self.path.startswith('/ai/'):
+            parts = self.path[len('/ai/'):].split('?', 1)
+            sym  = urllib.parse.unquote(parts[0])
+            params = {}
+            if len(parts) > 1:
+                for kv in parts[1].split('&'):
+                    k, _, v = kv.partition('=')
+                    params[k] = urllib.parse.unquote_plus(v)
+            self._json(fetch_ai_analysis(sym, params.get('name', sym)))
         else:
             super().do_GET()
 
@@ -248,15 +426,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         period   = params.get('period',   ['3mo'])[0]
         interval = params.get('interval', ['1d'])[0]
 
-        results = fetch_batch_bulk(symbols, period, interval)
-
-        body = json.dumps(results).encode()
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Content-Length', str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        self._json(fetch_batch_bulk(symbols, period, interval))
 
     def handle_yf(self):
         parts  = self.path[4:].split('?', 1)
@@ -271,15 +441,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         period   = params.get('period', '3mo')
         interval = params.get('interval', '1d')
 
-        data = fetch_symbol(symbol, period=period, interval=interval)
-
-        body = json.dumps(data).encode()
-        self.send_response(200)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Content-Length', str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        self._json(fetch_symbol(symbol, period=period, interval=interval))
 
 
 if __name__ == '__main__':

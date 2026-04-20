@@ -181,6 +181,59 @@ td.ora{color:#64b5f6;font-size:10px}
 .mkt-badge { font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; white-space:nowrap; }
 .mkt-badge.open { background:rgba(76,175,80,.2); color:#81c784; border:1px solid rgba(76,175,80,.4); }
 .mkt-badge.closed { background:rgba(96,125,139,.15); color:#546e7a; border:1px solid rgba(96,125,139,.25); }
+
+/* ── MODAL TABS ─────────────────────────────────── */
+.modal-tabs{display:flex;background:var(--bg3);border-bottom:2px solid var(--border);padding:0 16px;flex-shrink:0}
+.modal-tab{padding:9px 15px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);border-bottom:3px solid transparent;background:none;border-top:none;border-left:none;border-right:none;margin-bottom:-2px;transition:color .15s,border-color .15s;white-space:nowrap}
+.modal-tab:hover{color:var(--text)}
+.modal-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.mtab-panel{display:none;flex:1;flex-direction:column;min-height:0;overflow:hidden}
+.mtab-panel.active{display:flex}
+
+/* ── FONDAMENTALI ───────────────────────────────── */
+.fund-wrap{flex:1;overflow-y:auto;padding:16px 20px}
+.fund-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-bottom:16px}
+.fund-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.fund-label{display:block;font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.fund-value{display:block;font-size:13px;font-weight:700;color:var(--text)}
+.fund-desc{font-size:11px;color:var(--text2);line-height:1.65;border-top:1px solid var(--border);padding-top:12px;margin-top:4px}
+
+/* ── NEWS ───────────────────────────────────────── */
+.news-wrap{flex:1;overflow-y:auto}
+.news-item{padding:12px 16px;border-bottom:1px solid var(--border);transition:background .1s}
+.news-item:hover{background:var(--bg3)}
+.news-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.news-publisher{font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px}
+.news-time{font-size:10px;color:var(--text3)}
+.news-title{display:block;font-size:12px;font-weight:600;color:var(--text);text-decoration:none;line-height:1.4;margin-bottom:4px}
+.news-title:hover{color:var(--accent)}
+.news-summary{font-size:11px;color:var(--text2);line-height:1.5}
+
+/* ── AI ANALISI ──────────────────────────────────── */
+.ai-wrap{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+.ai-analyze-btn{background:linear-gradient(135deg,#1a237e,#4a148c);border:1px solid #7b1fa2;color:#fff;padding:10px 22px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:700;transition:all .2s;align-self:flex-start}
+.ai-analyze-btn:hover{background:linear-gradient(135deg,#283593,#6a1b9a);transform:translateY(-1px)}
+.ai-analyze-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.ai-result-box{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;font-size:12.5px;color:var(--text);line-height:1.75;white-space:pre-wrap;flex:1}
+.ai-disclaimer{font-size:10px;color:var(--text3);font-style:italic;text-align:center}
+.ai-gen-time{font-size:10px;color:var(--text3);text-align:right}
+
+/* ── CALENDARIO ECONOMICO ────────────────────────── */
+.cal-panel{background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0}
+.cal-panel-header{display:flex;align-items:center;justify-content:space-between;padding:7px 16px;cursor:pointer;user-select:none}
+.cal-panel-header span{color:#ff9800;font-size:12px;font-weight:700}
+.cal-panel-body{padding:8px 16px 10px;overflow-x:auto;display:flex;gap:8px;flex-wrap:wrap}
+.cal-panel-body.collapsed{display:none}
+.cal-event{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid rgba(255,152,0,.35);border-radius:8px;padding:6px 10px;min-width:200px}
+.cal-event.past{opacity:.45;border-color:var(--border)}
+.cal-flag{font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap;min-width:44px}
+.cal-info{flex:1;min-width:0}
+.cal-title{font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-time{font-size:9.5px;color:var(--text3)}
+.cal-vals{display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-size:9.5px}
+.cal-forecast{color:#64b5f6}
+.cal-prev{color:var(--text3)}
+.cal-loading{color:var(--text3);font-size:11px;padding:4px 0}
 </style>
 </head>
 <body>
@@ -200,34 +253,72 @@ td.ora{color:#64b5f6;font-size:10px}
     </div>
   <div class="modal-resize-handle" id="modal-resize-handle"></div>
     <div class="modal-stats" id="modal-stats"></div>
-    <div class="modal-notes" id="modal-notes">
-      <div class="modal-notes-title">📝 Note personali</div>
-      <textarea id="modal-note-ta" rows="3" placeholder="Aggiungi una nota per questo asset…"></textarea>
+
+    <!-- ─ Tab bar ─ -->
+    <div class="modal-tabs">
+      <button class="modal-tab active" data-mtab="chart">📊 Grafico</button>
+      <button class="modal-tab" data-mtab="fundamentals">📈 Fondamentali</button>
+      <button class="modal-tab" data-mtab="news">📰 News</button>
+      <button class="modal-tab" data-mtab="ai">🤖 AI</button>
     </div>
-    <div class="modal-body">
-      <div class="modal-period-btns" style="justify-content:space-between">
-        <div style="display:flex;gap:6px">
-          <button class="period-btn active" data-period="1M">1M</button>
-          <button class="period-btn" data-period="3M">3M</button>
-          <button class="period-btn" data-period="YTD">YTD</button>
-          <button class="period-btn" data-period="1A">1A</button>
-          <button class="period-btn" data-period="2A">2A</button>
-          <button class="period-btn" data-period="3A">3A</button>
-          <button class="period-btn" data-period="5A">5A</button>
-          <button class="period-btn" data-period="MAX">Max</button>
+
+    <!-- ─ Tab: Grafico ─ -->
+    <div class="mtab-panel active" id="mtab-chart">
+      <div class="modal-notes" id="modal-notes">
+        <div class="modal-notes-title">📝 Note personali</div>
+        <textarea id="modal-note-ta" rows="2" placeholder="Aggiungi una nota per questo asset…"></textarea>
+      </div>
+      <div class="modal-body">
+        <div class="modal-period-btns" style="justify-content:space-between">
+          <div style="display:flex;gap:6px">
+            <button class="period-btn active" data-period="1M">1M</button>
+            <button class="period-btn" data-period="3M">3M</button>
+            <button class="period-btn" data-period="YTD">YTD</button>
+            <button class="period-btn" data-period="1A">1A</button>
+            <button class="period-btn" data-period="2A">2A</button>
+            <button class="period-btn" data-period="3A">3A</button>
+            <button class="period-btn" data-period="5A">5A</button>
+            <button class="period-btn" data-period="MAX">Max</button>
+          </div>
+          <a id="modal-justetf-chart" href="#" target="_blank" rel="noopener" style="display:none;font-size:11px;font-weight:700;color:#00bcd4;background:rgba(0,188,212,.12);border:1px solid rgba(0,188,212,.35);border-radius:10px;padding:3px 10px;text-decoration:none;white-space:nowrap;align-self:center">JustETF ↗</a>
         </div>
-        <a id="modal-justetf-chart" href="#" target="_blank" rel="noopener" style="display:none;font-size:11px;font-weight:700;color:#00bcd4;background:rgba(0,188,212,.12);border:1px solid rgba(0,188,212,.35);border-radius:10px;padding:3px 10px;text-decoration:none;white-space:nowrap;align-self:center">JustETF ↗</a>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="color:var(--text3);font-size:11px">Indicatori:</span>
+          <button class="ta-btn" id="ta-btn-bb" onclick="modalTA.bb=!modalTA.bb;this.classList.toggle('on',modalTA.bb);if(modalRow)loadAndDraw(modalRow,modalPeriod)">BB</button>
+          <button class="ta-btn" id="ta-btn-rsi" onclick="modalTA.rsi=!modalTA.rsi;this.classList.toggle('on',modalTA.rsi);if(modalRow)loadAndDraw(modalRow,modalPeriod)">RSI 14</button>
+        </div>
+        <div id="modal-perf" style="display:none;font-size:12px;font-weight:700;margin-bottom:8px;padding:4px 10px;border-radius:12px;display:inline-block"></div>
+        <div id="modal-loading" style="display:none;text-align:center;padding:10px;color:var(--accent);font-size:12px">⏳ Caricamento dati storici…</div>
+        <div class="modal-canvas-wrap" id="modal-chart"></div>
+        <div id="modal-rsi-chart" style="display:none;height:110px;flex-shrink:0;margin-top:4px"></div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-        <span style="color:var(--text3);font-size:11px">Indicatori:</span>
-        <button class="ta-btn" id="ta-btn-bb" onclick="modalTA.bb=!modalTA.bb;this.classList.toggle('on',modalTA.bb);if(modalRow)loadAndDraw(modalRow,modalPeriod)">BB</button>
-        <button class="ta-btn" id="ta-btn-rsi" onclick="modalTA.rsi=!modalTA.rsi;this.classList.toggle('on',modalTA.rsi);if(modalRow)loadAndDraw(modalRow,modalPeriod)">RSI 14</button>
-      </div>
-      <div id="modal-perf" style="display:none;font-size:12px;font-weight:700;margin-bottom:8px;padding:4px 10px;border-radius:12px;display:inline-block"></div>
-      <div id="modal-loading" style="display:none;text-align:center;padding:10px;color:var(--accent);font-size:12px">⏳ Caricamento dati storici…</div>
-      <div class="modal-canvas-wrap" id="modal-chart"></div>
-      <div id="modal-rsi-chart" style="display:none;height:110px;flex-shrink:0;margin-top:4px"></div>
     </div>
+
+    <!-- ─ Tab: Fondamentali ─ -->
+    <div class="mtab-panel" id="mtab-fundamentals">
+      <div class="fund-wrap" id="modal-fund-content">
+        <div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📈 Fondamentali per caricare i dati</div>
+      </div>
+    </div>
+
+    <!-- ─ Tab: News ─ -->
+    <div class="mtab-panel" id="mtab-news">
+      <div class="news-wrap" id="modal-news-content">
+        <div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📰 News per caricare le ultime notizie</div>
+      </div>
+    </div>
+
+    <!-- ─ Tab: AI ─ -->
+    <div class="mtab-panel" id="mtab-ai">
+      <div class="ai-wrap" id="modal-ai-wrap">
+        <div style="color:var(--text2);font-size:12px;line-height:1.6">
+          Analisi tecnica e fondamentale generata da <strong>Claude AI</strong> in base ai dati storici recenti.
+        </div>
+        <button class="ai-analyze-btn" id="ai-analyze-btn">🤖 Analizza con AI</button>
+        <div id="modal-ai-result"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -300,6 +391,17 @@ td.ora{color:#64b5f6;font-size:10px}
       </div>
     </div>
   </div>
+  <!-- Calendario economico alto impatto -->
+  <div class="cal-panel" id="cal-panel">
+    <div class="cal-panel-header" onclick="toggleCalPanel()">
+      <span>📅 Calendario Economico — Alto Impatto</span>
+      <span id="cal-chevron">▼</span>
+    </div>
+    <div class="cal-panel-body collapsed" id="cal-panel-body">
+      <div class="cal-loading" id="cal-events">Caricamento eventi…</div>
+    </div>
+  </div>
+
   <div class="table-wrapper">
     <table id="main-table">
       <thead><tr id="thead-row"></tr></thead>
@@ -1902,6 +2004,236 @@ function updateMarkets() {
 
 updateMarkets();
 setInterval(updateMarkets, 60000);
+
+// ═══════════════════════════════════════════════════
+//  MODAL TABS
+// ═══════════════════════════════════════════════════
+document.querySelectorAll('.modal-tab').forEach(t => {
+  t.addEventListener('click', e => {
+    e.stopPropagation();
+    document.querySelectorAll('.modal-tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.mtab-panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('mtab-' + t.dataset.mtab).classList.add('active');
+    if (t.dataset.mtab === 'fundamentals' && modalRow && !document.getElementById('modal-fund-content').dataset.loaded) {
+      loadFundamentals(modalRow);
+    }
+    if (t.dataset.mtab === 'news' && modalRow && !document.getElementById('modal-news-content').dataset.loaded) {
+      loadNews(modalRow);
+    }
+  });
+});
+
+function resetModalTabs() {
+  document.querySelectorAll('.modal-tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.mtab-panel').forEach(x => x.classList.remove('active'));
+  document.querySelector('[data-mtab="chart"]').classList.add('active');
+  document.getElementById('mtab-chart').classList.add('active');
+  // Reset lazy-load flags
+  document.getElementById('modal-fund-content').removeAttribute('data-loaded');
+  document.getElementById('modal-news-content').removeAttribute('data-loaded');
+  document.getElementById('modal-fund-content').innerHTML =
+    '<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📈 Fondamentali per caricare i dati</div>';
+  document.getElementById('modal-news-content').innerHTML =
+    '<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📰 News per caricare le ultime notizie</div>';
+  document.getElementById('modal-ai-result').innerHTML = '';
+  document.getElementById('ai-analyze-btn').textContent = '🤖 Analizza con AI';
+  document.getElementById('ai-analyze-btn').disabled = false;
+}
+
+// Integra resetModalTabs in openModal
+const __origOpenModal = openModal;
+openModal = async function(idx) {
+  resetModalTabs();
+  await __origOpenModal(idx);
+};
+
+// ═══════════════════════════════════════════════════
+//  FONDAMENTALI
+// ═══════════════════════════════════════════════════
+async function loadFundamentals(row) {
+  const el = document.getElementById('modal-fund-content');
+  el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:40px">⏳ Caricamento dati fondamentali…</div>';
+  try {
+    const r = await fetch(`/fundamentals/${encodeURIComponent(row.s)}`);
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    renderFundamentals(d);
+    el.dataset.loaded = '1';
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--red);padding:20px;font-size:12px">⚠ Errore: ${e.message}</div>`;
+  }
+}
+
+function renderFundamentals(d) {
+  const el = document.getElementById('modal-fund-content');
+  const N = (v, dec=2) => (v != null && !isNaN(v)) ? Number(v).toLocaleString('it-IT',{minimumFractionDigits:dec,maximumFractionDigits:dec}) : '—';
+  const P = v => (v != null && !isNaN(v)) ? `${(v*100).toFixed(2)}%` : '—';
+  const MC = v => {
+    if (!v) return '—';
+    if (v >= 1e12) return (v/1e12).toFixed(2)+' T';
+    if (v >= 1e9)  return (v/1e9).toFixed(2)+' Mld';
+    if (v >= 1e6)  return (v/1e6).toFixed(2)+' Mln';
+    return v.toLocaleString('it-IT');
+  };
+  const items = [
+    {l:'P/E Trailing',     v: N(d.trailingPE)},
+    {l:'P/E Forward',      v: N(d.forwardPE)},
+    {l:'Price / Book',     v: N(d.priceToBook)},
+    {l:'Dividendo',        v: d.dividendYield ? d.dividendYield+'%' : '—'},
+    {l:'Market Cap',       v: MC(d.marketCap)},
+    {l:'Beta',             v: N(d.beta)},
+    {l:'52W High',         v: N(d.fiftyTwoWeekHigh)},
+    {l:'52W Low',          v: N(d.fiftyTwoWeekLow)},
+    {l:'Volume',           v: d.volume ? d.volume.toLocaleString('it-IT') : '—'},
+    {l:'TER (ETF)',        v: d.totalExpenseRatio ? (d.totalExpenseRatio*100).toFixed(2)+'%' : '—'},
+    {l:'Margine Profitto', v: P(d.profitMargins)},
+    {l:'Settore',          v: d.sector || '—'},
+    {l:'Industria',        v: d.industry || '—'},
+    {l:'Paese',            v: d.country || '—'},
+  ];
+  let html = '<div class="fund-grid">';
+  html += items.map(i => `<div class="fund-item"><span class="fund-label">${i.l}</span><span class="fund-value">${i.v}</span></div>`).join('');
+  html += '</div>';
+  if (d.description) html += `<div class="fund-desc">${d.description}</div>`;
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════
+//  NEWS
+// ═══════════════════════════════════════════════════
+async function loadNews(row) {
+  const el = document.getElementById('modal-news-content');
+  el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:40px">⏳ Caricamento news…</div>';
+  try {
+    const r = await fetch(`/news/${encodeURIComponent(row.s)}`);
+    const articles = await r.json();
+    renderNews(articles);
+    el.dataset.loaded = '1';
+  } catch(e) {
+    el.innerHTML = '<div style="color:var(--red);padding:20px;font-size:12px">⚠ Errore caricamento news</div>';
+  }
+}
+
+function renderNews(articles) {
+  const el = document.getElementById('modal-news-content');
+  if (!articles || !articles.length) {
+    el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Nessuna news disponibile per questo simbolo</div>';
+    return;
+  }
+  el.innerHTML = articles.map(a => {
+    let timeStr = '';
+    if (a.time) {
+      try {
+        const d = typeof a.time === 'number' ? new Date(a.time * 1000) : new Date(a.time);
+        timeStr = d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+      } catch {}
+    }
+    return `<div class="news-item">
+      <div class="news-meta">
+        <span class="news-publisher">${a.publisher || ''}</span>
+        <span class="news-time">${timeStr}</span>
+      </div>
+      <a class="news-title" href="${a.url || '#'}" target="_blank" rel="noopener">${a.title}</a>
+      ${a.summary ? `<div class="news-summary">${a.summary}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════
+//  AI ANALISI
+// ═══════════════════════════════════════════════════
+document.getElementById('ai-analyze-btn').addEventListener('click', async function() {
+  if (!modalRow) return;
+  this.disabled = true;
+  this.textContent = '⏳ Analisi in corso…';
+  const result = document.getElementById('modal-ai-result');
+  result.innerHTML = '';
+  try {
+    const name = encodeURIComponent(`${modalRow.m} — ${modalRow.i}`);
+    const r = await fetch(`/ai/${encodeURIComponent(modalRow.s)}?name=${name}`);
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    result.innerHTML =
+      `<div class="ai-result-box">${d.analysis}</div>` +
+      (d.generated_at ? `<div class="ai-gen-time">Generato il ${d.generated_at}</div>` : '') +
+      `<div class="ai-disclaimer">⚠ Analisi generata da AI. Non costituisce consulenza finanziaria.</div>`;
+  } catch(e) {
+    result.innerHTML = `<div style="color:var(--red);font-size:12px">⚠ ${e.message}</div>`;
+  } finally {
+    this.disabled = false;
+    this.textContent = '🔄 Rigenera analisi';
+  }
+});
+
+// ═══════════════════════════════════════════════════
+//  CALENDARIO ECONOMICO
+// ═══════════════════════════════════════════════════
+let calCollapsed = localStorage.getItem('mm_cal_collapsed') !== 'false';
+
+const FLAG_MAP = {
+  USD:'🇺🇸', EUR:'🇪🇺', GBP:'🇬🇧', JPY:'🇯🇵',
+  CNY:'🇨🇳', CAD:'🇨🇦', AUD:'🇦🇺', CHF:'🇨🇭',
+  NZD:'🇳🇿', SEK:'🇸🇪', NOK:'🇳🇴', CHF:'🇨🇭',
+};
+function flagOf(code) { return FLAG_MAP[code] || '🌍'; }
+
+async function loadCalendar() {
+  try {
+    const r = await fetch('/calendar');
+    const events = await r.json();
+    renderCalendar(events);
+  } catch(e) {
+    document.getElementById('cal-events').textContent = 'Errore caricamento calendario';
+  }
+}
+
+function renderCalendar(events) {
+  const el = document.getElementById('cal-events');
+  if (!events || !events.length) {
+    el.outerHTML = '<div class="cal-loading" id="cal-events">Nessun evento ad alto impatto questa settimana</div>';
+    return;
+  }
+  const now = Date.now();
+  const html = events.map(e => {
+    let timeStr = e.date || '';
+    let isPast = false;
+    try {
+      const dt = new Date(e.date);
+      isPast = dt < now;
+      timeStr = dt.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    } catch {}
+    return `<div class="cal-event ${isPast ? 'past' : 'upcoming'}">
+      <div class="cal-flag">${flagOf(e.country)} ${e.country||''}</div>
+      <div class="cal-info">
+        <div class="cal-title" title="${e.title||''}">${e.title||''}</div>
+        <div class="cal-time">${timeStr}</div>
+      </div>
+      <div class="cal-vals">
+        ${e.forecast ? `<span class="cal-forecast">Prev: ${e.forecast}</span>` : ''}
+        ${e.previous ? `<span class="cal-prev">Prec: ${e.previous}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  el.outerHTML = `<div id="cal-events" style="display:flex;gap:8px;flex-wrap:wrap">${html}</div>`;
+}
+
+function toggleCalPanel() {
+  calCollapsed = !calCollapsed;
+  localStorage.setItem('mm_cal_collapsed', String(!calCollapsed));
+  const body = document.getElementById('cal-panel-body');
+  body.classList.toggle('collapsed', calCollapsed);
+  document.getElementById('cal-chevron').textContent = calCollapsed ? '▼' : '▲';
+  if (!calCollapsed) loadCalendar(); // carica solo quando aperto
+}
+
+// Inizializza stato calendario
+(function() {
+  const body = document.getElementById('cal-panel-body');
+  body.classList.toggle('collapsed', calCollapsed);
+  document.getElementById('cal-chevron').textContent = calCollapsed ? '▼' : '▲';
+  if (!calCollapsed) loadCalendar();
+})();
 
 // ═══════════════════════════════════════════════════
 //  INIT
