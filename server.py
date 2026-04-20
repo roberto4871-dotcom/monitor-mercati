@@ -241,11 +241,12 @@ def fetch_fundamentals(symbol):
     try:
         info = yf.Ticker(symbol).info
         dy = info.get('dividendYield')
+        # yfinance a volte restituisce decimale (0.018) a volte già percentuale (1.8)
         data = {
             'trailingPE':        info.get('trailingPE'),
             'forwardPE':         info.get('forwardPE'),
             'priceToBook':       info.get('priceToBook'),
-            'dividendYield':     round(dy * 100, 2) if dy else None,
+            'dividendYield':     round(dy * 100, 2) if (dy and dy < 1) else (round(dy, 2) if dy else None),
             'marketCap':         info.get('marketCap'),
             'beta':              info.get('beta'),
             'fiftyTwoWeekHigh':  info.get('fiftyTwoWeekHigh'),
@@ -268,6 +269,23 @@ def fetch_fundamentals(symbol):
     with _fund_lock:
         _fund_cache[symbol] = {'data': data, 'ts': time.time()}
     return data
+
+
+def _translate_it(text):
+    """Traduce in italiano via Google Translate (API pubblica, nessuna chiave)."""
+    if not text or len(text.strip()) < 4:
+        return text
+    try:
+        import requests as req
+        r = req.get(
+            'https://translate.googleapis.com/translate_a/single',
+            params={'client': 'gtx', 'sl': 'auto', 'tl': 'it', 'dt': 't', 'q': text[:500]},
+            timeout=5, headers={'User-Agent': 'Mozilla/5.0'}
+        )
+        data = r.json()
+        return ''.join(seg[0] for seg in data[0] if seg[0])
+    except Exception:
+        return text
 
 
 def fetch_news(symbol):
@@ -294,6 +312,14 @@ def fetch_news(symbol):
                          'publisher': publisher or '', 'time': pub_time})
     except Exception:
         pass
+    # Traduci titoli e sommari in italiano (parallelo)
+    if data:
+        def translate_item(item):
+            item['title']   = _translate_it(item['title'])
+            item['summary'] = _translate_it(item['summary'])
+            return item
+        with ThreadPoolExecutor(max_workers=4) as ex:
+            data = list(ex.map(translate_item, data))
     with _news_lock:
         _news_cache[symbol] = {'data': data, 'ts': time.time()}
     return data
