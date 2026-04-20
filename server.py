@@ -32,6 +32,8 @@ _news_cache    = {}; _news_lock    = threading.Lock(); NEWS_TTL    = 900
 _cal_cache     = {}; _cal_lock     = threading.Lock(); CAL_TTL     = 1800
 _monthly_cache = {}; _monthly_lock = threading.Lock(); MONTHLY_TTL = 3600
 _weekly_cache  = {}; _weekly_lock  = threading.Lock(); WEEKLY_TTL  = 3600
+# ISIN cache — permanente (ISIN non cambia mai)
+_isin_cache    = {}; _isin_lock    = threading.Lock()
 
 
 def fetch_symbol(symbol, period='3mo', interval='1d'):
@@ -273,6 +275,33 @@ def fetch_fundamentals(symbol):
     return data
 
 
+def fetch_isin(symbol):
+    """Restituisce l'ISIN del simbolo — cache permanente (non cambia mai)."""
+    with _isin_lock:
+        if symbol in _isin_cache:
+            return _isin_cache[symbol]
+    isin = None
+    try:
+        t = yf.Ticker(symbol)
+        # Prova prima la property dedicata
+        raw = getattr(t, 'isin', None)
+        if raw and isinstance(raw, str) and len(raw) >= 12 and raw != '-':
+            isin = raw.strip()
+        else:
+            # Fallback: da ticker.info (più lento)
+            try:
+                raw2 = t.info.get('isin')
+                if raw2 and len(raw2) >= 12 and raw2 != '-':
+                    isin = raw2.strip()
+            except Exception:
+                pass
+    except Exception:
+        pass
+    with _isin_lock:
+        _isin_cache[symbol] = isin
+    return isin
+
+
 def _translate_it(text):
     """Traduce in italiano via Google Translate (API pubblica, nessuna chiave)."""
     if not text or len(text.strip()) < 4:
@@ -467,6 +496,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif self.path.startswith('/fundamentals/'):
             sym = urllib.parse.unquote(self.path[len('/fundamentals/'):].split('?')[0])
             self._json(fetch_fundamentals(sym))
+        elif self.path.startswith('/isin/'):
+            sym = urllib.parse.unquote(self.path[len('/isin/'):].split('?')[0])
+            self._json({'isin': fetch_isin(sym)})
         elif self.path.startswith('/news/'):
             sym = urllib.parse.unquote(self.path[len('/news/'):].split('?')[0])
             self._json(fetch_news(sym))
