@@ -363,12 +363,28 @@ td.ora{color:#64b5f6;font-size:10px}
           <span style="color:var(--text3);font-size:11px">Indicatori:</span>
           <button class="ta-btn" id="ta-btn-bb" onclick="modalTA.bb=!modalTA.bb;this.classList.toggle('on',modalTA.bb);if(modalRow)loadAndDraw(modalRow,modalPeriod)">BB</button>
           <button class="ta-btn" id="ta-btn-rsi" onclick="modalTA.rsi=!modalTA.rsi;this.classList.toggle('on',modalTA.rsi);if(modalRow)loadAndDraw(modalRow,modalPeriod)">RSI 14</button>
-          <span style="color:var(--border);font-size:14px;margin:0 2px">|</span>
-          <span style="color:var(--text3);font-size:11px;white-space:nowrap">Forza rel. vs:</span>
-          <input id="cmp-input" placeholder="es. ^GSPC, IWDA.AS"
-            style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:16px;padding:3px 10px;font-size:11px;width:130px;outline:none"
-            onkeydown="if(event.key==='Enter')toggleCmp()">
-          <button class="ta-btn" id="cmp-btn" onclick="toggleCmp()">Attiva</button>
+        </div>
+        <!-- Confronto forza relativa -->
+        <div style="position:relative;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="color:var(--accent);font-size:11px;font-weight:700">⚡ Forza relativa vs:</span>
+            <div style="position:relative;flex:1;max-width:260px">
+              <input id="cmp-input" placeholder="🔍 Cerca per nome (es. S&amp;P, Nasdaq, ENI…)"
+                style="background:var(--bg3);border:1px solid var(--border);color:var(--text);
+                       border-radius:16px;padding:4px 12px;font-size:11px;width:100%;outline:none;
+                       transition:border-color .15s"
+                autocomplete="off"
+                oninput="cmpSearch(this.value)"
+                onkeydown="if(event.key==='Enter'&&cmpSym)applyCmp();if(event.key==='Escape')closeCmpDrop()">
+              <div id="cmp-drop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;
+                   background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+                   z-index:2000;max-height:220px;overflow-y:auto;box-shadow:0 6px 24px rgba(0,0,0,.4)"></div>
+            </div>
+            <button class="ta-btn" id="cmp-btn" onclick="toggleCmp()" style="white-space:nowrap">Confronta</button>
+          </div>
+          <div id="cmp-active-label" style="display:none;margin-top:4px;font-size:10px;color:var(--text3)">
+            📊 Confronto attivo — premi <b>Stop</b> per tornare al grafico normale
+          </div>
         </div>
         <div id="modal-perf" style="display:none;font-size:12px;font-weight:700;margin-bottom:8px;padding:4px 10px;border-radius:12px;display:inline-block"></div>
         <div id="modal-loading" style="display:none;text-align:center;padding:10px;color:var(--accent);font-size:12px">⏳ Caricamento dati storici…</div>
@@ -1490,22 +1506,69 @@ function calcBB(pairs, period = 20, mult = 2) {
 }
 
 // ── FORZA RELATIVA ─────────────────────────────────────────────
-async function toggleCmp() {
-  const btn = document.getElementById('cmp-btn');
-  if (cmpActive) {
-    cmpActive = false;
-    btn.classList.remove('on');
-    btn.textContent = 'Attiva';
-    if (modalRow) loadAndDraw(modalRow, modalPeriod);
-    return;
-  }
-  const sym = (document.getElementById('cmp-input').value || '').trim().toUpperCase();
-  if (!sym) return;
+
+// Autocomplete: cerca tra gli strumenti in dashboard mentre l'utente digita
+function cmpSearch(q) {
+  const drop = document.getElementById('cmp-drop');
+  q = (q || '').toLowerCase().trim();
+  if (!q) { drop.style.display = 'none'; return; }
+  const matches = INSTRUMENTS.filter(inst =>
+    inst.i.toLowerCase().includes(q) ||
+    inst.s.toLowerCase().includes(q) ||
+    (inst.a && inst.a.toLowerCase().includes(q))
+  ).slice(0, 10);
+  if (!matches.length) { drop.style.display = 'none'; return; }
+  drop.innerHTML = matches.map(inst => `
+    <div onclick="selectCmpInst('${inst.s.replace(/'/g,"\\'")}','${inst.i.replace(/'/g,"\\'")}')"
+         style="padding:7px 12px;cursor:pointer;border-bottom:1px solid var(--border);
+                display:flex;justify-content:space-between;align-items:center;gap:8px"
+         onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+      <span style="font-weight:600;font-size:12px">${inst.i}</span>
+      <span style="font-size:10px;color:var(--text3);white-space:nowrap">${inst.a}</span>
+    </div>`).join('');
+  drop.style.display = 'block';
+}
+
+function closeCmpDrop() {
+  document.getElementById('cmp-drop').style.display = 'none';
+}
+
+// L'utente seleziona uno strumento dal dropdown → attiva subito
+function selectCmpInst(sym, name) {
+  document.getElementById('cmp-input').value = name;
+  document.getElementById('cmp-drop').style.display = 'none';
   cmpSym = sym;
+  applyCmp();
+}
+
+function applyCmp() {
+  if (!cmpSym) return;
   cmpActive = true;
+  const btn = document.getElementById('cmp-btn');
   btn.classList.add('on');
-  btn.textContent = 'Off';
+  btn.textContent = 'Stop';
+  document.getElementById('cmp-active-label').style.display = 'block';
   if (modalRow) loadAndDraw(modalRow, modalPeriod);
+}
+
+function toggleCmp() {
+  if (cmpActive) {
+    // Disattiva
+    cmpActive = false;
+    cmpSym = '';
+    document.getElementById('cmp-input').value = '';
+    const btn = document.getElementById('cmp-btn');
+    btn.classList.remove('on');
+    btn.textContent = 'Confronta';
+    document.getElementById('cmp-active-label').style.display = 'none';
+    if (modalRow) loadAndDraw(modalRow, modalPeriod);
+  } else {
+    // Attiva con testo digitato manualmente
+    const sym = (document.getElementById('cmp-input').value || '').trim().toUpperCase();
+    if (!sym) return;
+    cmpSym = sym;
+    applyCmp();
+  }
 }
 
 async function fetchCmpData(sym, period, interval) {
@@ -1522,20 +1585,20 @@ async function fetchCmpData(sym, period, interval) {
   } catch { return []; }
 }
 
-// Calcola forza relativa: linea normalizzata a 100, allineata per timestamp
+// Calcola forza relativa normalizzata a 100 — allinea per timestamp con binary search
 function calcRS(aPairs, bPairs) {
-  const bMap = {};
-  bPairs.forEach(p => { bMap[p.t] = p.c; });
-  // Cerca timestamp comuni (tolleranza ±86400s per dati settimanali/mensili)
-  const result = [];
+  const sortedB = [...bPairs].sort((x, y) => x.t - y.t);
+  const result  = [];
   for (const p of aPairs) {
-    let bVal = bMap[p.t];
-    if (bVal === undefined) {
-      // cerca il timestamp più vicino entro 2 giorni
-      const near = Object.keys(bMap).find(k => Math.abs(k - p.t) <= 172800);
-      if (near) bVal = bMap[near];
+    // Binary search del timestamp più vicino in B
+    let lo = 0, hi = sortedB.length - 1, best = null;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (!best || Math.abs(sortedB[mid].t - p.t) < Math.abs(best.t - p.t)) best = sortedB[mid];
+      if (sortedB[mid].t < p.t) lo = mid + 1; else hi = mid - 1;
     }
-    if (bVal !== undefined) result.push({ t: p.t, aC: p.c, bC: bVal });
+    if (best && Math.abs(best.t - p.t) <= 5 * 86400) // tolleranza 5 giorni
+      result.push({ t: p.t, aC: p.c, bC: best.c });
   }
   if (result.length < 2) return [];
   const a0 = result[0].aC, b0 = result[0].bC;
@@ -1901,18 +1964,25 @@ function closeModal() {
   if (modalRsiChart) { modalRsiChart.remove(); modalRsiChart = null; }
   document.getElementById('modal-rsi-chart').style.display = 'none';
   // Reset confronto
-  cmpActive = false;
+  cmpActive = false; cmpSym = '';
   document.getElementById('cmp-btn').classList.remove('on');
-  document.getElementById('cmp-btn').textContent = 'Attiva';
+  document.getElementById('cmp-btn').textContent = 'Confronta';
   document.getElementById('cmp-input').value = '';
+  document.getElementById('cmp-drop').style.display = 'none';
+  document.getElementById('cmp-active-label').style.display = 'none';
   modalRow = null;
 }
 
 
-// Guardia globale: blocca qualsiasi click che arrivi fuori dal modale quando è aperto
+// Guardia globale: blocca click fuori dal modal; chiude dropdown confronto se aperto
 document.addEventListener('click', e => {
   const overlay = document.getElementById('modal-overlay');
   if (!overlay.classList.contains('open')) return;
+  // Chiudi dropdown confronto se si clicca fuori da esso
+  const cmpDrop = document.getElementById('cmp-drop');
+  const cmpInp  = document.getElementById('cmp-input');
+  if (cmpDrop && !cmpDrop.contains(e.target) && e.target !== cmpInp)
+    cmpDrop.style.display = 'none';
   if (!overlay.contains(e.target)) {
     e.stopPropagation();
     e.preventDefault();
