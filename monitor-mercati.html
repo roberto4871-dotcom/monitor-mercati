@@ -1145,10 +1145,13 @@ function fmtCell(col, row) {
     case 'yld':  return v !== null && v !== undefined ? `<span class="pos">${fmtN(v,2)}%</span>` : '<span class="na">—</span>';
     case 'rs': {
       if (v === null || v === undefined || isNaN(v)) return '<span class="na">—</span>';
-      const cls = v > 0.1 ? 'pos' : v < -0.1 ? 'neg' : 'zero';
+      const cls  = v > 0.05 ? 'pos' : v < -0.05 ? 'neg' : 'zero';
       const sign = v > 0 ? '+' : '';
-      const tip  = `Forza relativa vs ${rsConfig.label} (${rsConfig.period.replace('p','').replace('7','7gg').replace('30','30gg').replace('60','60gg').replace('90','90gg')})`;
-      return `<span class="${cls}" title="${tip}" style="font-weight:600">${sign}${v.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})}pp</span>`;
+      const periodLabels = { p7:'7gg', p30:'30gg', p60:'60gg', p90:'90gg', ytdLocal:'YTD' };
+      const per  = periodLabels[rsConfig.period] || rsConfig.period;
+      const word = v > 0.05 ? 'più forte' : v < -0.05 ? 'più debole' : 'in linea';
+      const tip  = `${word} del ${rsConfig.label} negli ultimi ${per}`;
+      return `<span class="${cls}" title="${tip}" style="font-weight:600">${sign}${v.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})}%</span>`;
     }
     case 'momentum': {
       if (v === null || v === undefined) return '<span class="na">—</span>';
@@ -1559,7 +1562,9 @@ function computeRS() {
     if (instVal === null || instVal === undefined || benchVal === null || benchVal === undefined) {
       rows[idx]._rs = null;
     } else {
-      rows[idx]._rs = instVal - benchVal;
+      // Ratio composto: vera % di sovra/sotto performance rispetto al benchmark
+      // es. strumento +10%, bench +6%  →  (1.10/1.06 - 1)*100 = +3.77%
+      rows[idx]._rs = ((1 + instVal / 100) / (1 + benchVal / 100) - 1) * 100;
     }
     updateRow(idx);
   });
