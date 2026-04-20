@@ -1698,6 +1698,93 @@ function showMomentumLegend(btn) {
   setTimeout(() => document.addEventListener('click', close), 50);
 }
 
+function showMomentumSortMenu(btn) {
+  const existing = document.getElementById('momentum-sort-popup');
+  if (existing) { existing.remove(); return; }
+
+  const popup = document.createElement('div');
+  popup.id = 'momentum-sort-popup';
+
+  const mkOpt = (label, col, dir) => {
+    const active = sortCol === col && sortDir === dir;
+    const opt = document.createElement('div');
+    opt.innerHTML = label;
+    Object.assign(opt.style, {
+      padding:'8px 14px', cursor:'pointer', fontSize:'12px',
+      color: active ? 'var(--accent)' : 'var(--text)',
+      fontWeight: active ? '700' : '400',
+      background: active ? 'rgba(255,215,0,.08)' : 'transparent',
+      borderRadius:'6px', display:'flex', alignItems:'center', gap:'8px',
+    });
+    opt.addEventListener('mouseenter', () => opt.style.background = 'rgba(255,255,255,.06)');
+    opt.addEventListener('mouseleave', () => opt.style.background = active ? 'rgba(255,215,0,.08)' : 'transparent');
+    opt.addEventListener('click', () => {
+      sortCol = col; sortDir = dir;
+      renderTable();
+      popup.remove();
+      document.removeEventListener('click', close);
+    });
+    return opt;
+  };
+
+  const mkReset = () => {
+    const opt = document.createElement('div');
+    opt.innerHTML = '<span style="opacity:.5">✕</span>&nbsp; Rimuovi ordinamento';
+    const active = sortCol !== '_momentum';
+    Object.assign(opt.style, {
+      padding:'8px 14px', cursor:'pointer', fontSize:'12px',
+      color:'var(--text3)', borderTop:'1px solid var(--border)',
+      marginTop:'4px', paddingTop:'10px', borderRadius:'0 0 6px 6px',
+    });
+    opt.addEventListener('mouseenter', () => opt.style.color = 'var(--text)');
+    opt.addEventListener('mouseleave', () => opt.style.color = 'var(--text3)');
+    opt.addEventListener('click', () => {
+      sortCol = null; sortDir = 1;
+      renderTable();
+      popup.remove();
+      document.removeEventListener('click', close);
+    });
+    return opt;
+  };
+
+  Object.assign(popup.style, {
+    position:'fixed', zIndex:'9999',
+    background:'var(--bg2)', border:'1px solid var(--border)',
+    borderRadius:'10px', padding:'6px',
+    boxShadow:'0 8px 24px rgba(0,0,0,.5)', minWidth:'210px',
+  });
+
+  const title = document.createElement('div');
+  title.textContent = 'Ordina Momentum Score';
+  Object.assign(title.style, {
+    fontSize:'10px', fontWeight:'700', color:'var(--text3)',
+    letterSpacing:'.5px', textTransform:'uppercase',
+    padding:'4px 8px 8px', borderBottom:'1px solid var(--border)', marginBottom:'4px',
+  });
+  popup.appendChild(title);
+  popup.appendChild(mkOpt('↓ &nbsp;Dal più alto al più basso', '_momentum', -1));
+  popup.appendChild(mkOpt('↑ &nbsp;Dal più basso al più alto', '_momentum',  1));
+  popup.appendChild(mkReset());
+
+  document.body.appendChild(popup);
+
+  const rect = btn.getBoundingClientRect();
+  const pw = popup.offsetWidth;
+  let left = rect.right - pw;
+  if (left < 8) left = 8;
+  if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+  popup.style.top  = (rect.bottom + 6) + 'px';
+  popup.style.left = left + 'px';
+
+  const close = (e) => {
+    if (!popup.contains(e.target) && e.target !== btn) {
+      popup.remove();
+      document.removeEventListener('click', close);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', close), 50);
+}
+
 // ═══════════════════════════════════════════════════
 //  RENDER TABLE
 // ═══════════════════════════════════════════════════
@@ -2631,7 +2718,7 @@ buildThead = function() {
     const lbl = c.key === 'ma'
       ? `MA<br>50/200&thinsp;<span onclick="event.stopPropagation();showMaLegend(this)" title="Legenda" style="cursor:pointer;font-size:10px;opacity:.7;vertical-align:middle;user-select:none">ℹ</span>`
       : c.key === '_momentum'
-      ? `Momentum<br>Score&thinsp;<span onclick="event.stopPropagation();showMomentumLegend(this)" title="Come funziona il Momentum Score" style="cursor:pointer;font-size:10px;opacity:.7;vertical-align:middle;user-select:none">ℹ</span>`
+      ? `Momentum<br>Score&thinsp;<span onclick="event.stopPropagation();showMomentumLegend(this)" title="Come funziona il Momentum Score" style="cursor:pointer;font-size:10px;opacity:.7;vertical-align:middle;user-select:none">ℹ</span><span onclick="event.stopPropagation();showMomentumSortMenu(this)" title="Ordina" style="cursor:pointer;font-size:11px;opacity:.7;vertical-align:middle;user-select:none;margin-left:2px">${sortCol==='_momentum'?(sortDir===1?'↑':'↓'):'⇅'}</span>`
       : c.label.replace('\n','<br>');
     return `<th class="${cls}" onclick="doSort('${c.key}')">${lbl}</th>`;
   }).join('');
