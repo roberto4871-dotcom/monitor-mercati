@@ -296,18 +296,25 @@ def fetch_fundamentals(symbol):
 
         # ── Prossima trimestrale (calendar) ───────────────────────
         try:
+            import datetime
+            today  = datetime.date.today()
             cal    = t.calendar
             dates  = cal.get('Earnings Date', [])
-            next_d = dates[0] if dates else None
-            data['nextEarnings'] = {
-                'date':    next_d.strftime('%Y-%m-%d') if (next_d and hasattr(next_d, 'strftime')) else None,
-                'epsAvg':  cal.get('Earnings Average'),
-                'epsHigh': cal.get('Earnings High'),
-                'epsLow':  cal.get('Earnings Low'),
-                'revAvg':  cal.get('Revenue Average'),
-                'revHigh': cal.get('Revenue High'),
-                'revLow':  cal.get('Revenue Low'),
-            }
+            # Prendi solo date FUTURE (ignora quelle già passate)
+            future = [d for d in dates if hasattr(d, 'strftime') and d >= today]
+            next_d = future[0] if future else None
+            if next_d:
+                data['nextEarnings'] = {
+                    'date':    next_d.strftime('%Y-%m-%d'),
+                    'epsAvg':  cal.get('Earnings Average'),
+                    'epsHigh': cal.get('Earnings High'),
+                    'epsLow':  cal.get('Earnings Low'),
+                    'revAvg':  cal.get('Revenue Average'),
+                    'revHigh': cal.get('Revenue High'),
+                    'revLow':  cal.get('Revenue Low'),
+                }
+            else:
+                data['nextEarnings'] = {}
         except Exception:
             data['nextEarnings'] = {}
 
