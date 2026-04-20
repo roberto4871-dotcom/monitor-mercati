@@ -1025,6 +1025,8 @@ let sortCol = null;
 let sortDir = 1;
 let activeFilter = 'all';
 let maBreadthFilter = null;   // null | 'ma50' | 'ma200' | 'maBoth'
+let rsConfig = JSON.parse(localStorage.getItem('mm_rs_config') || 'null') ||
+               { sym: '^GSPC', label: 'S&P 500', period: 'p30' };
 let refreshTimer, cdTimer;
 let charts = {};
 let loading = false;
@@ -1051,6 +1053,7 @@ const COLS = [
   {key:'spark',    label:'Trend',               cls:'spark-col',         fmt:'spark'},
   {key:'ma',       label:'MA\n50/200',          cls:'num ma-col',        fmt:'ma'},
   {key:'_momentum',label:'Momentum\nScore',     cls:'num',               fmt:'momentum'},
+  {key:'_rs',      label:'Forza\nRelativa',     cls:'num',               fmt:'rs'},
   {key:'yld',      label:'Rendimento\n(Yield %)',cls:'num',              fmt:'yld', bondsOnly:true},
 ];
 
@@ -1140,6 +1143,13 @@ function fmtCell(col, row) {
     }
     case 'numS': return fmtS(v);
     case 'yld':  return v !== null && v !== undefined ? `<span class="pos">${fmtN(v,2)}%</span>` : '<span class="na">—</span>';
+    case 'rs': {
+      if (v === null || v === undefined || isNaN(v)) return '<span class="na">—</span>';
+      const cls = v > 0.1 ? 'pos' : v < -0.1 ? 'neg' : 'zero';
+      const sign = v > 0 ? '+' : '';
+      const tip  = `Forza relativa vs ${rsConfig.label} (${rsConfig.period.replace('p','').replace('7','7gg').replace('30','30gg').replace('60','60gg').replace('90','90gg')})`;
+      return `<span class="${cls}" title="${tip}" style="font-weight:600">${sign}${v.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})}pp</span>`;
+    }
     case 'momentum': {
       if (v === null || v === undefined) return '<span class="na">—</span>';
       const score = Math.round(v);
@@ -1382,6 +1392,9 @@ async function loadAll() {
   // Calcola Score Momentum Composito (client-side, dai dati p7/p30/p60/p90 già disponibili)
   computeMomentumScores();
 
+  // Calcola Forza Relativa vs benchmark configurato
+  computeRS();
+
   // Salva in localStorage (yield già valorizzati)
   try {
     // Salva senza _hist (troppo grande) né _ma50/_ma200 (ricaricarti freschi)
@@ -1509,6 +1522,158 @@ function computeMomentumScores() {
     rows[idx]._momentum = score;
     updateRow(idx);
   });
+}
+
+// ═══════════════════════════════════════════════════
+//  FEATURE 6 — FORZA RELATIVA VS BENCHMARK
+// ═══════════════════════════════════════════════════
+const RS_BENCHMARKS = [
+  { sym:'^GSPC',     label:'S&P 500' },
+  { sym:'^NDX',      label:'Nasdaq 100' },
+  { sym:'^STOXX50E', label:'Euro Stoxx 50' },
+  { sym:'IWRD.AS',   label:'MSCI World' },
+  { sym:'^GDAXI',    label:'DAX' },
+  { sym:'^FCHI',     label:'CAC 40' },
+  { sym:'FTSEMIB.MI',label:'FTSE MIB' },
+  { sym:'^FTSE',     label:'FTSE 100' },
+  { sym:'GC=F',      label:'Oro' },
+  { sym:'CL=F',      label:'Petrolio WTI' },
+];
+const RS_PERIODS = [
+  { key:'p7',  label:'Ultima settimana' },
+  { key:'p30', label:'30 giorni' },
+  { key:'p60', label:'60 giorni' },
+  { key:'p90', label:'90 giorni' },
+  { key:'ytdLocal', label:'YTD (val. locale)' },
+];
+
+function computeRS() {
+  const bench = rows.find(r => r.s === rsConfig.sym);
+  const benchVal = bench ? bench[rsConfig.period] : null;
+  rows.forEach((row, idx) => {
+    if (row.s === rsConfig.sym) {
+      rows[idx]._rs = null; // il benchmark stesso non ha RS vs se stesso
+      return;
+    }
+    const instVal = row[rsConfig.period];
+    if (instVal === null || instVal === undefined || benchVal === null || benchVal === undefined) {
+      rows[idx]._rs = null;
+    } else {
+      rows[idx]._rs = instVal - benchVal;
+    }
+    updateRow(idx);
+  });
+}
+
+function showRsConfig(btn) {
+  const existing = document.getElementById('rs-config-popup');
+  if (existing) { existing.remove(); return; }
+
+  const popup = document.createElement('div');
+  popup.id = 'rs-config-popup';
+  Object.assign(popup.style, {
+    position:'fixed', zIndex:'9999',
+    background:'var(--bg2)', border:'1px solid var(--border)',
+    borderRadius:'10px', padding:'14px 16px',
+    boxShadow:'0 8px 32px rgba(0,0,0,.5)', minWidth:'240px',
+  });
+
+  const title = document.createElement('div');
+  title.textContent = 'Forza Relativa — Configura';
+  Object.assign(title.style, {
+    fontSize:'10px', fontWeight:'700', color:'var(--accent)',
+    letterSpacing:'.6px', textTransform:'uppercase', marginBottom:'12px',
+  });
+  popup.appendChild(title);
+
+  // Sezione benchmark
+  const bLabel = document.createElement('div');
+  bLabel.textContent = 'Benchmark';
+  Object.assign(bLabel.style, { fontSize:'10px', color:'var(--text3)', marginBottom:'5px', fontWeight:'700' });
+  popup.appendChild(bLabel);
+
+  RS_BENCHMARKS.forEach(b => {
+    const opt = document.createElement('div');
+    const active = rsConfig.sym === b.sym;
+    opt.textContent = b.label;
+    Object.assign(opt.style, {
+      padding:'5px 10px', cursor:'pointer', fontSize:'12px', borderRadius:'6px',
+      color: active ? 'var(--accent)' : 'var(--text)',
+      fontWeight: active ? '700' : '400',
+      background: active ? 'rgba(255,215,0,.1)' : 'transparent',
+    });
+    opt.addEventListener('mouseenter', () => { if (!active) opt.style.background = 'rgba(255,255,255,.05)'; });
+    opt.addEventListener('mouseleave', () => { if (!active) opt.style.background = 'transparent'; });
+    opt.addEventListener('click', () => {
+      rsConfig = { ...rsConfig, sym: b.sym, label: b.label };
+      localStorage.setItem('mm_rs_config', JSON.stringify(rsConfig));
+      computeRS();
+      popup.remove();
+      document.removeEventListener('click', close);
+      buildThead(); // aggiorna header col tooltip
+    });
+    popup.appendChild(opt);
+  });
+
+  // Separatore
+  const sep = document.createElement('div');
+  Object.assign(sep.style, { borderTop:'1px solid var(--border)', margin:'10px 0 8px' });
+  popup.appendChild(sep);
+
+  // Sezione periodo
+  const pLabel = document.createElement('div');
+  pLabel.textContent = 'Periodo';
+  Object.assign(pLabel.style, { fontSize:'10px', color:'var(--text3)', marginBottom:'5px', fontWeight:'700' });
+  popup.appendChild(pLabel);
+
+  RS_PERIODS.forEach(p => {
+    const opt = document.createElement('div');
+    const active = rsConfig.period === p.key;
+    opt.textContent = p.label;
+    Object.assign(opt.style, {
+      padding:'5px 10px', cursor:'pointer', fontSize:'12px', borderRadius:'6px',
+      color: active ? 'var(--accent)' : 'var(--text)',
+      fontWeight: active ? '700' : '400',
+      background: active ? 'rgba(255,215,0,.1)' : 'transparent',
+    });
+    opt.addEventListener('mouseenter', () => { if (!active) opt.style.background = 'rgba(255,255,255,.05)'; });
+    opt.addEventListener('mouseleave', () => { if (!active) opt.style.background = 'transparent'; });
+    opt.addEventListener('click', () => {
+      rsConfig = { ...rsConfig, period: p.key };
+      localStorage.setItem('mm_rs_config', JSON.stringify(rsConfig));
+      computeRS();
+      popup.remove();
+      document.removeEventListener('click', close);
+    });
+    popup.appendChild(opt);
+  });
+
+  // Footer info
+  const info = document.createElement('div');
+  info.textContent = 'Differenza in punti percentuali vs benchmark nel periodo selezionato.';
+  Object.assign(info.style, {
+    fontSize:'10px', color:'var(--text3)', marginTop:'10px',
+    paddingTop:'8px', borderTop:'1px solid var(--border)', lineHeight:'1.4',
+  });
+  popup.appendChild(info);
+
+  document.body.appendChild(popup);
+
+  const rect = btn.getBoundingClientRect();
+  const pw = popup.offsetWidth;
+  let left = rect.right - pw;
+  if (left < 8) left = 8;
+  if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+  popup.style.top  = (rect.bottom + 6) + 'px';
+  popup.style.left = left + 'px';
+
+  const close = (e) => {
+    if (!popup.contains(e.target) && e.target !== btn) {
+      popup.remove();
+      document.removeEventListener('click', close);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', close), 50);
 }
 
 // ═══════════════════════════════════════════════════
@@ -2693,7 +2858,7 @@ function setFontSize(size) {
 // ═══════════════════════════════════════════════════
 //  FEATURE 3: COLONNE NASCONDIBILI
 // ═══════════════════════════════════════════════════
-const HIDEABLE_KEYS = new Set(['valore','varAtt','fine2025','ytdLocal','ytdEur','p7','p30','p60','p90','spark','ma','_momentum','yld']);
+const HIDEABLE_KEYS = new Set(['valore','varAtt','fine2025','ytdLocal','ytdEur','p7','p30','p60','p90','spark','ma','_momentum','_rs','yld']);
 let hiddenCols = new Set(JSON.parse(localStorage.getItem('mm_hidden_cols') || '[]'));
 
 function buildColsDropdown() {
@@ -2738,6 +2903,8 @@ buildThead = function() {
       ? `MA<br>50/200&thinsp;<span onclick="event.stopPropagation();showMaLegend(this)" title="Legenda" style="cursor:pointer;font-size:10px;opacity:.7;vertical-align:middle;user-select:none">ℹ</span>`
       : c.key === '_momentum'
       ? `Momentum<br>Score&thinsp;<span onclick="event.stopPropagation();showMomentumLegend(this)" title="Come funziona il Momentum Score" style="cursor:pointer;font-size:10px;opacity:.7;vertical-align:middle;user-select:none">ℹ</span><span onclick="event.stopPropagation();showMomentumSortMenu(this)" title="Ordina" style="cursor:pointer;font-size:11px;opacity:.7;vertical-align:middle;user-select:none;margin-left:2px">${sortCol==='_momentum'?(sortDir===1?'↑':'↓'):'⇅'}</span>`
+      : c.key === '_rs'
+      ? `Forza<br>Relativa&thinsp;<span onclick="event.stopPropagation();showRsConfig(this)" title="Configura benchmark e periodo" style="cursor:pointer;font-size:11px;opacity:.8;vertical-align:middle;user-select:none">⚙</span>`
       : c.label.replace('\n','<br>');
     return `<th class="${cls}" onclick="doSort('${c.key}')">${lbl}</th>`;
   }).join('');
