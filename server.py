@@ -432,6 +432,37 @@ def fetch_fundamentals(symbol):
         except Exception:
             data['nextEarnings'] = {}
 
+        # ── Consensus analisti ────────────────────────────────
+        data['analystConsensus'] = info.get('recommendationKey')       # 'strong_buy','buy','hold','sell','underperform'
+        data['analystCount']     = info.get('numberOfAnalystOpinions')
+        data['targetMean']       = info.get('targetMeanPrice')
+        data['targetHigh']       = info.get('targetHighPrice')
+        data['targetLow']        = info.get('targetLowPrice')
+        data['targetMedian']     = info.get('targetMedianPrice')
+
+        # Breakdown buy/hold/sell (ultimo mese)
+        try:
+            rec = t.recommendations_summary
+            if rec is not None and not rec.empty and 'period' in rec.columns:
+                curr_rows = rec[rec['period'] == '0m']
+                if curr_rows.empty:
+                    curr_rows = rec.iloc[:1]
+                curr = curr_rows.iloc[0]
+                def _ri(col):
+                    try: return int(curr.get(col, 0) or 0)
+                    except: return 0
+                data['analystBreakdown'] = {
+                    'strongBuy':  _ri('strongBuy'),
+                    'buy':        _ri('buy'),
+                    'hold':       _ri('hold'),
+                    'sell':       _ri('sell'),
+                    'strongSell': _ri('strongSell'),
+                }
+            else:
+                data['analystBreakdown'] = {}
+        except Exception:
+            data['analystBreakdown'] = {}
+
     except Exception as e:
         data = {'error': str(e)}
     with _fund_lock:
