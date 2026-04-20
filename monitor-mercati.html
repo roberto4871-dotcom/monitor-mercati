@@ -815,7 +815,6 @@ const COLS = [
   {key:'a',        label:'Categoria',            cls:'left asset-class', fmt:'str'},
   {key:'isin',     label:'ISIN',                 cls:'left isin-col',    fmt:'str'},
   {key:'i',        label:'Nome',                 cls:'left indice',      fmt:'str'},
-  {key:'m',        label:'Ticker',               cls:'left mercato',     fmt:'str'},
 {key:'valore',   label:'Valore Attuale',        cls:'num',              fmt:'num2'},
   {key:'varAtt',   label:'Var. %\nGiornaliera',  cls:'num',              fmt:'pct'},
   {key:'fine2025', label:'Fine 2025',             cls:'num',              fmt:'num2'},
@@ -1880,7 +1879,7 @@ function setFontSize(size) {
 //  FEATURE 3: COLONNE NASCONDIBILI
 // ═══════════════════════════════════════════════════
 const HIDEABLE_KEYS = new Set(['valore','varAtt','fine2025','ytdLocal','ytdEur','p7','p30','p60','p90','spark','yld']);
-let hiddenCols = new Set(JSON.parse(localStorage.getItem('mm_hidden_cols') || '["m"]'));
+let hiddenCols = new Set(JSON.parse(localStorage.getItem('mm_hidden_cols') || '[]'));
 
 function buildColsDropdown() {
   const dd = document.getElementById('cols-dropdown');

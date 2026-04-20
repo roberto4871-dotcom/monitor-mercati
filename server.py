@@ -276,27 +276,52 @@ def fetch_fundamentals(symbol):
 
 
 def fetch_isin(symbol):
-    """Restituisce l'ISIN del simbolo — cache permanente (non cambia mai)."""
+    """Restituisce l'ISIN del simbolo via Yahoo Finance search API.
+    Cache permanente (ISIN non cambia mai).
+    Indici (^), FX (=X) e futures (=F) non hanno ISIN → None.
+    """
     with _isin_lock:
         if symbol in _isin_cache:
             return _isin_cache[symbol]
+
+    # Indici, valute e futures non hanno ISIN
+    if symbol.startswith('^') or symbol.endswith('=X') or symbol.endswith('=F'):
+        with _isin_lock:
+            _isin_cache[symbol] = None
+        return None
+
     isin = None
     try:
-        t = yf.Ticker(symbol)
-        # Prova prima la property dedicata
-        raw = getattr(t, 'isin', None)
-        if raw and isinstance(raw, str) and len(raw) >= 12 and raw != '-':
-            isin = raw.strip()
-        else:
-            # Fallback: da ticker.info (più lento)
-            try:
-                raw2 = t.info.get('isin')
-                if raw2 and len(raw2) >= 12 and raw2 != '-':
-                    isin = raw2.strip()
-            except Exception:
-                pass
+        import requests as req
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+            'Accept': 'application/json',
+        }
+        # Yahoo Finance search endpoint — restituisce ISIN per azioni ed ETF
+        url = (
+            f'https://query2.finance.yahoo.com/v1/finance/search'
+            f'?q={urllib.parse.quote(symbol)}&quotesCount=5&newsCount=0&enableFuzzyQuery=false'
+        )
+        r = req.get(url, headers=headers, timeout=10)
+        r.raise_for_status()
+        for q in r.json().get('quotes', []):
+            if q.get('symbol') == symbol:
+                raw = q.get('isin') or q.get('ISIN')
+                if raw and isinstance(raw, str) and len(raw) >= 12 and raw != '-':
+                    isin = raw.strip()
+                break
     except Exception:
         pass
+
+    # Fallback: ticker.info (più lento, funziona per alcuni ETF europei)
+    if not isin:
+        try:
+            raw2 = yf.Ticker(symbol).info.get('isin')
+            if raw2 and isinstance(raw2, str) and len(raw2) >= 12 and raw2 != '-':
+                isin = raw2.strip()
+        except Exception:
+            pass
+
     with _isin_lock:
         _isin_cache[symbol] = isin
     return isin
