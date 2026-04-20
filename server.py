@@ -33,7 +33,6 @@ _cal_cache     = {}; _cal_lock     = threading.Lock(); CAL_TTL     = 1800
 _monthly_cache = {}; _monthly_lock = threading.Lock(); MONTHLY_TTL = 3600
 _weekly_cache  = {}; _weekly_lock  = threading.Lock(); WEEKLY_TTL  = 3600
 # ISIN cache — permanente (ISIN non cambia mai)
-_isin_cache    = {}; _isin_lock    = threading.Lock()
 
 
 def fetch_symbol(symbol, period='3mo', interval='1d'):
@@ -275,162 +274,6 @@ def fetch_fundamentals(symbol):
     return data
 
 
-def _debug_isin(symbol):
-    """Endpoint di debug: restituisce le risposte raw da Yahoo Finance per ISIN lookup."""
-    import requests as req
-    out = {'symbol': symbol, 'crumb': None, 'v7': None, 'search': None, 'v10': None, 'error': None}
-    try:
-        s = req.Session()
-        s.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/json',
-            'Referer': 'https://finance.yahoo.com/',
-        })
-        # crumb
-        s.get('https://fc.yahoo.com', timeout=5)
-        rc = s.get('https://query2.finance.yahoo.com/v1/test/getcrumb', timeout=6)
-        crumb = rc.text.strip() if rc.status_code == 200 else None
-        out['crumb'] = crumb
-        sym_enc = urllib.parse.quote(symbol)
-        # v7
-        r2 = s.get(f'https://query2.finance.yahoo.com/v7/finance/quote?symbols={sym_enc}', timeout=8)
-        if r2.status_code == 200:
-            res = r2.json().get('quoteResponse', {}).get('result', [{}])
-            out['v7'] = {k: v for k, v in res[0].items() if 'isin' in k.lower() or k in ('symbol','shortName','isin')} if res else 'empty'
-            out['v7_all_keys'] = list(res[0].keys()) if res else []
-        else:
-            out['v7'] = f'HTTP {r2.status_code}'
-        # search
-        r3 = s.get(f'https://query2.finance.yahoo.com/v1/finance/search?q={sym_enc}&quotesCount=2&newsCount=0&quotesQueryId=tss_match_phrase_query', timeout=8)
-        if r3.status_code == 200:
-            quotes = r3.json().get('quotes', [])
-            for q in quotes:
-                if q.get('symbol') == symbol:
-                    out['search'] = q
-                    break
-            if not out['search']:
-                out['search'] = f'symbol not found in {[q.get("symbol") for q in quotes]}'
-        else:
-            out['search'] = f'HTTP {r3.status_code}'
-        # v10 (con crumb)
-        if crumb:
-            r1 = s.get(f'https://query2.finance.yahoo.com/v10/finance/quoteSummary/{sym_enc}?modules=defaultKeyStatistics&crumb={urllib.parse.quote(crumb)}', timeout=10)
-            if r1.status_code == 200:
-                ks = r1.json().get('quoteSummary', {}).get('result', [{}])[0].get('defaultKeyStatistics', {})
-                out['v10_isin'] = ks.get('isin')
-            else:
-                out['v10'] = f'HTTP {r1.status_code}'
-    except Exception as e:
-        out['error'] = str(e)
-    return out
-
-
-def fetch_isin(symbol):
-    """Restituisce l'ISIN — cache permanente.
-    Tenta 3 metodi Yahoo Finance + crumb token se necessario.
-    """
-    with _isin_lock:
-        if symbol in _isin_cache:
-            return _isin_cache[symbol]
-
-    # Indici, valute e futures non hanno ISIN
-    if symbol.startswith('^') or '=X' in symbol or '=F' in symbol:
-        with _isin_lock:
-            _isin_cache[symbol] = None
-        return None
-
-    isin = None
-    try:
-        import requests as req
-        s = req.Session()
-        s.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-                          'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Referer': 'https://finance.yahoo.com/',
-        })
-
-        # 0) Ottieni cookie + crumb (necessario per endpoint v10)
-        crumb = None
-        try:
-            s.get('https://fc.yahoo.com', timeout=5)
-            rc = s.get('https://query2.finance.yahoo.com/v1/test/getcrumb', timeout=6)
-            if rc.status_code == 200 and rc.text.strip():
-                crumb = rc.text.strip()
-        except Exception:
-            pass
-
-        sym_enc = urllib.parse.quote(symbol)
-
-        # 1) v10/quoteSummary defaultKeyStatistics — ha isin per ETF e azioni EU
-        if crumb:
-            try:
-                url1 = (f'https://query2.finance.yahoo.com/v10/finance/quoteSummary/{sym_enc}'
-                        f'?modules=defaultKeyStatistics&crumb={urllib.parse.quote(crumb)}')
-                r1 = s.get(url1, timeout=10)
-                print(f'[ISIN] {symbol} quoteSummary status={r1.status_code}', flush=True)
-                if r1.status_code == 200:
-                    ks = (r1.json().get('quoteSummary', {})
-                          .get('result', [{}])[0]
-                          .get('defaultKeyStatistics', {}))
-                    raw = ks.get('isin')
-                    if isinstance(raw, dict):
-                        raw = raw.get('raw') or raw.get('fmt')
-                    if raw and isinstance(raw, str) and len(raw) >= 12 and raw not in ('-', 'N/A'):
-                        isin = raw.strip()
-                        print(f'[ISIN] {symbol} trovato via quoteSummary: {isin}', flush=True)
-            except Exception as e:
-                print(f'[ISIN] {symbol} quoteSummary err: {e}', flush=True)
-
-        # 2) v7/finance/quote — restituisce isin per alcuni mercati
-        if not isin:
-            try:
-                url2 = f'https://query2.finance.yahoo.com/v7/finance/quote?symbols={sym_enc}'
-                if crumb:
-                    url2 += f'&crumb={urllib.parse.quote(crumb)}'
-                r2 = s.get(url2, timeout=8)
-                print(f'[ISIN] {symbol} v7quote status={r2.status_code}', flush=True)
-                if r2.status_code == 200:
-                    res = r2.json().get('quoteResponse', {}).get('result', [])
-                    if res:
-                        raw2 = res[0].get('isin')
-                        if raw2 and isinstance(raw2, str) and len(raw2) >= 12:
-                            isin = raw2.strip()
-                            print(f'[ISIN] {symbol} trovato via v7: {isin}', flush=True)
-                        else:
-                            print(f'[ISIN] {symbol} v7 keys={list(res[0].keys())}', flush=True)
-            except Exception as e:
-                print(f'[ISIN] {symbol} v7 err: {e}', flush=True)
-
-        # 3) v1/finance/search
-        if not isin:
-            try:
-                url3 = (f'https://query2.finance.yahoo.com/v1/finance/search'
-                        f'?q={sym_enc}&quotesCount=3&newsCount=0'
-                        f'&quotesQueryId=tss_match_phrase_query&enableFuzzyQuery=false')
-                r3 = s.get(url3, timeout=8)
-                print(f'[ISIN] {symbol} search status={r3.status_code}', flush=True)
-                if r3.status_code == 200:
-                    for q in r3.json().get('quotes', []):
-                        if q.get('symbol') == symbol:
-                            raw3 = q.get('isin') or q.get('ISIN')
-                            if raw3 and isinstance(raw3, str) and len(raw3) >= 12:
-                                isin = raw3.strip()
-                                print(f'[ISIN] {symbol} trovato via search: {isin}', flush=True)
-                            else:
-                                print(f'[ISIN] {symbol} search keys={list(q.keys())}', flush=True)
-                            break
-            except Exception as e:
-                print(f'[ISIN] {symbol} search err: {e}', flush=True)
-
-    except Exception as e:
-        print(f'[ISIN] {symbol} outer err: {e}', flush=True)
-
-    print(f'[ISIN] {symbol} risultato finale: {isin}', flush=True)
-    with _isin_lock:
-        _isin_cache[symbol] = isin
-    return isin
 
 
 def _translate_it(text):
@@ -627,13 +470,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif self.path.startswith('/fundamentals/'):
             sym = urllib.parse.unquote(self.path[len('/fundamentals/'):].split('?')[0])
             self._json(fetch_fundamentals(sym))
-        elif self.path.startswith('/isin/'):
-            sym = urllib.parse.unquote(self.path[len('/isin/'):].split('?')[0])
-            self._json({'isin': fetch_isin(sym)})
-        elif self.path.startswith('/debug/isin/'):
-            # Endpoint di debug: mostra risposte raw da Yahoo Finance senza cache
-            sym = urllib.parse.unquote(self.path[len('/debug/isin/'):].split('?')[0])
-            self._json(_debug_isin(sym))
         elif self.path.startswith('/news/'):
             sym = urllib.parse.unquote(self.path[len('/news/'):].split('?')[0])
             self._json(fetch_news(sym))

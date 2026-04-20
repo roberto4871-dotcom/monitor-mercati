@@ -176,8 +176,6 @@ td.asset-class{color:var(--text2);font-size:10px}
 td.mercato{font-weight:700;color:#fff}
 body.light td.mercato{color:#1a2332}
 td.indice{color:var(--text2);font-size:11px}
-td.isin-col{font-family:'Courier New',monospace;font-size:11px;color:var(--text2);white-space:nowrap;letter-spacing:.5px}
-body.light td.isin-col{color:#4a6080}
 td.ora{color:#64b5f6;font-size:10px}
 .pos{color:var(--green);font-weight:600}
 .neg{color:var(--red);font-weight:600}
@@ -813,7 +811,6 @@ let modalRsiChart = null;
 // ═══════════════════════════════════════════════════
 const COLS = [
   {key:'a',        label:'Categoria',            cls:'left asset-class', fmt:'str'},
-  {key:'isin',     label:'ISIN',                 cls:'left isin-col',    fmt:'str'},
   {key:'i',        label:'Nome',                 cls:'left indice',      fmt:'str'},
 {key:'valore',   label:'Valore Attuale',        cls:'num',              fmt:'num2'},
   {key:'varAtt',   label:'Var. %\nGiornaliera',  cls:'num',              fmt:'pct'},
@@ -902,12 +899,7 @@ function fmtCell(col, row) {
     return '<span class="na">—</span>';
   const v = row[col.key];
   switch(col.fmt) {
-    case 'str':
-      if (col.key === 'isin') {
-        if (v === undefined) return '<span class="na" style="font-size:10px">…</span>';
-        if (!v) return '<span class="na">—</span>';
-      }
-      return v || '';
+    case 'str':  return v || '';
     case 'ora':  return v ? `<span class="ora">${v}</span>` : '<span class="na">N/A</span>';
     case 'num2': return fmtN(v, 2);
     case 'pct': {
@@ -1150,24 +1142,6 @@ async function loadAll() {
   loading = false;
   scheduleRefresh();
   startCdBar(600);
-  loadAllIsins(); // carica ISIN in background (cache permanente lato server)
-}
-
-// Carica gli ISIN per tutti i simboli in background, a blocchi di 15 per volta
-async function loadAllIsins() {
-  const CHUNK = 15;
-  const toFetch = rows.filter(r => r.isin === undefined);
-  for (let i = 0; i < toFetch.length; i += CHUNK) {
-    const batch = toFetch.slice(i, i + CHUNK);
-    await Promise.all(batch.map(async r => {
-      try {
-        const d = await fetch(`/isin/${encodeURIComponent(r.s)}`).then(x => x.json());
-        r.isin = d.isin || null;
-      } catch(e) { r.isin = null; }
-    }));
-    if (i + CHUNK < toFetch.length) await new Promise(res => setTimeout(res, 200));
-  }
-  renderTable();
 }
 
 // ═══════════════════════════════════════════════════
