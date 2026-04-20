@@ -1329,7 +1329,10 @@ async function loadAll() {
   });
   renderCharts();
 
-  // Salva in localStorage per mostrare subito al prossimo caricamento
+  // Carica rendimento (yield) per strumenti obbligazionari — fetch individuali parallele
+  await loadYields();
+
+  // Salva in localStorage (yield già valorizzati)
   try {
     // Salva senza _hist (troppo grande) né _ma50/_ma200 (ricaricarti freschi)
     // eslint-disable-next-line no-unused-vars
@@ -1385,6 +1388,40 @@ async function loadMA() {
       console.warn('[MA] fetch fallita per chunk', start, e);
     }
   }
+}
+
+// ═══════════════════════════════════════════════════
+//  YIELD — fetch individuale per strumenti obbligazionari
+// ═══════════════════════════════════════════════════
+async function loadYields() {
+  const BOND_CATS = new Set(['INDICE OBBLIGAZIONARIO','ETF OBB. MASTER']);
+  const bonds = INSTRUMENTS
+    .map((inst, idx) => ({inst, idx}))
+    .filter(({inst}) => BOND_CATS.has(inst.a));
+  if (!bonds.length) return;
+
+  // Deduplica per simbolo (stesso ETF può comparire in più sezioni)
+  const seen = new Set();
+  const unique = bonds.filter(({inst}) => {
+    if (seen.has(inst.s)) return false;
+    seen.add(inst.s); return true;
+  });
+
+  // Fetch parallele — usa endpoint individuale che chiama ticker.info
+  await Promise.all(unique.map(async ({inst}) => {
+    try {
+      const r = await fetch(`/yf/${encodeURIComponent(inst.s)}?period=6mo&interval=1d`);
+      const data = await r.json();
+      if (data.error || data.yield_pct == null) return;
+      // Aggiorna TUTTE le righe con questo simbolo
+      INSTRUMENTS.forEach((i2, idx2) => {
+        if (i2.s === inst.s && BOND_CATS.has(i2.a) && rows[idx2]) {
+          rows[idx2].yld = data.yield_pct;
+          updateRow(idx2);
+        }
+      });
+    } catch(e) { /* silenzioso */ }
+  }));
 }
 
 function showMaLegend(btn) {
