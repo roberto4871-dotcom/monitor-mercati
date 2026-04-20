@@ -52,9 +52,60 @@ body.light {
   --border:#c5d0dc; --text:#1a2332; --text2:#4a6080; --text3:#8099b3;
   --blue:#1a237e; --blue2:#283593;
 }
-body.light tbody tr:hover { background:#dce6f0 !important; }
-body.light .section-header td { background:#dce6f0; }
-body.light table { background:#fff; }
+body.light { background:var(--bg); color:var(--text); }
+body.light table { background:var(--bg); }
+body.light thead th { background:#1e2ea8 !important; }
+body.light tbody tr { border-bottom:1px solid var(--border) !important; }
+body.light tbody tr:hover { background:#d5e3f0 !important; }
+body.light .section-header td { background:#d0dae8 !important; color:#1a237e !important; }
+body.light .controls { background:var(--bg2); border-bottom:1px solid var(--border); }
+body.light .filter-btn { background:var(--bg2); border-color:var(--border); color:var(--text2); }
+body.light .filter-btn.active { background:var(--blue2); color:#fff; }
+body.light .search-box { background:var(--bg2); border-color:var(--border); color:var(--text); }
+body.light .tabs { background:var(--bg2); }
+body.light .tab { color:var(--text2); }
+body.light .tab.active { color:var(--accent); }
+body.light .progress-bar-wrap { background:var(--bg3); }
+body.light .statusbar { background:var(--bg2); border-top:1px solid var(--border); }
+body.light #cd-bar-wrap { background:rgba(26,35,126,.08); }
+body.light .tb-panel { background:var(--bg3); }
+body.light .tb-item:hover { background:var(--bg2); }
+body.light .cal-panel { background:var(--bg3); }
+body.light .cal-event { background:var(--bg2) !important; border-color:rgba(255,152,0,.4); }
+body.light .cal-event.past { border-color:var(--border) !important; }
+body.light .modal { background:var(--bg2); border-color:var(--border); }
+body.light .modal-stats { background:var(--bg3); border-bottom-color:var(--border); }
+body.light .modal-tabs { background:var(--bg3); border-bottom-color:var(--border); }
+body.light .modal-tab { color:var(--text2); }
+body.light .modal-tab.active { color:var(--accent); }
+body.light .modal-notes { border-top-color:var(--border); }
+body.light .modal-notes textarea { background:var(--bg3); border-color:var(--border); color:var(--text); }
+body.light .modal-body { background:var(--bg2); }
+body.light .modal-canvas-wrap { background:#fff; }
+body.light #modal-rsi-chart { background:#fff; }
+body.light .period-btn { background:var(--bg3); border-color:var(--border); color:var(--text2); }
+body.light .period-btn.active { background:var(--blue2); color:#fff; }
+body.light .ta-btn { background:var(--bg3); border-color:var(--border); color:var(--text2); }
+body.light .fund-item { background:var(--bg3) !important; border-color:var(--border) !important; }
+body.light .fund-desc { border-top-color:var(--border); color:var(--text2); }
+body.light .news-item { border-bottom-color:var(--border); }
+body.light .news-item:hover { background:var(--bg3); }
+body.light .news-title { color:var(--text); }
+body.light .ai-result-box { background:var(--bg3); border-color:var(--border); color:var(--text); }
+body.light .monthly-table td:first-child,
+body.light .weekly-table td:first-child { background:var(--bg3) !important; color:var(--text2) !important; border-right-color:var(--border) !important; }
+body.light .monthly-table thead th,
+body.light .weekly-table thead th { background:#1e2ea8; }
+body.light .monthly-table td,
+body.light .weekly-table td { border-color:rgba(0,0,0,.05); }
+body.light .hm-tile-name { color:rgba(0,0,0,.5) !important; }
+body.light .mret-pos-hi{background:rgba(46,125,50,.55);color:#e8f5e9}
+body.light .mret-pos-md{background:rgba(46,125,50,.25);color:#1b5e20}
+body.light .mret-pos-lo{background:rgba(46,125,50,.12);color:#2e7d32}
+body.light .mret-neg-hi{background:rgba(198,40,40,.50);color:#ffebee}
+body.light .mret-neg-md{background:rgba(198,40,40,.22);color:#b71c1c}
+body.light .mret-neg-lo{background:rgba(198,40,40,.10);color:#c62828}
+body.light .mret-zero{background:rgba(0,0,0,.06);color:var(--text3)}
 
 /* ── BOTTONI FONT SIZE ─────────────────────────────────────── */
 .font-btn{background:var(--bg3);color:var(--text2);border:1px solid var(--border);width:28px;height:26px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:700;transition:all .15s;display:flex;align-items:center;justify-content:center}
@@ -811,6 +862,25 @@ function buildSparkSVG(hist) {
     `</svg>`;
 }
 
+const SECTION_BG_DARK = {
+  'INDICE AZIONARIO':'#0c1525','INDICE OBBLIGAZIONARIO':'#0a140a',
+  'MATERIA PRIMA':'#14100a','VALUTA':'#0a0a18','VOLATILITA':'#12050a',
+  'TITOLI EUROPA':'#0f1a05','TITOLI IT BIG CAP':'#061a0e','TITOLI USA':'#1a0e05',
+  'ETF AZ. MASTER':'#050d1a','ETF OBB. MASTER':'#051a13',
+  'ETF COMM. MASTER':'#1a1505','ETF MEGATREND':'#1a0510',
+};
+const SECTION_BG_LIGHT = {
+  'INDICE AZIONARIO':'#eef2fb','INDICE OBBLIGAZIONARIO':'#eef8ef',
+  'MATERIA PRIMA':'#fdf8f0','VALUTA':'#f0f0fb','VOLATILITA':'#fdf0f5',
+  'TITOLI EUROPA':'#f0f8ee','TITOLI IT BIG CAP':'#eef8f3','TITOLI USA':'#fdf4ee',
+  'ETF AZ. MASTER':'#eef1fb','ETF OBB. MASTER':'#eef8f5',
+  'ETF COMM. MASTER':'#fdf9ee','ETF MEGATREND':'#fbeef8',
+};
+function getSectionBg(sec) {
+  const map = document.body.classList.contains('light') ? SECTION_BG_LIGHT : SECTION_BG_DARK;
+  return map[sec] || (document.body.classList.contains('light') ? '#f5f7fa' : '#0c1525');
+}
+
 function heatWrap(content, val, maxPct) {
   if (val === null || val === undefined || isNaN(val)) return content;
   const intensity = Math.min(Math.abs(val) / maxPct, 1);
@@ -1146,28 +1216,13 @@ function buildRows(data) {
     groups[k].push(r);
   });
 
-  const sectionBg = {
-    'INDICE AZIONARIO':    '#0c1525',
-    'INDICE OBBLIGAZIONARIO':'#0a140a',
-    'MATERIA PRIMA':       '#14100a',
-    'VALUTA':              '#0a0a18',
-    'VOLATILITA':          '#12050a',
-    'TITOLI EUROPA':       '#0f1a05',
-    'TITOLI IT BIG CAP':   '#061a0e',
-    'TITOLI USA':          '#1a0e05',
-    'ETF AZ. MASTER':      '#050d1a',
-    'ETF OBB. MASTER':     '#051a13',
-    'ETF COMM. MASTER':    '#1a1505',
-    'ETF MEGATREND':       '#1a0510',
-  };
-
   let html = '';
   order.forEach(sec => {
     html += `<tr class="section-header"><td colspan="${COLS.length + 1}">${sec}</td></tr>`;
     groups[sec].forEach(r => {
       // Find original index for id
       const origIdx = rows.indexOf(r);
-      const bg = sectionBg[sec] || '#0c1525';
+      const bg = getSectionBg(sec);
       const starOn = favorites.has(r.s) ? 'on' : '';
       const starTd = `<td style="padding:0 4px"><button class="fav-star ${starOn}" onclick="event.stopPropagation();toggleFavorite('${r.s}')">★</button></td>`;
       const tds = COLS.map(c => `<td class="${c.cls||''}">${fmtCell(c,r)}</td>`).join('');
@@ -1330,7 +1385,18 @@ document.getElementById('btn-refresh').addEventListener('click', loadAll);
 //  HEATMAP
 // ═══════════════════════════════════════════════════
 function heatColor(val) {
-  if (val === null || val === undefined || isNaN(val)) return {bg:'#1a1a2e', text:'#546e7a'};
+  const light = document.body.classList.contains('light');
+  if (val === null || val === undefined || isNaN(val))
+    return light ? {bg:'#e8edf2', text:'#8099b3'} : {bg:'#1a1a2e', text:'#546e7a'};
+  if (light) {
+    if (val <= -5)  return {bg:'#ffcdd2', text:'#b71c1c'};
+    if (val <= -2)  return {bg:'#ffebee', text:'#c62828'};
+    if (val <= -0.5) return {bg:'#fff3f4', text:'#e53935'};
+    if (val < 0.5)  return {bg:'#f0f4f8', text:'#8099b3'};
+    if (val < 2)    return {bg:'#e8f5e9', text:'#2e7d32'};
+    if (val < 5)    return {bg:'#c8e6c9', text:'#1b5e20'};
+    return {bg:'#a5d6a7', text:'#1b5e20'};
+  }
   if (val <= -5)  return {bg:'#7b1c1c', text:'#ff8a80'};
   if (val <= -2)  return {bg:'#b71c1c', text:'#ffcdd2'};
   if (val <= -0.5) return {bg:'#c62828', text:'#ef9a9a'};
@@ -1570,14 +1636,18 @@ function drawModalChart(pairs, period) {
     perfEl.style.display = 'none';
   }
 
-  // Crea grafico TradingView
+  // Crea grafico TradingView (colori in base al tema)
+  const isLight = document.body.classList.contains('light');
+  const chartBg   = isLight ? '#ffffff' : '#0d1220';
+  const chartText = isLight ? '#4a6080' : '#8fa8c8';
+  const chartGrid = isLight ? '#e0e8f0' : '#1e2d45';
   const chart = LightweightCharts.createChart(container, {
     autoSize: true,
-    layout: { background:{color:'#0d1220'}, textColor:'#8fa8c8', fontSize:8 },
-    grid:   { vertLines:{color:'#1e2d45'}, horzLines:{color:'#1e2d45'} },
+    layout: { background:{color:chartBg}, textColor:chartText, fontSize:8 },
+    grid:   { vertLines:{color:chartGrid}, horzLines:{color:chartGrid} },
     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-    rightPriceScale: { borderColor:'#1e2d45', minimumWidth:58 },
-    timeScale: { borderColor:'#1e2d45', timeVisible:true, secondsVisible:false },
+    rightPriceScale: { borderColor:chartGrid, minimumWidth:58 },
+    timeScale: { borderColor:chartGrid, timeVisible:true, secondsVisible:false },
     handleScroll: true,
     handleScale:  true,
   });
@@ -1672,11 +1742,11 @@ function drawModalChart(pairs, period) {
     if (rsiData.length) {
       modalRsiChart = LightweightCharts.createChart(rsiContainer, {
         autoSize: true,
-        layout: { background: {color: '#0d1220'}, textColor: '#8fa8c8' },
-        grid: { vertLines: {color: '#1e2d45'}, horzLines: {color: '#1e2d45'} },
+        layout: { background: {color: chartBg}, textColor: chartText },
+        grid: { vertLines: {color: chartGrid}, horzLines: {color: chartGrid} },
         crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-        rightPriceScale: { borderColor: '#1e2d45', scaleMargins: {top: 0.1, bottom: 0.1} },
-        timeScale: { borderColor: '#1e2d45', timeVisible: true, secondsVisible: false },
+        rightPriceScale: { borderColor: chartGrid, scaleMargins: {top: 0.1, bottom: 0.1} },
+        timeScale: { borderColor: chartGrid, timeVisible: true, secondsVisible: false },
         handleScroll: false, handleScale: false,
       });
       const rsiLine = modalRsiChart.addLineSeries({
@@ -1751,6 +1821,9 @@ function toggleTheme() {
   const next = isLight ? 'dark' : 'light';
   localStorage.setItem('mm_theme', next);
   applyTheme(next);
+  // Ridisegna tabella e heatmap con i nuovi colori
+  renderTable();
+  renderHeatmap();
 }
 // Applica tema salvato
 applyTheme(localStorage.getItem('mm_theme') || 'dark');
@@ -1833,26 +1906,12 @@ buildRows = function(data) {
     if (!groups[k]) { groups[k] = []; order.push(k); }
     groups[k].push(r);
   });
-  const sectionBg = {
-    'INDICE AZIONARIO':    '#0c1525',
-    'INDICE OBBLIGAZIONARIO':'#0a140a',
-    'MATERIA PRIMA':       '#14100a',
-    'VALUTA':              '#0a0a18',
-    'VOLATILITA':          '#12050a',
-    'TITOLI EUROPA':       '#0f1a05',
-    'TITOLI IT BIG CAP':   '#061a0e',
-    'TITOLI USA':          '#1a0e05',
-    'ETF AZ. MASTER':      '#050d1a',
-    'ETF OBB. MASTER':     '#051a13',
-    'ETF COMM. MASTER':    '#1a1505',
-    'ETF MEGATREND':       '#1a0510',
-  };
   let html = '';
   order.forEach(sec => {
     html += `<tr class="section-header"><td colspan="${visibleCols.length + 1}">${sec}</td></tr>`;
     groups[sec].forEach(r => {
       const origIdx = rows.indexOf(r);
-      const bg = sectionBg[sec] || '#0c1525';
+      const bg = getSectionBg(sec);
       const starOn = favorites.has(r.s) ? 'on' : '';
       const hasNote = localStorage.getItem('mm_note_' + r.s);
       const noteIcon = hasNote ? ' <span class="note-icon">📝</span>' : '';
