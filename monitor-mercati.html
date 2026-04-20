@@ -2418,7 +2418,7 @@ function toTvSymbol(sym) {
   const sfx = {
     '.MI':':MIL', '.DE':':XETR', '.PA':':EURONEXT', '.AS':':EURONEXT',
     '.BR':':EURONEXT', '.MC':':BME', '.L':':LSE', '.HE':':OMXHEX',
-    '.SS':':SSE', '.SZ':':SZSE',
+    '.SS':':SSE', '.SZ':':SZSE', '.SW':':SIX',
   };
   for (const [ext, ex] of Object.entries(sfx)) {
     if (sym.endsWith(ext)) return ex.slice(1) + ':' + sym.slice(0, -ext.length);
