@@ -1347,7 +1347,7 @@ async function loadAll() {
   const allSymbols = [...FX_SYMBOLS, ...INSTRUMENTS.map(i => i.s)];
   let batchData = {};
   try {
-    const r = await fetch(`/yf/batch?syms=${encodeURIComponent(allSymbols.join(','))}&period=3mo&interval=1d`);
+    const r = await fetch(`/yf/batch?syms=${encodeURIComponent(allSymbols.join(','))}&period=6mo&interval=1d`);
     batchData = await r.json();
   } catch(e) {
     console.warn('Batch fetch fallito, uso fetch individuale come fallback', e);
