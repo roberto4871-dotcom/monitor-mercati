@@ -1570,6 +1570,78 @@ function computeRS() {
   });
 }
 
+function showRsLegend(btn) {
+  const existing = document.getElementById('rs-legend-popup');
+  if (existing) { existing.remove(); return; }
+
+  const popup = document.createElement('div');
+  popup.id = 'rs-legend-popup';
+
+  const periodLabels = { p7:'7gg', p30:'30gg', p60:'60gg', p90:'90gg', ytdLocal:'YTD' };
+  const per = periodLabels[rsConfig.period] || rsConfig.period;
+
+  const mkRow = (val, color, icon, desc) =>
+    `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
+       <div style="flex-shrink:0;width:52px;text-align:right">
+         <span style="color:${color};font-size:12px;font-weight:800">${val}</span>
+       </div>
+       <div style="font-size:12px;color:var(--text)">${icon} ${desc}</div>
+     </div>`;
+
+  const mkFormula = () =>
+    `<div style="background:var(--bg3);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:11px;line-height:1.7">
+       <div style="color:var(--text3);margin-bottom:4px;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase">Formula</div>
+       <div style="color:var(--text);font-family:monospace;font-size:11px">
+         ( 1 + strumento% ) ÷ ( 1 + benchmark% ) − 1
+       </div>
+       <div style="color:var(--text3);margin-top:6px;font-size:10px">
+         Es. strumento <b style="color:var(--text)">+10%</b>, benchmark <b style="color:var(--text)">+6%</b>
+         &rarr; <b style="color:var(--green)">+3.77%</b> più forte
+       </div>
+       <div style="color:var(--text3);margin-top:2px;font-size:10px">
+         Es. strumento <b style="color:var(--text)">−2%</b>, benchmark <b style="color:var(--text)">+6%</b>
+         &rarr; <b style="color:var(--red)">−7.55%</b> più debole
+       </div>
+     </div>`;
+
+  popup.innerHTML =
+    `<div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.6px;text-transform:uppercase;margin-bottom:4px">Legenda — Forza Relativa</div>` +
+    `<div style="font-size:11px;color:var(--text3);margin-bottom:12px">vs <b style="color:var(--text)">${rsConfig.label}</b> · ultimi <b style="color:var(--text)">${per}</b></div>` +
+    mkFormula() +
+    `<div style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Interpretazione</div>` +
+    mkRow('+3.77%', 'var(--green)', '💪', 'più forte del benchmark nel periodo') +
+    mkRow('0.00%',  'var(--neutral)','➡️', 'in linea con il benchmark') +
+    mkRow('−7.55%', 'var(--red)',   '📉', 'più debole del benchmark nel periodo') +
+    `<div style="font-size:10px;color:var(--text3);margin-top:10px;line-height:1.5">
+       ℹ Il calcolo usa il <b style="color:var(--text)">ratio composto</b> per misurare la vera differenza di rendimento, indipendentemente dal segno del benchmark.<br>
+       Clicca <b style="color:var(--text)">⚙</b> per cambiare benchmark o periodo.
+     </div>`;
+
+  Object.assign(popup.style, {
+    position:'fixed', zIndex:'9999',
+    background:'var(--bg2)', border:'1px solid var(--border)',
+    borderRadius:'10px', padding:'14px 16px',
+    boxShadow:'0 8px 32px rgba(0,0,0,.5)', minWidth:'300px', maxWidth:'340px',
+  });
+  document.body.appendChild(popup);
+
+  const rect = btn.getBoundingClientRect();
+  const pw = popup.offsetWidth;
+  let left = rect.right - pw;
+  if (left < 8) left = 8;
+  if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+  popup.style.top  = (rect.bottom + 8) + 'px';
+  popup.style.left = left + 'px';
+
+  const close = (e) => {
+    if (!popup.contains(e.target) && e.target !== btn) {
+      popup.remove();
+      document.removeEventListener('click', close);
+    }
+  };
+  setTimeout(() => document.addEventListener('click', close), 50);
+}
+
 function showRsConfig(btn) {
   const existing = document.getElementById('rs-config-popup');
   if (existing) { existing.remove(); return; }
@@ -2909,7 +2981,7 @@ buildThead = function() {
       : c.key === '_momentum'
       ? `Momentum<br>Score&thinsp;<span onclick="event.stopPropagation();showMomentumLegend(this)" title="Come funziona il Momentum Score" style="cursor:pointer;font-size:10px;opacity:.7;vertical-align:middle;user-select:none">ℹ</span><span onclick="event.stopPropagation();showMomentumSortMenu(this)" title="Ordina" style="cursor:pointer;font-size:11px;opacity:.7;vertical-align:middle;user-select:none;margin-left:2px">${sortCol==='_momentum'?(sortDir===1?'↑':'↓'):'⇅'}</span>`
       : c.key === '_rs'
-      ? `Forza<br>Relativa&thinsp;<span onclick="event.stopPropagation();showRsConfig(this)" title="Configura benchmark e periodo" style="cursor:pointer;font-size:11px;opacity:.8;vertical-align:middle;user-select:none">⚙</span>`
+      ? `Forza<br>Relativa&thinsp;<span onclick="event.stopPropagation();showRsLegend(this)" title="Come funziona la Forza Relativa" style="cursor:pointer;font-size:10px;opacity:.7;vertical-align:middle;user-select:none">ℹ</span><span onclick="event.stopPropagation();showRsConfig(this)" title="Configura benchmark e periodo" style="cursor:pointer;font-size:11px;opacity:.8;vertical-align:middle;user-select:none;margin-left:2px">⚙</span>`
       : c.label.replace('\n','<br>');
     return `<th class="${cls}" onclick="doSort('${c.key}')">${lbl}</th>`;
   }).join('');
