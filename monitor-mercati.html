@@ -348,9 +348,9 @@ td.ora{color:#64b5f6;font-size:10px}
       <div class="modal-body">
         <div class="modal-period-btns" style="justify-content:space-between">
           <div style="display:flex;gap:6px">
-            <button class="period-btn active" data-period="1M">1M</button>
+            <button class="period-btn" data-period="1M">1M</button>
             <button class="period-btn" data-period="3M">3M</button>
-            <button class="period-btn" data-period="YTD">YTD</button>
+            <button class="period-btn active" data-period="YTD">YTD</button>
             <button class="period-btn" data-period="1A">1A</button>
             <button class="period-btn" data-period="2A">2A</button>
             <button class="period-btn" data-period="3A">3A</button>
@@ -1538,12 +1538,12 @@ async function openModal(idx) {
      <span class="stat-value ${s.color}">${s.value}</span></div>`
   ).join('');
 
-  // Attiva pulsante 1M
+  // Attiva pulsante YTD di default
   document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('[data-period="1M"]').classList.add('active');
+  document.querySelector('[data-period="YTD"]').classList.add('active');
 
   document.getElementById('modal-overlay').classList.add('open');
-  await loadAndDraw(row, '1M');
+  await loadAndDraw(row, 'YTD');
 }
 
 async function loadAndDraw(row, period) {
