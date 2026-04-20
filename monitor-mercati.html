@@ -71,19 +71,6 @@ body.light table { background:#fff; }
 .cols-dropdown label:hover{color:var(--text)}
 .cols-btn-wrap{position:relative}
 
-/* ── TOP/BOTTOM PANEL ──────────────────────────────────────── */
-.tb-panel{background:var(--bg3);border-bottom:1px solid var(--border);padding:0;flex-shrink:0}
-.tb-panel-header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;cursor:pointer;user-select:none}
-.tb-panel-header span{color:var(--accent);font-size:12px;font-weight:700}
-.tb-panel-body{display:flex;gap:16px;padding:8px 16px 12px;overflow:hidden}
-.tb-panel-body.collapsed{display:none}
-.tb-col{flex:1}
-.tb-col-title{font-size:11px;font-weight:700;margin-bottom:6px}
-.tb-item{display:flex;align-items:center;gap:8px;padding:3px 6px;border-radius:6px;cursor:pointer;transition:background .12s}
-.tb-item:hover{background:var(--bg2)}
-.tb-item-ticker{font-size:11px;font-weight:700;color:var(--text);min-width:50px}
-.tb-item-name{font-size:10px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tb-item-val{font-size:11px;font-weight:700;white-space:nowrap}
 
 /* ── NOTE MODAL ────────────────────────────────────────────── */
 .modal-notes{padding:12px 20px;border-top:1px solid var(--border)}
@@ -363,22 +350,6 @@ td.ora{color:#64b5f6;font-size:10px}
     <button class="btn-refresh" id="btn-refresh">↻ Aggiorna</button>
   </div>
   <div class="progress-bar-wrap" id="prog-wrap"><div class="progress-bar" id="prog-bar"></div></div>
-  <div class="tb-panel" id="tb-panel">
-    <div class="tb-panel-header" onclick="toggleTbPanel()">
-      <span>📈 Top &amp; Bottom Giornalieri</span>
-      <span id="tb-chevron">▲</span>
-    </div>
-    <div class="tb-panel-body" id="tb-panel-body">
-      <div class="tb-col">
-        <div class="tb-col-title" style="color:var(--green)">🟢 Top 5 Oggi</div>
-        <div id="tb-top"></div>
-      </div>
-      <div class="tb-col">
-        <div class="tb-col-title" style="color:var(--red)">🔴 Bottom 5 Oggi</div>
-        <div id="tb-bottom"></div>
-      </div>
-    </div>
-  </div>
   <!-- Calendario economico alto impatto -->
   <div class="cal-panel" id="cal-panel">
     <div class="cal-panel-header" onclick="toggleCalPanel()">
@@ -967,7 +938,6 @@ function loadCachedRows() {
     renderTable();
     renderCharts();
     renderHeatmap();
-    renderTopBottom();
     const age = Math.round((Date.now() - ts) / 1000);
     const ageStr = age < 60 ? `${age}s fa` : `${Math.round(age/60)}min fa`;
     setStatus('ok', `● Cache — aggiornato ${ageStr}`);
@@ -1305,7 +1275,6 @@ document.querySelectorAll('.filter-btn').forEach(b => {
     b.classList.add('active');
     activeFilter = b.dataset.filter;
     renderTable();
-    renderTopBottom();
   });
 });
 
@@ -1878,52 +1847,6 @@ updateRow = function(idx) {
 };
 
 // ═══════════════════════════════════════════════════
-//  FEATURE 4: TOP 5 / BOTTOM 5
-// ═══════════════════════════════════════════════════
-let tbCollapsed = localStorage.getItem('mm_tb_collapsed') === 'true';
-
-function toggleTbPanel() {
-  tbCollapsed = !tbCollapsed;
-  localStorage.setItem('mm_tb_collapsed', tbCollapsed);
-  document.getElementById('tb-panel-body').classList.toggle('collapsed', tbCollapsed);
-  document.getElementById('tb-chevron').textContent = tbCollapsed ? '▼' : '▲';
-}
-
-function renderTopBottom() {
-  if (tbCollapsed) {
-    document.getElementById('tb-panel-body').classList.add('collapsed');
-    document.getElementById('tb-chevron').textContent = '▼';
-  } else {
-    document.getElementById('tb-panel-body').classList.remove('collapsed');
-    document.getElementById('tb-chevron').textContent = '▲';
-  }
-
-  const valid = rows.filter(r => {
-    if (r._loading || r._err || r.varAtt === null || r.varAtt === undefined) return false;
-    if (activeFilter === 'all') return true;
-    if (activeFilter === 'favorites') return favorites.has(r.s);
-    return r.a === activeFilter;
-  });
-  const sorted = [...valid].sort((a, b) => b.varAtt - a.varAtt);
-  const top5    = sorted.slice(0, 5);
-  const bottom5 = sorted.slice(-5).reverse();
-
-  function itemHtml(r) {
-    const origIdx = rows.indexOf(r);
-    const cls = r.varAtt > 0 ? 'pos' : r.varAtt < 0 ? 'neg' : 'zero';
-    const sign = r.varAtt > 0 ? '+' : '';
-    return `<div class="tb-item" onclick="openModal(${origIdx})">
-      <span class="tb-item-ticker">${r.m}</span>
-      <span class="tb-item-name">${r.i}</span>
-      <span class="tb-item-val ${cls}">${sign}${r.varAtt.toFixed(2)}%</span>
-    </div>`;
-  }
-
-  document.getElementById('tb-top').innerHTML    = top5.map(itemHtml).join('') || '<span style="color:var(--text3);font-size:11px">Nessun dato</span>';
-  document.getElementById('tb-bottom').innerHTML = bottom5.map(itemHtml).join('') || '<span style="color:var(--text3);font-size:11px">Nessun dato</span>';
-}
-
-// ═══════════════════════════════════════════════════
 //  FEATURE 5: ANNOTAZIONI ASSET
 // ═══════════════════════════════════════════════════
 document.getElementById('modal-note-ta').addEventListener('input', function() {
@@ -1949,13 +1872,6 @@ openModal = async function(idx) {
     const note = localStorage.getItem('mm_note_' + modalRow.s) || '';
     document.getElementById('modal-note-ta').value = note;
   }
-};
-
-// ─── Patch loadAll per chiamare renderTopBottom ─────
-const _origLoadAll = loadAll;
-loadAll = async function() {
-  await _origLoadAll();
-  renderTopBottom();
 };
 
 // ═══════════════════════════════════════════════════
