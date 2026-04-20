@@ -2801,32 +2801,59 @@ function renderFundamentals(d) {
 
   // ── Consensus analisti ───────────────────────────────────────
   const CONS_STYLE = {
-    'strong_buy':  {label:'Strong Buy',   color:'#2e7d32', bg:'rgba(46,125,50,.18)'},
-    'buy':         {label:'Buy',          color:'#4caf50', bg:'rgba(76,175,80,.15)'},
+    'strong_buy':  {label:'Strong Buy',   color:'#4caf50', bg:'rgba(76,175,80,.18)'},
+    'buy':         {label:'Buy',          color:'#81c784', bg:'rgba(76,175,80,.13)'},
     'hold':        {label:'Hold',         color:'#ff9800', bg:'rgba(255,152,0,.15)'},
     'underperform':{label:'Underperform', color:'#ef5350', bg:'rgba(239,83,80,.15)'},
     'sell':        {label:'Sell',         color:'#c62828', bg:'rgba(198,40,40,.18)'},
   };
-  const bd  = d.analystBreakdown || {};
+  // Normalizza il grade di una singola banca → colore
+  const gradeColor = (g) => {
+    const t = (g||'').toLowerCase();
+    if (/strong.buy|outperform|overweight|positive|accumulate|add|conviction.buy|top.pick/.test(t)) return '#4caf50';
+    if (/\bbuy\b|bullish/.test(t)) return '#81c784';
+    if (/underperform|underweight|sell|reduce|avoid|negative|cautious/.test(t)) return '#ef5350';
+    if (/strong.sell/.test(t)) return '#c62828';
+    return '#ff9800'; // neutral/hold/market perform/equal weight
+  };
+  const actionLabel = a => ({'up':'↑ Upgrade','down':'↓ Downgrade','init':'★ Inizia','reit':'→ Reitera','main':'→ Mantiene','boost':'↑ Migliora'}[a] || a);
+  const actionColor = a => ({'up':'var(--green)','down':'var(--red)','init':'#90caf9','boost':'var(--green)'}[a] || 'var(--text3)');
+
+  const bd      = d.analystBreakdown || {};
   const bdTotal = (bd.strongBuy||0)+(bd.buy||0)+(bd.hold||0)+(bd.sell||0)+(bd.strongSell||0);
-  const hasAnalyst = d.analystConsensus || bdTotal > 0 || d.targetMean;
+  const hasAnalyst = d.analystConsensus || bdTotal > 0 || d.targetMean || (d.analystActions||[]).length;
 
   if (hasAnalyst) {
     const count = d.analystCount || bdTotal || null;
-    html += `<div class="fund-section-title">👥 Consensus Analisti${count ? ` &nbsp;<span style="font-weight:400;color:var(--text2)">(${count} analisti)</span>` : ''}</div>`;
+    const score = d.analystScore; // 1=SB … 5=SS
+    html += `<div class="fund-section-title">👥 Consensus Analisti${count ? `&nbsp;<span style="font-weight:400;color:var(--text2)">(${count} analisti)</span>` : ''}</div>`;
 
-    // Badge consensus
+    // Badge consensus + punteggio numerico
     const cs = CONS_STYLE[d.analystConsensus] || null;
+    html += `<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">`;
     if (cs) {
-      html += `<div style="display:inline-block;background:${cs.bg};border:1px solid ${cs.color};
-                color:${cs.color};font-weight:800;font-size:13px;padding:5px 18px;
-                border-radius:8px;letter-spacing:.6px;margin-bottom:10px">${cs.label}</div>`;
+      html += `<div style="background:${cs.bg};border:1px solid ${cs.color};color:${cs.color};
+                font-weight:800;font-size:13px;padding:5px 18px;border-radius:8px;letter-spacing:.6px">${cs.label}</div>`;
     }
+    if (score != null) {
+      // Gauge 1→5 con marcatore
+      const pct = Math.max(0,Math.min(100,((score-1)/4)*100)).toFixed(0);
+      html += `<div style="flex:1;min-width:140px">
+        <div style="position:relative;height:6px;background:linear-gradient(90deg,#4caf50,#ff9800,#ef5350);border-radius:3px">
+          <div style="position:absolute;left:${pct}%;transform:translateX(-50%);top:-5px;
+               width:4px;height:16px;background:#fff;border-radius:2px" title="Score: ${score.toFixed(1)}"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:8.5px;color:var(--text3);margin-top:2px">
+          <span>Strong Buy</span><span>Hold</span><span>Strong Sell</span>
+        </div>
+      </div>`;
+    }
+    html += `</div>`;
 
-    // Barra buy/hold/sell
+    // Barra buy/hold/sell (mese corrente)
     if (bdTotal > 0) {
       const sb=bd.strongBuy||0, b=bd.buy||0, h=bd.hold||0, s=bd.sell||0, ss=bd.strongSell||0;
-      html += `<div style="margin-bottom:8px">
+      html += `<div style="margin-bottom:10px">
         <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;gap:1px;margin-bottom:5px">
           ${sb ? `<div style="flex:${sb};background:#1b5e20" title="Strong Buy: ${sb}"></div>` : ''}
           ${b  ? `<div style="flex:${b};background:#4caf50"  title="Buy: ${b}"></div>` : ''}
@@ -2835,13 +2862,40 @@ function renderFundamentals(d) {
           ${ss ? `<div style="flex:${ss};background:#b71c1c" title="Strong Sell: ${ss}"></div>` : ''}
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:10.5px;color:var(--text2)">
-          ${sb ? `<span><span style="color:#4caf50">■</span> Strong Buy: <b>${sb}</b></span>` : ''}
-          ${b  ? `<span><span style="color:#81c784">■</span> Buy: <b>${b}</b></span>` : ''}
-          ${h  ? `<span><span style="color:#ff9800">■</span> Hold: <b>${h}</b></span>` : ''}
-          ${s  ? `<span><span style="color:#ef5350">■</span> Sell: <b>${s}</b></span>` : ''}
-          ${ss ? `<span><span style="color:#e57373">■</span> Strong Sell: <b>${ss}</b></span>` : ''}
+          ${sb ? `<span><b style="color:#4caf50">${sb}</b> Str.Buy</span>` : ''}
+          ${b  ? `<span><b style="color:#81c784">${b}</b> Buy</span>` : ''}
+          ${h  ? `<span><b style="color:#ff9800">${h}</b> Hold</span>` : ''}
+          ${s  ? `<span><b style="color:#ef5350">${s}</b> Sell</span>` : ''}
+          ${ss ? `<span><b style="color:#e57373">${ss}</b> Str.Sell</span>` : ''}
         </div>
       </div>`;
+    }
+
+    // Trend storico (ultimi 4 mesi)
+    const trend = (d.analystTrend || []).filter(t => t.period !== '0m');
+    if (trend.length > 0) {
+      const periodLabel = p => ({'- 1m':'1 mese fa','-1m':'1 mese fa','-2m':'2 mesi fa','-3m':'3 mesi fa'}[p] || p);
+      html += `<div style="margin-bottom:10px">
+        <div style="font-size:9.5px;color:var(--text3);margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Trend ultimi mesi</div>
+        <div style="display:flex;gap:8px">`;
+      for (const t of trend.slice(0,3)) {
+        const tot = (t.strongBuy||0)+(t.buy||0)+(t.hold||0)+(t.sell||0)+(t.strongSell||0);
+        if (!tot) continue;
+        const bull = ((t.strongBuy||0)+(t.buy||0))/tot, bear = ((t.sell||0)+(t.strongSell||0))/tot;
+        const bullPct = (bull*100).toFixed(0), bearPct = (bear*100).toFixed(0);
+        html += `<div style="flex:1;background:var(--bg3);border-radius:6px;padding:6px 8px;text-align:center">
+          <div style="font-size:9px;color:var(--text3);margin-bottom:4px">${periodLabel(t.period)}</div>
+          <div style="height:6px;border-radius:3px;overflow:hidden;display:flex;margin-bottom:3px">
+            <div style="flex:${t.strongBuy||0};background:#1b5e20"></div>
+            <div style="flex:${t.buy||0};background:#4caf50"></div>
+            <div style="flex:${t.hold||0};background:#ff9800"></div>
+            <div style="flex:${t.sell||0};background:#ef5350"></div>
+            <div style="flex:${t.strongSell||0};background:#b71c1c"></div>
+          </div>
+          <div style="font-size:9px;color:var(--green)">${bullPct}% bull</div>
+        </div>`;
+      }
+      html += `</div></div>`;
     }
 
     // Target di prezzo
@@ -2853,30 +2907,51 @@ function renderFundamentals(d) {
       html += `<div class="fund-section-title" style="margin-top:4px">🎯 Target di Prezzo</div>`;
       html += `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px">`;
       if (d.targetLow != null && d.targetHigh != null) {
-        const lo = d.targetLow, mn = d.targetMean, hi = d.targetHigh;
-        const range = hi - lo;
-        const mnPct = range > 0 ? Math.max(2,Math.min(98,((mn-lo)/range*100))).toFixed(0) : 50;
-        const curPct = (curPrice && range > 0) ? Math.max(0,Math.min(100,((curPrice-lo)/range*100))).toFixed(0) : null;
+        const lo=d.targetLow, mn=d.targetMean, hi=d.targetHigh, range=hi-lo;
+        const mnPct  = range>0 ? Math.max(2,Math.min(98,((mn-lo)/range*100))).toFixed(0) : 50;
+        const curPct = (curPrice&&range>0) ? Math.max(0,Math.min(100,((curPrice-lo)/range*100))).toFixed(0) : null;
         html += `<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px">
-          <span>Min&nbsp;${N(lo)}</span><span style="font-weight:700;color:var(--text)">Media&nbsp;${N(mn)}</span><span>Max&nbsp;${N(hi)}</span>
+          <span>Min ${N(lo)}</span><span style="font-weight:700;color:var(--text)">Media ${N(mn)}</span><span>Max ${N(hi)}</span>
         </div>
         <div style="position:relative;height:8px;background:linear-gradient(90deg,var(--red) 0%,#ff9800 40%,var(--green) 100%);border-radius:4px;margin-bottom:8px">
-          <div title="Target medio: ${N(mn)}" style="position:absolute;left:${mnPct}%;transform:translateX(-50%);
-               top:-4px;width:4px;height:16px;background:#fff;border-radius:2px;box-shadow:0 0 4px rgba(0,0,0,.5)"></div>
-          ${curPct != null ? `<div title="Prezzo attuale: ${N(curPrice)}" style="position:absolute;left:${curPct}%;transform:translateX(-50%);
-               top:-2px;width:2px;height:12px;background:var(--accent);border-radius:1px"></div>` : ''}
+          <div title="Target medio: ${N(mn)}" style="position:absolute;left:${mnPct}%;transform:translateX(-50%);top:-4px;width:4px;height:16px;background:#fff;border-radius:2px"></div>
+          ${curPct!=null?`<div title="Prezzo attuale" style="position:absolute;left:${curPct}%;transform:translateX(-50%);top:-2px;width:3px;height:12px;background:var(--accent);border-radius:1px"></div>`:''}
         </div>`;
       }
-      if (upside != null) {
-        html += `<div style="text-align:center;font-weight:700;font-size:14px;color:${uCol}">${uSign}${upside.toFixed(1)}% upside potenziale</div>`;
-      }
+      if (upside!=null) html += `<div style="text-align:center;font-weight:700;font-size:14px;color:${uCol}">${uSign}${upside.toFixed(1)}% upside potenziale</div>`;
       html += `<div style="display:flex;justify-content:space-around;margin-top:8px;font-size:11px;color:var(--text2)">
-        ${d.targetLow    ? `<div style="text-align:center"><div style="color:var(--text3);font-size:9px;margin-bottom:2px">MIN</div><b>${N(d.targetLow)}</b></div>` : ''}
-        ${d.targetMedian ? `<div style="text-align:center"><div style="color:var(--text3);font-size:9px;margin-bottom:2px">MEDIANA</div><b>${N(d.targetMedian)}</b></div>` : ''}
-        ${d.targetMean   ? `<div style="text-align:center"><div style="color:var(--text3);font-size:9px;margin-bottom:2px">MEDIA</div><b style="color:var(--accent)">${N(d.targetMean)}</b></div>` : ''}
-        ${d.targetHigh   ? `<div style="text-align:center"><div style="color:var(--text3);font-size:9px;margin-bottom:2px">MAX</div><b>${N(d.targetHigh)}</b></div>` : ''}
-      </div>`;
-      html += `</div>`;
+        ${d.targetLow    ? `<div style="text-align:center"><div style="color:var(--text3);font-size:9px">MIN</div><b>${N(d.targetLow)}</b></div>` : ''}
+        ${d.targetMedian ? `<div style="text-align:center"><div style="color:var(--text3);font-size:9px">MEDIANA</div><b>${N(d.targetMedian)}</b></div>` : ''}
+        ${d.targetMean   ? `<div style="text-align:center"><div style="color:var(--text3);font-size:9px">MEDIA</div><b style="color:var(--accent)">${N(d.targetMean)}</b></div>` : ''}
+        ${d.targetHigh   ? `<div style="text-align:center"><div style="color:var(--text3);font-size:9px">MAX</div><b>${N(d.targetHigh)}</b></div>` : ''}
+      </div></div>`;
+    }
+
+    // Azioni recenti firma per firma
+    const actions = (d.analystActions || []).filter(a => a.firm && a.toGrade);
+    if (actions.length > 0) {
+      html += `<div class="fund-section-title" style="margin-top:4px">📋 Ultime Azioni Analisti</div>`;
+      html += `<div style="max-height:220px;overflow-y:auto;border-radius:8px;border:1px solid var(--border)">`;
+      html += `<table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead><tr style="background:var(--bg3);position:sticky;top:0">
+          <th style="padding:6px 8px;text-align:left;color:var(--text3);font-weight:600">Data</th>
+          <th style="padding:6px 8px;text-align:left;color:var(--text3);font-weight:600">Casa</th>
+          <th style="padding:6px 8px;text-align:left;color:var(--text3);font-weight:600">Azione</th>
+          <th style="padding:6px 8px;text-align:left;color:var(--text3);font-weight:600">Rating</th>
+        </tr></thead><tbody>`;
+      for (const a of actions) {
+        const gc = gradeColor(a.toGrade);
+        const ac = actionColor(a.action);
+        const al = actionLabel(a.action);
+        const from = a.fromGrade ? `<span style="color:var(--text3)"> da ${a.fromGrade}</span>` : '';
+        html += `<tr style="border-bottom:1px solid rgba(255,255,255,.04)">
+          <td style="padding:5px 8px;color:var(--text3);white-space:nowrap">${a.date}</td>
+          <td style="padding:5px 8px;font-weight:600">${a.firm}</td>
+          <td style="padding:5px 8px;color:${ac};white-space:nowrap">${al}</td>
+          <td style="padding:5px 8px;color:${gc};font-weight:600">${a.toGrade}${from}</td>
+        </tr>`;
+      }
+      html += `</tbody></table></div>`;
     }
   }
 

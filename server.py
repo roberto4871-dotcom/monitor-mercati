@@ -435,33 +435,66 @@ def fetch_fundamentals(symbol):
         # ── Consensus analisti ────────────────────────────────
         data['analystConsensus'] = info.get('recommendationKey')       # 'strong_buy','buy','hold','sell','underperform'
         data['analystCount']     = info.get('numberOfAnalystOpinions')
+        data['analystScore']     = info.get('recommendationMean')      # 1=Strong Buy … 5=Strong Sell
         data['targetMean']       = info.get('targetMeanPrice')
         data['targetHigh']       = info.get('targetHighPrice')
         data['targetLow']        = info.get('targetLowPrice')
         data['targetMedian']     = info.get('targetMedianPrice')
 
-        # Breakdown buy/hold/sell (ultimo mese)
+        # Trend mensile (ultimi 4 mesi) + breakdown corrente
         try:
             rec = t.recommendations_summary
             if rec is not None and not rec.empty and 'period' in rec.columns:
-                curr_rows = rec[rec['period'] == '0m']
-                if curr_rows.empty:
-                    curr_rows = rec.iloc[:1]
-                curr = curr_rows.iloc[0]
-                def _ri(col):
-                    try: return int(curr.get(col, 0) or 0)
+                def _ri(r, col):
+                    try: return int(r.get(col, 0) or 0)
                     except: return 0
+                trend = []
+                for _, r in rec.iterrows():
+                    trend.append({
+                        'period':    str(r.get('period', '')),
+                        'strongBuy': _ri(r,'strongBuy'),
+                        'buy':       _ri(r,'buy'),
+                        'hold':      _ri(r,'hold'),
+                        'sell':      _ri(r,'sell'),
+                        'strongSell':_ri(r,'strongSell'),
+                    })
+                data['analystTrend'] = trend
+                # Breakdown corrente = periodo 0m (o primo disponibile)
+                curr_rows = rec[rec['period'] == '0m']
+                if curr_rows.empty: curr_rows = rec.iloc[:1]
+                curr = curr_rows.iloc[0]
                 data['analystBreakdown'] = {
-                    'strongBuy':  _ri('strongBuy'),
-                    'buy':        _ri('buy'),
-                    'hold':       _ri('hold'),
-                    'sell':       _ri('sell'),
-                    'strongSell': _ri('strongSell'),
+                    'strongBuy':  _ri(curr,'strongBuy'),
+                    'buy':        _ri(curr,'buy'),
+                    'hold':       _ri(curr,'hold'),
+                    'sell':       _ri(curr,'sell'),
+                    'strongSell': _ri(curr,'strongSell'),
                 }
             else:
+                data['analystTrend']     = []
                 data['analystBreakdown'] = {}
         except Exception:
+            data['analystTrend']     = []
             data['analystBreakdown'] = {}
+
+        # Azioni recenti firma per firma (upgrades / downgrades)
+        try:
+            ud = t.upgrades_downgrades
+            if ud is not None and not ud.empty:
+                actions = []
+                for dt, row in ud.head(25).iterrows():
+                    actions.append({
+                        'date':      dt.strftime('%Y-%m-%d') if hasattr(dt,'strftime') else str(dt)[:10],
+                        'firm':      str(row.get('Firm','') or ''),
+                        'toGrade':   str(row.get('ToGrade','') or ''),
+                        'fromGrade': str(row.get('FromGrade','') or ''),
+                        'action':    str(row.get('Action','') or '').lower(),
+                    })
+                data['analystActions'] = actions
+            else:
+                data['analystActions'] = []
+        except Exception:
+            data['analystActions'] = []
 
     except Exception as e:
         data = {'error': str(e)}
