@@ -552,8 +552,10 @@ def _parse_news_item(n):
 
 
 def fetch_correlation(symbols, days=252):
-    """Matrice di correlazione rendimenti giornalieri — cache 30 min."""
+    """Matrice di correlazione rendimenti giornalieri — cache 30 min.
+    Usa yf.download() per allineare correttamente le date cross-exchange."""
     import pandas as pd
+    import warnings
     symbols = [s for s in symbols if s][:40]
     if len(symbols) < 2:
         return {'error': 'Servono almeno 2 strumenti'}
@@ -566,28 +568,36 @@ def fetch_correlation(symbols, days=252):
         today    = datetime.date.today()
         start    = today - datetime.timedelta(days=days + 60)
         end_date = today + datetime.timedelta(days=1)
-        # Fetch parallelo
-        def _fetch_one(sym):
+
+        # yf.download allinea automaticamente tutte le serie per data di calendario,
+        # evitando il problema di timestamp con fusi orari diversi per borsa.
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            raw = yf.download(
+                symbols, start=str(start), end=str(end_date),
+                interval='1d', auto_adjust=True,
+                group_by='ticker', progress=False, threads=True
+            )
+
+        is_multi = isinstance(raw.columns, pd.MultiIndex)
+        prices = {}
+        for sym in symbols:
             try:
-                h = yf.Ticker(sym).history(start=str(start), end=str(end_date),
-                                           interval='1d', auto_adjust=True)
-                if not h.empty and len(h) > 20:
-                    return sym, h['Close']
+                col = raw[sym]['Close'] if is_multi else raw['Close']
+                col = col.dropna()
+                if len(col) > 20:
+                    prices[sym] = col
             except Exception:
                 pass
-            return sym, None
-        prices = {}
-        with ThreadPoolExecutor(max_workers=10) as ex:
-            for sym, s in ex.map(_fetch_one, symbols):
-                if s is not None:
-                    prices[sym] = s
+
         if len(prices) < 2:
             result = {'error': 'Dati storici insufficienti'}
         else:
-            df      = pd.DataFrame(prices).dropna(thresh=max(2, len(prices)//2))
+            df      = pd.DataFrame(prices).dropna(how='all')
             returns = df.pct_change().dropna(how='all')
             corr    = returns.corr()
-            valid   = [s for s in symbols if s in corr.columns and not corr[s].isna().all()]
+            valid   = [s for s in symbols if s in corr.columns
+                       and not corr[s].isna().all()]
             matrix  = []
             for s1 in valid:
                 row = []
