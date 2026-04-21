@@ -581,9 +581,9 @@ td.ora{color:#64b5f6;font-size:10px}
         <button class="chart-btn" data-cat="ETF MEGATREND">Megatrend</button>
       </div>
     </div>
-    <div class="chart-ctrl-row">
-      <span class="chart-ctrl-label">Metrica</span>
-      <div class="chart-btn-group" id="chart-metric-btns">
+    <div class="chart-ctrl-row" style="flex-wrap:nowrap;align-items:flex-start">
+      <span class="chart-ctrl-label" style="padding-top:3px">Metrica</span>
+      <div class="chart-btn-group" id="chart-metric-btns" style="flex:1">
         <button class="chart-metric active" data-metric="ytdEur">YTD in €</button>
         <button class="chart-metric" data-metric="ytdLocal">YTD Locale</button>
         <button class="chart-metric" data-metric="varAtt">Oggi</button>
@@ -592,9 +592,8 @@ td.ora{color:#64b5f6;font-size:10px}
         <button class="chart-metric" data-metric="p60">60 Giorni</button>
         <button class="chart-metric" data-metric="p90">90 Giorni</button>
       </div>
-      <div style="margin-left:auto">
-        <button class="chart-btn" onclick="exportChartPDF()" title="Esporta in PDF" style="border-color:rgba(255,215,0,.4)">📄 PDF</button>
-      </div>
+      <button class="chart-btn" onclick="exportChartPDF()" title="Esporta in PDF"
+        style="flex-shrink:0;margin-left:10px;border-color:rgba(255,215,0,.5);color:var(--accent);font-weight:700">📄 PDF</button>
     </div>
   </div>
 
@@ -1200,7 +1199,7 @@ function fmtCell(col, row) {
       if (v === null || v === undefined || isNaN(v)) return '<span class="na">—</span>';
       const cls  = v > 0.05 ? 'pos' : v < -0.05 ? 'neg' : 'zero';
       const sign = v > 0 ? '+' : '';
-      const periodLabels = { p7:'7gg', p30:'30gg', p60:'60gg', p90:'90gg', ytdLocal:'YTD' };
+      const periodLabels = { p7:'7gg', p30:'30gg', p60:'60gg', p90:'90gg', ytdLocal:'YTD', p180:'6mesi', p365:'1anno' };
       const per  = periodLabels[rsConfig.period] || rsConfig.period;
       const word = v > 0.05 ? 'più forte' : v < -0.05 ? 'più debole' : 'in linea';
       const tip  = `${word} del ${rsConfig.label} negli ultimi ${per}`;
@@ -1310,16 +1309,20 @@ function processChart(inst, res) {
   const prev  = meta.chartPreviousClose || meta.regularMarketPreviousClose;
   const varAtt = (prev && cur) ? (cur / prev - 1) * 100 : null;
   const fine2025 = priceAtDec31(pairs);
-  const p7raw    = priceNAgo(pairs, 5);   // ~7 giorni calendario = 5 giorni borsa
-  const p30raw   = priceNAgo(pairs, 21);  // ~30 giorni calendario = 21 giorni borsa
-  const p60raw   = priceNAgo(pairs, 42);  // ~60 giorni calendario = 42 giorni borsa
-  const p90raw   = priceNAgo(pairs, 63);  // ~90 giorni calendario = 63 giorni borsa
+  const p7raw    = priceNAgo(pairs, 5);    // ~7 giorni calendario = 5 giorni borsa
+  const p30raw   = priceNAgo(pairs, 21);   // ~30 giorni calendario = 21 giorni borsa
+  const p60raw   = priceNAgo(pairs, 42);   // ~60 giorni calendario = 42 giorni borsa
+  const p90raw   = priceNAgo(pairs, 63);   // ~90 giorni calendario = 63 giorni borsa
+  const p180raw  = priceNAgo(pairs, 126);  // ~6 mesi calendario = 126 giorni borsa
+  const p365raw  = priceNAgo(pairs, 252);  // ~1 anno calendario = 252 giorni borsa
   const varYTD   = (cur !== null && fine2025 !== null) ? cur - fine2025 : null;
   const ytdLocal = fine2025 ? (cur / fine2025 - 1) * 100 : null;
-  const perf7    = p7raw  ? (cur / p7raw  - 1) * 100 : null;
-  const perf30   = p30raw ? (cur / p30raw - 1) * 100 : null;
-  const perf60   = p60raw ? (cur / p60raw - 1) * 100 : null;
-  const perf90   = p90raw ? (cur / p90raw - 1) * 100 : null;
+  const perf7    = p7raw   ? (cur / p7raw   - 1) * 100 : null;
+  const perf30   = p30raw  ? (cur / p30raw  - 1) * 100 : null;
+  const perf60   = p60raw  ? (cur / p60raw  - 1) * 100 : null;
+  const perf90   = p90raw  ? (cur / p90raw  - 1) * 100 : null;
+  const perf180  = p180raw ? (cur / p180raw - 1) * 100 : null;
+  const perf365  = p365raw ? (cur / p365raw - 1) * 100 : null;
 
   // EUR conversion (requires fxHist data)
   let ytdEur = null;
@@ -1349,6 +1352,8 @@ function processChart(inst, res) {
     p60:      perf60,
     p90:      perf90,
     p7:       perf7,
+    p180:     perf180,
+    p365:     perf365,
     yld:      res.yield_pct ?? null,
     _hist:    pairs,   // dati storici per il grafico
     _loading: false,
@@ -1398,7 +1403,7 @@ async function loadAll() {
   const allSymbols = [...FX_SYMBOLS, ...INSTRUMENTS.map(i => i.s)];
   let batchData = {};
   try {
-    const r = await fetch(`/yf/batch?syms=${encodeURIComponent(allSymbols.join(','))}&period=6mo&interval=1d`);
+    const r = await fetch(`/yf/batch?syms=${encodeURIComponent(allSymbols.join(','))}&period=1y&interval=1d`);
     batchData = await r.json();
   } catch(e) {
     console.warn('Batch fetch fallito, uso fetch individuale come fallback', e);
@@ -1432,7 +1437,7 @@ async function loadAll() {
     } else {
       rows[idx] = {...inst, _loading:false, _err:true,
         ora:null, valore:null, varAtt:null, fine2025:null,
-        varYTD:null, ytdLocal:null, ytdEur:null, p30:null, p60:null, p90:null, p7:null, yld:null};
+        varYTD:null, ytdLocal:null, ytdEur:null, p30:null, p60:null, p90:null, p7:null, p180:null, p365:null, yld:null};
     }
     done++;
     setProgress(60 + done / total * 40);
@@ -1594,11 +1599,13 @@ const RS_BENCHMARKS = [
   { sym:'CL=F',      label:'Petrolio WTI' },
 ];
 const RS_PERIODS = [
-  { key:'p7',  label:'Ultima settimana' },
-  { key:'p30', label:'30 giorni' },
-  { key:'p60', label:'60 giorni' },
-  { key:'p90', label:'90 giorni' },
+  { key:'p7',       label:'Ultima settimana' },
+  { key:'p30',      label:'30 giorni' },
+  { key:'p60',      label:'60 giorni' },
+  { key:'p90',      label:'90 giorni' },
   { key:'ytdLocal', label:'YTD (val. locale)' },
+  { key:'p180',     label:'6 mesi' },
+  { key:'p365',     label:'1 anno' },
 ];
 
 function computeRS() {
@@ -1628,7 +1635,7 @@ function showRsLegend(btn) {
   const popup = document.createElement('div');
   popup.id = 'rs-legend-popup';
 
-  const periodLabels = { p7:'7gg', p30:'30gg', p60:'60gg', p90:'90gg', ytdLocal:'YTD' };
+  const periodLabels = { p7:'7gg', p30:'30gg', p60:'60gg', p90:'90gg', ytdLocal:'YTD', p180:'6 mesi', p365:'1 anno' };
   const per = periodLabels[rsConfig.period] || rsConfig.period;
 
   const mkRow = (val, color, icon, desc) =>
