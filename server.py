@@ -523,30 +523,74 @@ def _translate_it(text):
         return text
 
 
+def _symbol_to_query(symbol):
+    """Converte ticker in keyword di ricerca per indici/valute/ETF."""
+    import re
+    s = symbol.upper()
+    s = re.sub(r'^\^', '', s)             # ^GSPC → GSPC
+    s = re.sub(r'=X$', '', s)             # EURUSD=X → EURUSD
+    s = re.sub(r'=F$', '', s)             # GC=F → GC
+    s = re.sub(r'-[A-Z]{3}$', '', s)      # BTC-USD → BTC
+    s = re.sub(r'\.[A-Z0-9]+$', '', s)    # FTSEMIB.MI → FTSEMIB, AEEM.PA → AEEM
+    s = re.sub(r'-[A-Z]$', '', s)         # DX-Y → DX
+    return s.strip()
+
+
+def _parse_news_item(n):
+    """Estrae titolo/url/publisher da un news item (formato vecchio o nuovo)."""
+    cnt       = n.get('content', {}) or {}
+    title     = cnt.get('title')    or n.get('title', '')
+    summary   = (cnt.get('summary') or n.get('summary', ''))[:250]
+    url_obj   = cnt.get('canonicalUrl') or {}
+    url       = url_obj.get('url') if isinstance(url_obj, dict) else n.get('link', '')
+    publisher = (cnt.get('provider') or {}).get('displayName') \
+                if cnt.get('provider') else n.get('publisher', '')
+    pub_time  = cnt.get('pubDate') or n.get('providerPublishTime', '')
+    return title, summary, url or '', publisher or '', pub_time
+
+
 def fetch_news(symbol):
-    """Ultime news via yfinance — cache 15 min."""
+    """Ultime news via yfinance — cache 15 min.
+    Prova prima con il ticker diretto; se vuoto (indici/valute/ETF) usa
+    yf.Search() con la keyword derivata dal simbolo."""
     with _news_lock:
         c = _news_cache.get(symbol)
         if c and (time.time() - c['ts']) < NEWS_TTL:
             return c['data']
     data = []
     try:
+        # ── Tentativo 1: news diretta per ticker (funziona per azioni) ──
         news = yf.Ticker(symbol).news or []
+
+        # ── Tentativo 2: ricerca per keyword da simbolo (indici/valute) ──
+        if not news:
+            query = _symbol_to_query(symbol)
+            try:
+                sr   = yf.Search(query, news_count=8, enable_fuzzy_query=False)
+                news = getattr(sr, 'news', []) or []
+            except Exception:
+                pass
+
+        # ── Tentativo 3: nome completo da info (ETF europei) ─────────────
+        if not news:
+            try:
+                info       = yf.Ticker(symbol).info or {}
+                short_name = info.get('shortName') or info.get('longName', '')
+                if short_name:
+                    sr   = yf.Search(short_name, news_count=8, enable_fuzzy_query=False)
+                    news = getattr(sr, 'news', []) or []
+            except Exception:
+                pass
+
         for n in news[:8]:
-            # Supporta sia il formato vecchio che il nuovo (content nested)
-            cnt = n.get('content', {}) or {}
-            title     = cnt.get('title')     or n.get('title', '')
-            summary   = (cnt.get('summary')  or n.get('summary', ''))[:250]
-            url_obj   = cnt.get('canonicalUrl') or {}
-            url       = url_obj.get('url') if isinstance(url_obj, dict) else n.get('link', '')
-            publisher = (cnt.get('provider') or {}).get('displayName') if cnt.get('provider') else n.get('publisher', '')
-            pub_time  = cnt.get('pubDate') or n.get('providerPublishTime', '')
+            title, summary, url, publisher, pub_time = _parse_news_item(n)
             if not title:
                 continue
-            data.append({'title': title, 'summary': summary, 'url': url or '',
-                         'publisher': publisher or '', 'time': pub_time})
+            data.append({'title': title, 'summary': summary, 'url': url,
+                         'publisher': publisher, 'time': pub_time})
     except Exception:
         pass
+
     # Traduci titoli e sommari in italiano (parallelo)
     if data:
         def translate_item(item):
