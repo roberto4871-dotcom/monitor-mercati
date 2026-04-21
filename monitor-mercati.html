@@ -542,6 +542,7 @@ body.light .corr-table td.corr-label{background:var(--bg3) !important}
   <div class="tab" data-tab="charts">Grafici</div>
   <div class="tab" data-tab="heatmap">🔥 Heatmap</div>
   <div class="tab" data-tab="correlation">📐 Correlazione</div>
+  <div class="tab" data-tab="scatter">🎯 Scatter</div>
 </div>
 
 <div class="tab-content active" id="tab-table">
@@ -725,6 +726,35 @@ body.light .corr-table td.corr-label{background:var(--bg3) !important}
     <div id="corr-matrix" style="color:var(--text3);text-align:center;padding:60px;font-size:13px">
       Seleziona periodo e gruppo, poi clicca <strong style="color:var(--accent)">Calcola ↻</strong>
     </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  TAB: SCATTER PLOT  Forza Trend  vs  Forza Relativa   -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="tab-content" id="tab-scatter">
+  <div class="controls" style="flex-wrap:wrap;gap:8px 12px">
+    <span class="controls-label">Gruppo:</span>
+    <button class="filter-btn active" data-scatter="_sintesi">📊 Sintesi</button>
+    <button class="filter-btn" data-scatter="_asset_globale">🌍 Asset Globale</button>
+    <button class="filter-btn" data-scatter="_indici">📈 Indici</button>
+    <button class="filter-btn" data-scatter="INDICE AZIONARIO">Azionari</button>
+    <button class="filter-btn" data-scatter="INDICE OBBLIGAZIONARIO">Obbligazionari</button>
+    <button class="filter-btn" data-scatter="MATERIA PRIMA">Materie Prime</button>
+    <button class="filter-btn" data-scatter="VALUTA">Valute</button>
+    <button class="filter-btn" data-scatter="ETF AZ. MASTER">ETF Az.</button>
+    <button class="filter-btn" data-scatter="ETF OBB. MASTER">ETF Obb.</button>
+    <button class="filter-btn" data-scatter="ETF MEGATREND">Megatrend</button>
+    <button class="filter-btn" data-scatter="ETF INDICI">ETF Indici</button>
+    <button class="filter-btn" data-scatter="ETF SINGLE COUNTRY">Single Country</button>
+    <button class="filter-btn" data-scatter="TITOLI IT BIG CAP">Titoli IT</button>
+    <button class="filter-btn" data-scatter="TITOLI EUROPA">Europa</button>
+    <button class="filter-btn" data-scatter="TITOLI USA">Titoli USA</button>
+    <button class="filter-btn" data-scatter="SVIZZERA">Svizzera</button>
+    <button class="filter-btn" data-scatter="ULTRABIG">Ultrabig</button>
+  </div>
+  <div style="flex:1;min-height:0;position:relative;padding:14px 20px 10px">
+    <canvas id="scatter-canvas"></canvas>
   </div>
 </div>
 
@@ -2857,6 +2887,7 @@ document.querySelectorAll('.tab').forEach(t => {
     document.getElementById('tab-'+t.dataset.tab).classList.add('active');
     if (t.dataset.tab === 'charts') renderCharts();
     if (t.dataset.tab === 'heatmap') renderHeatmap();
+    if (t.dataset.tab === 'scatter') renderScatter();
   });
 });
 
@@ -3691,6 +3722,167 @@ function updateMarkets() {
 
 updateMarkets();
 setInterval(updateMarkets, 60000);
+
+// ═══════════════════════════════════════════════════
+//  SCATTER PLOT — Forza Trend vs Forza Relativa
+// ═══════════════════════════════════════════════════
+let scatterGroup = '_sintesi';
+let scatterChartInst = null;
+
+// Plugin: sfondi colorati per i 4 quadranti + linee divisorie + etichette angolo
+const scatterQuadrantPlugin = {
+  id: 'scatterQuadrant',
+  beforeDraw(chart) {
+    const { ctx, chartArea: { left, right, top, bottom }, scales: { x, y } } = chart;
+    const mx = x.getPixelForValue(50);
+    const my = y.getPixelForValue(0);
+    ctx.save();
+    // Sfondi quadranti
+    const fill = (x1,y1,x2,y2,rgba) => { ctx.fillStyle=rgba; ctx.fillRect(x1,y1,x2-x1,y2-y1); };
+    fill(mx, top,  right, my,     'rgba(76,175,80,.07)');   // alto-dx  LEADER
+    fill(left, top, mx,   my,     'rgba(33,150,243,.07)');  // alto-sx  RECUPERO
+    fill(mx,  my,  right, bottom, 'rgba(255,152,0,.07)');   // basso-dx MISTO
+    fill(left, my,  mx,   bottom, 'rgba(239,83,80,.07)');   // basso-sx EVITARE
+    // Linee tratteggiate centrali
+    ctx.strokeStyle = 'rgba(255,255,255,.18)';
+    ctx.lineWidth = 1; ctx.setLineDash([5,5]);
+    ctx.beginPath(); ctx.moveTo(mx,top); ctx.lineTo(mx,bottom); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(left,my); ctx.lineTo(right,my); ctx.stroke();
+    ctx.setLineDash([]);
+    // Etichette quadranti (angoli)
+    ctx.font = '700 10.5px system-ui'; ctx.textBaseline = 'top';
+    ctx.fillStyle = 'rgba(76,175,80,.55)';  ctx.textAlign='right'; ctx.fillText('✅ LEADER',   right-8, top+7);
+    ctx.fillStyle = 'rgba(33,150,243,.55)'; ctx.textAlign='left';  ctx.fillText('🔄 RECUPERO', left+8,  top+7);
+    ctx.textBaseline = 'bottom';
+    ctx.fillStyle = 'rgba(255,152,0,.55)';  ctx.textAlign='right'; ctx.fillText('⚠️ MISTO',    right-8, bottom-7);
+    ctx.fillStyle = 'rgba(239,83,80,.55)';  ctx.textAlign='left';  ctx.fillText('❌ EVITARE',  left+8,  bottom-7);
+    ctx.restore();
+  }
+};
+
+// Plugin: label testo su ogni punto
+const scatterLabelPlugin = {
+  id: 'scatterLabels',
+  afterDatasetsDraw(chart) {
+    const ctx = chart.ctx;
+    const dark = !document.body.classList.contains('light');
+    ctx.font = '700 8.5px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    chart.data.datasets.forEach((ds, di) => {
+      chart.getDatasetMeta(di).data.forEach((pt, pi) => {
+        const d = ds.data[pi];
+        if (!d?.label) return;
+        ctx.fillStyle = dark ? 'rgba(255,255,255,.82)' : 'rgba(10,10,30,.75)';
+        ctx.fillText(d.label, pt.x, pt.y - 7);
+      });
+    });
+  }
+};
+
+function getScatterInstruments() {
+  let list;
+  if (EXCEL_GROUPS[scatterGroup]) {
+    const syms = EXCEL_GROUPS[scatterGroup];
+    const seen = new Set();
+    list = rows.filter(r => {
+      if (!syms.has(r.s) || seen.has(r.s)) return false;
+      seen.add(r.s); return !r._loading && !r._err;
+    });
+  } else {
+    list = rows.filter(r => r.a === scatterGroup && !r._loading && !r._err);
+  }
+  return list.filter(r =>
+    r._momentum != null && !isNaN(r._momentum) &&
+    r._rs != null && !isNaN(r._rs)
+  );
+}
+
+function renderScatter() {
+  const instruments = getScatterInstruments();
+  const canvas = document.getElementById('scatter-canvas');
+  if (!canvas) return;
+
+  // Dividi in 4 dataset per quadrante (colore)
+  const Q = [
+    { label:'✅ Leader',        color:'#4caf50', pts:[] },
+    { label:'🔄 Recupero',      color:'#2196f3', pts:[] },
+    { label:'⚠️ Segnale misto', color:'#ff9800', pts:[] },
+    { label:'❌ Evitare',       color:'#ef5350', pts:[] },
+  ];
+  instruments.forEach(r => {
+    const pt = { x: r._momentum, y: r._rs, label: r.m, fullName: r.i || r.m };
+    if      (r._momentum >= 50 && r._rs >= 0) Q[0].pts.push(pt);
+    else if (r._momentum <  50 && r._rs >= 0) Q[1].pts.push(pt);
+    else if (r._momentum >= 50 && r._rs <  0) Q[2].pts.push(pt);
+    else                                       Q[3].pts.push(pt);
+  });
+
+  const dark = !document.body.classList.contains('light');
+  const textC = dark ? 'rgba(220,230,255,.7)' : 'rgba(20,20,60,.65)';
+  const gridC = dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.07)';
+
+  if (scatterChartInst) { scatterChartInst.destroy(); scatterChartInst = null; }
+
+  scatterChartInst = new Chart(canvas.getContext('2d'), {
+    type: 'scatter',
+    data: {
+      datasets: Q.map(q => ({
+        label: q.label,
+        data: q.pts,
+        backgroundColor: q.color + 'bb',
+        borderColor: q.color,
+        borderWidth: 1.5,
+        pointRadius: 7,
+        pointHoverRadius: 10,
+      }))
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 350 },
+      layout: { padding: { top: 10 } },
+      scales: {
+        x: {
+          min: 0, max: 100,
+          title: { display:true, text:'Forza del Trend  (0 – 100)', color:textC, font:{size:11,weight:'600'} },
+          grid:  { color: gridC },
+          ticks: { color: textC, font:{size:10} }
+        },
+        y: {
+          title: { display:true, text:'Forza Relativa %  (vs benchmark)', color:textC, font:{size:11,weight:'600'} },
+          grid:  { color: gridC },
+          ticks: { color:textC, font:{size:10}, callback: v => (v>0?'+':'')+v.toFixed(1)+'%' }
+        }
+      },
+      plugins: {
+        legend: {
+          display: true, position:'bottom',
+          labels: { color:textC, font:{size:11}, boxWidth:12, padding:18 }
+        },
+        tooltip: {
+          callbacks: {
+            title: () => '',
+            label: ctx => {
+              const d = ctx.raw;
+              return ` ${d.fullName}   |   Trend: ${d.x.toFixed(0)}   |   RS: ${d.y>0?'+':''}${d.y.toFixed(2)}%`;
+            }
+          }
+        }
+      }
+    },
+    plugins: [scatterQuadrantPlugin, scatterLabelPlugin]
+  });
+}
+
+// Pulsanti gruppo scatter
+document.querySelectorAll('[data-scatter]').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('[data-scatter]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    scatterGroup = b.dataset.scatter;
+    renderScatter();
+  });
+});
 
 // ═══════════════════════════════════════════════════
 //  MODAL TABS
