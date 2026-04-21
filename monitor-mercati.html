@@ -380,8 +380,8 @@ td.ora{color:#64b5f6;font-size:10px}
 
 /* ── Correlazione ─────────────────────────────────── */
 .corr-table{border-collapse:collapse;font-size:11px;white-space:nowrap}
-.corr-table th{background:var(--blue);color:var(--accent);padding:6px 8px;text-align:center;font-size:10px;font-weight:700;position:sticky;top:0;z-index:2;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;writing-mode:vertical-rl;transform:rotate(180deg);height:80px;vertical-align:bottom}
-.corr-table th:first-child{writing-mode:horizontal-tb;transform:none;height:auto;left:0;z-index:3;min-width:110px}
+.corr-table th{background:var(--blue);color:var(--accent);padding:5px 6px;text-align:center;font-size:9.5px;font-weight:700;position:sticky;top:0;z-index:2;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.corr-table th:first-child{left:0;z-index:3;min-width:110px}
 .corr-table td{padding:7px 10px;text-align:center;min-width:62px;font-weight:700;font-size:11px;border:1px solid rgba(255,255,255,.06);transition:filter .12s}
 .corr-table td:hover{filter:brightness(1.25);cursor:default}
 .corr-table td.corr-label{background:var(--bg3) !important;color:var(--text);font-weight:700;font-size:11px;position:sticky;left:0;z-index:1;border-right:2px solid var(--border);text-align:left;padding:7px 10px;min-width:110px;max-width:130px;overflow:hidden;text-overflow:ellipsis}
@@ -3413,9 +3413,9 @@ buildThead = function() {
   tr.innerHTML = starTh + visibleCols.map(c => {
     const cls = sortCol === c.key ? (sortDir===1 ? 'sorted-asc':'sorted-desc') : '';
     const lbl = c.key === 'ma'
-      ? `MA<br>50/200&thinsp;<span onclick="event.stopPropagation();showMaLegend(this)" title="Legenda" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span>`
+      ? `MM<br>50/200&thinsp;<span onclick="event.stopPropagation();showMaLegend(this)" title="Legenda" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span>`
       : c.key === '_momentum'
-      ? `Forza<br>del Trend&thinsp;<span onclick="event.stopPropagation();showMomentumLegend(this)" title="Come funziona il Forza del Trend" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span><span onclick="event.stopPropagation();showMomentumSortMenu(this)" title="Ordina" style="cursor:pointer;font-size:14px;opacity:.95;vertical-align:middle;user-select:none;margin-left:3px">${sortCol==='_momentum'?(sortDir===1?'↑':'↓'):'⇅'}</span>`
+      ? `Forza del Trend<br>0 / 100&thinsp;<span onclick="event.stopPropagation();showMomentumLegend(this)" title="Come funziona la Forza del Trend" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span><span onclick="event.stopPropagation();showMomentumSortMenu(this)" title="Ordina" style="cursor:pointer;font-size:14px;opacity:.95;vertical-align:middle;user-select:none;margin-left:3px">${sortCol==='_momentum'?(sortDir===1?'↑':'↓'):'⇅'}</span>`
       : c.key === '_rs'
       ? `Forza<br>Relativa&thinsp;<span onclick="event.stopPropagation();showRsLegend(this)" title="Come funziona la Forza Relativa" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span><span onclick="event.stopPropagation();showRsConfig(this)" title="Configura benchmark e periodo" style="cursor:pointer;font-size:14px;opacity:.95;vertical-align:middle;user-select:none;margin-left:3px">⚙</span>`
       : c.label.replace('\n','<br>');
