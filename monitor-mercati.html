@@ -4109,7 +4109,9 @@ function renderNews(articles) {
         <span class="news-publisher">${a.publisher || ''}</span>
         <span class="news-time">${timeStr}</span>
       </div>
-      <a class="news-title" href="${a.url || '#'}" target="_blank" rel="noopener">${a.title}</a>
+      ${a.url
+        ? `<a class="news-title" href="${a.url}" target="_blank" rel="noopener noreferrer">${a.title}</a>`
+        : `<span class="news-title" style="cursor:default">${a.title}</span>`}
       ${a.summary ? `<div class="news-summary">${a.summary}</div>` : ''}
     </div>`;
   }).join('');

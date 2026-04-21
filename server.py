@@ -541,12 +541,13 @@ def _parse_news_item(n):
     cnt       = n.get('content', {}) or {}
     title     = cnt.get('title')    or n.get('title', '')
     summary   = (cnt.get('summary') or n.get('summary', ''))[:250]
-    url_obj   = cnt.get('canonicalUrl') or {}
-    url       = url_obj.get('url') if isinstance(url_obj, dict) else n.get('link', '')
+    # URL: canonicalUrl (formato nuovo) → link (formato vecchio) → stringa vuota
+    canon     = cnt.get('canonicalUrl') or {}
+    url       = (canon.get('url') if canon else None) or n.get('link', '') or ''
     publisher = (cnt.get('provider') or {}).get('displayName') \
                 if cnt.get('provider') else n.get('publisher', '')
     pub_time  = cnt.get('pubDate') or n.get('providerPublishTime', '')
-    return title, summary, url or '', publisher or '', pub_time
+    return title, summary, url, publisher or '', pub_time
 
 
 def fetch_news(symbol):
