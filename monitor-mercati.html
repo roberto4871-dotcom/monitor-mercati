@@ -1347,8 +1347,8 @@ function processChart(inst, res) {
   const p30raw   = priceNAgo(pairs, 21);   // ~30 giorni calendario = 21 giorni borsa
   const p60raw   = priceNAgo(pairs, 42);   // ~60 giorni calendario = 42 giorni borsa
   const p90raw   = priceNAgo(pairs, 63);   // ~90 giorni calendario = 63 giorni borsa
-  const p180raw  = priceNAgo(pairs, 126);  // ~6 mesi calendario = 126 giorni borsa
-  const p365raw  = priceNAgo(pairs, 252);  // ~1 anno calendario = 252 giorni borsa
+  const p180raw  = priceNAgo(pairs, 118);  // ~6 mesi ≈ 118 bar (safe margin dentro 6mo)
+  const p365raw  = priceNAgo(pairs, 240);  // ~1 anno — disponibile solo con dati >1y
   const varYTD   = (cur !== null && fine2025 !== null) ? cur - fine2025 : null;
   const ytdLocal = fine2025 ? (cur / fine2025 - 1) * 100 : null;
   const perf7    = p7raw   ? (cur / p7raw   - 1) * 100 : null;
@@ -1437,7 +1437,7 @@ async function loadAll() {
   const allSymbols = [...FX_SYMBOLS, ...INSTRUMENTS.map(i => i.s)];
   let batchData = {};
   try {
-    const r = await fetch(`/yf/batch?syms=${encodeURIComponent(allSymbols.join(','))}&period=1y&interval=1d`);
+    const r = await fetch(`/yf/batch?syms=${encodeURIComponent(allSymbols.join(','))}&period=6mo&interval=1d`);
     batchData = await r.json();
   } catch(e) {
     console.warn('Batch fetch fallito, uso fetch individuale come fallback', e);
@@ -1644,13 +1644,28 @@ const RS_PERIODS = [
 
 function computeRS() {
   const bench = rows.find(r => r.s === rsConfig.sym);
-  const benchVal = bench ? bench[rsConfig.period] : null;
+
+  // Fallback automatico: se il periodo scelto non ha dati sul benchmark,
+  // usa il periodo più lungo disponibile con dati reali
+  const PERIOD_PRIORITY = ['p365','p180','p90','p60','p30','p7'];
+  let activePeriod = rsConfig.period;
+  if (bench) {
+    const v = bench[activePeriod];
+    if (v === null || v === undefined) {
+      // Cerca il primo periodo con dati validi
+      for (const p of PERIOD_PRIORITY) {
+        if (bench[p] !== null && bench[p] !== undefined) { activePeriod = p; break; }
+      }
+    }
+  }
+
+  const benchVal = bench ? bench[activePeriod] : null;
   rows.forEach((row, idx) => {
     if (row.s === rsConfig.sym) {
       rows[idx]._rs = null; // il benchmark stesso non ha RS vs se stesso
       return;
     }
-    const instVal = row[rsConfig.period];
+    const instVal = row[activePeriod];
     if (instVal === null || instVal === undefined || benchVal === null || benchVal === undefined) {
       rows[idx]._rs = null;
     } else {
@@ -2315,6 +2330,19 @@ function renderCharts() {
   const barH = Math.max(26, Math.min(44, Math.floor((ctx.parentElement.clientHeight - 40) / data.length)));
   ctx.style.height = (data.length * barH + 40) + 'px';
 
+  // Plugin: sfondo scuro baked-in nel canvas (necessario per toBase64Image leggibile)
+  const bgPlugin = {
+    id: 'chartBg',
+    beforeDraw(chart) {
+      const { ctx, chartArea } = chart;
+      if (!chartArea) return;
+      ctx.save();
+      ctx.fillStyle = '#0d1220';
+      ctx.fillRect(0, 0, chart.width, chart.height);
+      ctx.restore();
+    }
+  };
+
   // Plugin inline: etichette percentuale dentro/fuori le barre
   const barLabelPlugin = {
     id: 'barLabels',
@@ -2350,7 +2378,7 @@ function renderCharts() {
 
   charts['c-main'] = new Chart(ctx, {
     type: 'bar',
-    plugins: [barLabelPlugin],
+    plugins: [bgPlugin, barLabelPlugin],
     data: {
       labels,
       datasets: [{
