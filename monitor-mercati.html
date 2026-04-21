@@ -4177,16 +4177,22 @@ function corrFg(v) {
 }
 function corrLabel(sym) {
   const r = rows.find(x => x.s === sym);
-  // Usa sempre il codice breve (m) — univoco e leggibile nella matrice
-  if (r && r.m) return r.m;
-  // Fallback: pulisce il simbolo Yahoo
-  return sym.replace(/^\^/, '').replace(/=X$/, '').replace(/=F$/, '')
-            .replace(/-USD$/, '').split('.')[0].slice(0, 10);
+  const name = r ? (r.i || r.m || sym) : sym;
+  // Rimuovi prefissi emittente comuni per lasciare solo la parte significativa
+  const stripped = name
+    .replace(/^iSh\.\s*(Core\s+)?/i, '')
+    .replace(/^iShares\s+(Core\s+)?/i, '')
+    .replace(/^Amundi\s+/i, '')
+    .replace(/^Xtrackers\s+/i, '')
+    .replace(/^Lyxor\s+/i, '')
+    .replace(/^SPDR\s+/i, '')
+    .replace(/^Vanguard\s+/i, '')
+    .trim() || name;
+  return stripped.length > 15 ? stripped.slice(0, 14) + '…' : stripped;
 }
 function corrFullName(sym) {
   const r = rows.find(x => x.s === sym);
   if (!r) return sym;
-  // Tooltip: "Nome completo — CODICE (yahoo_sym)"
   return `${r.i || r.m} — ${r.m} (${sym})`;
 }
 
