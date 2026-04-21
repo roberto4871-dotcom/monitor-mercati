@@ -592,6 +592,9 @@ td.ora{color:#64b5f6;font-size:10px}
         <button class="chart-metric" data-metric="p60">60 Giorni</button>
         <button class="chart-metric" data-metric="p90">90 Giorni</button>
       </div>
+      <div style="margin-left:auto">
+        <button class="chart-btn" onclick="exportChartPDF()" title="Esporta in PDF" style="border-color:rgba(255,215,0,.4)">📄 PDF</button>
+      </div>
     </div>
   </div>
 
@@ -1163,6 +1166,15 @@ function heatWrap(content, val, maxPct) {
   return `<div style="background:rgba(${rgb},${alpha});padding:4px 8px;margin:-6px -10px;min-height:28px;display:flex;align-items:center;justify-content:center">${content}</div>`;
 }
 
+// 5 colori fissi e molto distinti per il Momentum Score
+function momentumColor(score) {
+  if (score >= 75) return { fc:'#00e676', bg:'rgba(0,230,118,.18)' };   // verde smeraldo
+  if (score >= 55) return { fc:'#aeea00', bg:'rgba(174,234,0,.18)' };   // lime
+  if (score >= 45) return { fc:'#ffc400', bg:'rgba(255,196,0,.18)' };   // ambra/oro
+  if (score >= 25) return { fc:'#ff6d00', bg:'rgba(255,109,0,.18)' };   // arancio bruciato
+  return                  { fc:'#ff1744', bg:'rgba(255,23,68,.18)' };   // rosso vivo
+}
+
 function fmtCell(col, row) {
   if (row._loading && !['a','m','i'].includes(col.key))
     return '<span class="loading-cell">…</span>';
@@ -1197,10 +1209,8 @@ function fmtCell(col, row) {
     case 'momentum': {
       if (v === null || v === undefined) return '<span class="na">—</span>';
       const score = Math.round(v);
-      const hue   = Math.round(score * 1.2); // 0→red(0°), 50→yellow(60°), 100→green(120°)
-      const bg    = `hsl(${hue},80%,28%)`;
-      const fc    = `hsl(${hue},90%,68%)`;
-      const bar   = `<div style="width:${score}%;height:3px;background:${fc};border-radius:2px;margin-top:2px"></div>`;
+      const {fc, bg} = momentumColor(score);
+      const bar = `<div style="width:${score}%;height:3px;background:${fc};border-radius:2px;margin-top:2px"></div>`;
       return `<div style="text-align:center"><span style="background:${bg};color:${fc};font-size:11px;font-weight:700;padding:2px 7px;border-radius:8px">${score}</span>${bar}</div>`;
     }
     case 'spark': return buildSparkSVG(row._hist);
@@ -1960,11 +1970,11 @@ function showMomentumLegend(btn) {
     `</div>` +
 
     `<div style="font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">Interpretazione</div>` +
-    mkGauge('75-100', 'Momentum forte &mdash; trend rialzista solido', '#4caf50') +
-    mkGauge('55-74',  'Momentum positivo &mdash; leggera pressione al rialzo', '#8bc34a') +
-    mkGauge('45-54',  'Momentum neutro &mdash; mercato indeciso', '#ffd700') +
-    mkGauge('25-44',  'Momentum negativo &mdash; pressione ribassista', '#ff7043') +
-    mkGauge('0-24',   'Momentum debole &mdash; trend ribassista forte', '#ef5350') +
+    mkGauge('75-100', 'Momentum forte &mdash; trend rialzista solido',    '#00e676') +
+    mkGauge('55-74',  'Momentum positivo &mdash; leggera pressione al rialzo', '#aeea00') +
+    mkGauge('45-54',  'Momentum neutro &mdash; mercato indeciso',          '#ffc400') +
+    mkGauge('25-44',  'Momentum negativo &mdash; pressione ribassista',    '#ff6d00') +
+    mkGauge('0-24',   'Momentum debole &mdash; trend ribassista forte',    '#ff1744') +
 
     `<div style="font-size:10px;color:var(--text3);margin-top:10px;line-height:1.4">
        ℹ Ogni periodo viene normalizzato su scala 0-100<br>rispetto alla sua finestra di variazione tipica.
@@ -2324,6 +2334,52 @@ document.getElementById('chart-metric-btns').addEventListener('click', e => {
   chartMetric = btn.dataset.metric;
   renderCharts();
 });
+
+function exportChartPDF() {
+  const chart  = charts['c-main'];
+  const title  = document.getElementById('chart-main-title').textContent;
+  const kpiEl  = document.getElementById('chart-kpis');
+  const imgSrc = chart ? chart.toBase64Image('image/png', 1) : null;
+  const now    = new Date().toLocaleString('it-IT');
+
+  // Raccoglie KPI come testo
+  const kpis = [...kpiEl.querySelectorAll('.chart-kpi')].map(el => ({
+    label: el.querySelector('.chart-kpi-label')?.textContent || '',
+    name:  el.querySelector('.chart-kpi-name')?.textContent  || '',
+    val:   el.querySelector('.chart-kpi-val')?.textContent   || '',
+    color: el.querySelector('.chart-kpi-val')?.style.color   || '#000',
+  }));
+
+  const kpiHtml = kpis.map(k =>
+    `<div style="flex:1;min-width:130px;border:1px solid #ddd;border-radius:8px;padding:10px 14px">
+       <div style="font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${k.label}</div>
+       <div style="font-size:11px;color:#555;margin-bottom:6px">${k.name}</div>
+       <div style="font-size:20px;font-weight:800;color:${k.color}">${k.val}</div>
+     </div>`
+  ).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${title}</title>
+    <style>
+      body{font-family:'Segoe UI',sans-serif;margin:0;padding:24px;background:#fff;color:#1a2332}
+      h1{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#1a237e;margin-bottom:4px}
+      .sub{font-size:11px;color:#888;margin-bottom:16px}
+      .kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+      img{width:100%;border:1px solid #eee;border-radius:8px}
+      @media print{body{padding:12px}@page{margin:15mm}}
+    </style>
+  </head><body>
+    <h1>${title}</h1>
+    <div class="sub">Monitor Mercati · Esportato il ${now}</div>
+    <div class="kpis">${kpiHtml}</div>
+    ${imgSrc ? `<img src="${imgSrc}" alt="Grafico">` : '<p style="color:#999">Nessun grafico disponibile.</p>'}
+    <script>window.onload=()=>{window.print()}<\/script>
+  </body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+}
 
 // ═══════════════════════════════════════════════════
 //  UI HELPERS
