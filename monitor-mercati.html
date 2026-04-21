@@ -1858,8 +1858,16 @@ function toggleBreadthPanel() {
 function updateBreadthPanel() {
   const panel = document.getElementById('breadth-panel');
   if (!panel) return;
-  // Se la tendina è chiusa, nascondi sempre
-  if (!breadthOpen) { panel.style.display = 'none'; return; }
+
+  // Se la tendina è chiusa, nascondi e svuota
+  if (!breadthOpen) {
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    return;
+  }
+
+  // Aperta: mostra subito il pannello (anche mentre carica)
+  panel.style.display = 'block';
 
   // Usa gli stessi strumenti visibili nella tabella (rispetta filtro attivo + ricerca)
   const visible = applyFilters(rows);
@@ -1867,7 +1875,6 @@ function updateBreadthPanel() {
 
   // Se dati MA non ancora caricati o filtro corrente non ha strumenti con MA
   if (!withMA.length) {
-    panel.style.display = '';
     const maLoaded = rows.some(r => r._ma50 !== undefined);
     panel.innerHTML = `<div style="padding:10px 16px;font-size:12px;color:var(--text3)">
       ${maLoaded ? '— Nessun dato MA disponibile per la selezione corrente.' : '⏳ Caricamento dati MA50/MA200 in corso…'}
@@ -1919,7 +1926,7 @@ function updateBreadthPanel() {
                     pctBoth >= 45 ? {icon:'🟡', txt:'fase neutro/mista'} :
                                     {icon:'🔴', txt:'pressione ribassista'};
 
-  panel.style.display = '';
+  panel.style.display = 'block';
   panel.innerHTML =
     `<div class="breadth-inner">
        <div class="breadth-title">
