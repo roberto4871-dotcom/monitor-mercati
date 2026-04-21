@@ -4177,12 +4177,17 @@ function corrFg(v) {
 }
 function corrLabel(sym) {
   const r = rows.find(x => x.s === sym);
-  const name = r ? (r.i || r.m || sym) : sym;
-  return name.length > 14 ? name.slice(0, 13) + '…' : name;
+  // Usa sempre il codice breve (m) — univoco e leggibile nella matrice
+  if (r && r.m) return r.m;
+  // Fallback: pulisce il simbolo Yahoo
+  return sym.replace(/^\^/, '').replace(/=X$/, '').replace(/=F$/, '')
+            .replace(/-USD$/, '').split('.')[0].slice(0, 10);
 }
 function corrFullName(sym) {
   const r = rows.find(x => x.s === sym);
-  return r ? `${r.i || r.m || sym} (${sym})` : sym;
+  if (!r) return sym;
+  // Tooltip: "Nome completo — CODICE (yahoo_sym)"
+  return `${r.i || r.m} — ${r.m} (${sym})`;
 }
 
 function getCorrSymbols() {
