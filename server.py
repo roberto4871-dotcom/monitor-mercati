@@ -568,9 +568,10 @@ def fetch_monthly(symbol):
             return c['data']
     try:
         today = datetime.date.today()
-        start = datetime.date(today.year - 5, 1, 1)
+        start    = datetime.date(today.year - 5, 1, 1)
+        end_date = datetime.date(today.year + 1, 12, 31)
         hist  = yf.Ticker(symbol).history(
-            start=str(start), end=str(today), interval='1mo', auto_adjust=True
+            start=str(start), end=str(end_date), interval='1mo', auto_adjust=True
         )
         if hist.empty:
             return {'error': 'Nessun dato mensile disponibile'}
@@ -606,16 +607,19 @@ def fetch_monthly(symbol):
 
 
 def fetch_weekly(symbol):
-    """Rendimenti settimanali ultimi 3 anni — cache 1h."""
+    """Rendimenti settimanali ultimi 4 anni — cache 1h."""
     with _weekly_lock:
         c = _weekly_cache.get(symbol)
         if c and (time.time() - c['ts']) < WEEKLY_TTL:
             return c['data']
     try:
         today = datetime.date.today()
-        start = datetime.date(today.year - 3, 1, 1)
+        # Usa start 4 anni fa e end 1 anno avanti per catturare
+        # sempre le settimane più recenti a prescindere dal clock del server
+        start    = datetime.date(today.year - 4, 1, 1)
+        end_date = datetime.date(today.year + 1, 12, 31)
         hist  = yf.Ticker(symbol).history(
-            start=str(start), end=str(today), interval='1wk', auto_adjust=True
+            start=str(start), end=str(end_date), interval='1wk', auto_adjust=True
         )
         if hist.empty:
             return {'error': 'Nessun dato settimanale'}
