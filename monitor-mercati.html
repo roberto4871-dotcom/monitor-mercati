@@ -2274,8 +2274,42 @@ function renderCharts() {
   const barH = Math.max(26, Math.min(44, Math.floor((ctx.parentElement.clientHeight - 40) / data.length)));
   ctx.style.height = (data.length * barH + 40) + 'px';
 
+  // Plugin inline: etichette percentuale dentro/fuori le barre
+  const barLabelPlugin = {
+    id: 'barLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx: c2, data: d } = chart;
+      const meta = chart.getDatasetMeta(0);
+      c2.save();
+      c2.font = `bold ${Math.max(9, barH - 14)}px "Segoe UI", sans-serif`;
+      c2.textBaseline = 'middle';
+      meta.data.forEach((bar, i) => {
+        const value = d.datasets[0].data[i];
+        if (value === null || value === undefined) return;
+        const lbl = `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+        const barWidth = Math.abs(bar.x - bar.base);
+        const textW    = c2.measureText(lbl).width;
+        const pad      = 7;
+        const isPos    = value >= 0;
+        if (barWidth > textW + pad * 2 + 4) {
+          // dentro la barra — testo scuro semitrasparente
+          c2.fillStyle   = 'rgba(0,0,0,.75)';
+          c2.textAlign   = isPos ? 'right' : 'left';
+          c2.fillText(lbl, isPos ? bar.x - pad : bar.x + pad, bar.y);
+        } else {
+          // fuori la barra — testo colorato
+          c2.fillStyle   = isPos ? '#66bb6a' : '#ef9a9a';
+          c2.textAlign   = isPos ? 'left' : 'right';
+          c2.fillText(lbl, isPos ? bar.x + pad : bar.x - pad, bar.y);
+        }
+      });
+      c2.restore();
+    }
+  };
+
   charts['c-main'] = new Chart(ctx, {
     type: 'bar',
+    plugins: [barLabelPlugin],
     data: {
       labels,
       datasets: [{
@@ -2291,6 +2325,7 @@ function renderCharts() {
       responsive: true,
       maintainAspectRatio: false,
       animation: { duration: 350, easing: 'easeOutQuart' },
+      layout: { padding: { right: 60 } }, // spazio per etichette fuori barra
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -2305,7 +2340,6 @@ function renderCharts() {
           ticks: { color:'#8fa8c8', callback: v => v + '%', font:{size:10} },
           grid:  { color:'#1e2d45' },
           border:{ color:'#1e2d45' },
-          // linea dello zero evidenziata
           afterDataLimits: s => { s.min = Math.min(s.min, 0); s.max = Math.max(s.max, 0); }
         },
         y: {
