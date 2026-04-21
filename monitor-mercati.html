@@ -377,6 +377,18 @@ td.ora{color:#64b5f6;font-size:10px}
   .mtab-panel,.fund-section { overflow:visible!important; max-height:none!important; }
   * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; }
 }
+
+/* ── Correlazione ─────────────────────────────────── */
+.corr-table{border-collapse:collapse;font-size:9.5px;white-space:nowrap}
+.corr-table th{background:var(--blue);color:var(--accent);padding:4px 6px;text-align:center;font-size:9px;font-weight:700;position:sticky;top:0;z-index:2;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.corr-table th:first-child{left:0;z-index:3;min-width:80px}
+.corr-table td{padding:5px 7px;text-align:center;min-width:54px;font-weight:600;border:1px solid rgba(255,255,255,.04);transition:filter .1s}
+.corr-table td:hover{filter:brightness(1.3)}
+.corr-table td.corr-label{background:var(--bg3) !important;color:var(--text2);font-weight:700;font-size:10px;position:sticky;left:0;z-index:1;border-right:1px solid var(--border);text-align:left;padding:5px 8px;max-width:90px;overflow:hidden;text-overflow:ellipsis}
+.corr-legend{display:flex;align-items:center;gap:14px;padding:10px 16px;font-size:11px;flex-wrap:wrap;color:var(--text2)}
+.corr-legend .leg-box{padding:2px 10px;border-radius:4px;font-weight:700;font-size:10px}
+body.light .corr-table th{background:#1e2ea8}
+body.light .corr-table td.corr-label{background:var(--bg3) !important}
 </style>
 </head>
 <body>
@@ -520,6 +532,7 @@ td.ora{color:#64b5f6;font-size:10px}
   <div class="tab active" data-tab="table">Tabella</div>
   <div class="tab" data-tab="charts">Grafici</div>
   <div class="tab" data-tab="heatmap">🔥 Heatmap</div>
+  <div class="tab" data-tab="correlation">📐 Correlazione</div>
 </div>
 
 <div class="tab-content active" id="tab-table">
@@ -624,6 +637,27 @@ td.ora{color:#64b5f6;font-size:10px}
     <span class="controls-label" id="hm-count"></span>
   </div>
   <div id="heatmap-grid" style="padding:4px 16px 16px;overflow-y:auto;flex:1"></div>
+</div>
+
+<div class="tab-content" id="tab-correlation">
+  <div class="controls" style="flex-wrap:wrap;gap:8px 16px">
+    <span class="controls-label">Periodo:</span>
+    <button class="filter-btn" data-corrdays="63">3 Mesi</button>
+    <button class="filter-btn active" data-corrdays="252">1 Anno</button>
+    <button class="filter-btn" data-corrdays="504">2 Anni</button>
+    <button class="filter-btn" data-corrdays="756">3 Anni</button>
+    <span class="controls-label" style="margin-left:8px">Strumenti:</span>
+    <button class="filter-btn active" data-corrgroup="_sintesi">📊 Sintesi</button>
+    <button class="filter-btn" data-corrgroup="_asset_globale">🌍 Asset Globale</button>
+    <button class="filter-btn" data-corrgroup="_indici">📈 Indici</button>
+    <button class="filter-btn" data-corrgroup="_current">Filtro attivo</button>
+    <button class="btn-refresh" id="btn-corr-calc">Calcola ↻</button>
+  </div>
+  <div style="flex:1;overflow:auto;padding:16px 20px" id="corr-wrap">
+    <div id="corr-matrix" style="color:var(--text3);text-align:center;padding:60px;font-size:13px">
+      Seleziona periodo e gruppo, poi clicca <strong style="color:var(--accent)">Calcola ↻</strong>
+    </div>
+  </div>
 </div>
 
 <div class="statusbar">
@@ -1147,8 +1181,8 @@ const COLS = [
   {key:'p60',      label:'Ultimi\n60 Giorni',    cls:'num',              fmt:'pct'},
   {key:'p90',      label:'Ultimi\n90 Giorni',    cls:'num',              fmt:'pct'},
   {key:'spark',    label:'Trend',               cls:'spark-col',         fmt:'spark'},
-  {key:'ma',       label:'MA\n50/200',          cls:'num ma-col',        fmt:'ma'},
-  {key:'_momentum',label:'Momentum\nScore',     cls:'num',               fmt:'momentum'},
+  {key:'ma',       label:'MM\n50/200',          cls:'num ma-col',        fmt:'ma'},
+  {key:'_momentum',label:'Forza\ndel Trend',   cls:'num',               fmt:'momentum'},
   {key:'_rs',      label:'Forza\nRelativa',     cls:'num',               fmt:'rs'},
   {key:'yld',      label:'Rendimento\n(Yield %)',cls:'num',              fmt:'yld', bondsOnly:true},
 ];
@@ -1218,7 +1252,7 @@ function heatWrap(content, val, maxPct) {
   return `<div style="background:rgba(${rgb},${alpha});padding:4px 8px;margin:-6px -10px;min-height:28px;display:flex;align-items:center;justify-content:center">${content}</div>`;
 }
 
-// 5 colori fissi per il Momentum Score — adattati al tema chiaro/scuro
+// 5 colori fissi per il Forza del Trend — adattati al tema chiaro/scuro
 function momentumColor(score) {
   const light = document.body.classList.contains('light');
   if (score >= 75) return light
@@ -1982,9 +2016,9 @@ function updateBreadthPanel() {
          <span class="breadth-sentiment">${sentiment.icon} ${sentiment.txt}</span>
        </div>
        <div class="breadth-stats">
-         ${stat('Sopra MA<b>50</b>',     pct50,   '#29b6f6', ab50,   'ma50')}
+         ${stat('Sopra MM<b>50</b>',     pct50,   '#29b6f6', ab50,   'ma50')}
          ${stat('Sopra MA<b>200</b>',    pct200,  '#66bb6a', ab200,  'ma200')}
-         ${stat('Sopra MA<b>50+200</b>', pctBoth, '#ffd700', abBoth, 'maBoth')}
+         ${stat('Sopra MM<b>50+200</b>', pctBoth, '#ffd700', abBoth, 'maBoth')}
        </div>
      </div>`;
 }
@@ -2013,12 +2047,12 @@ function showMaLegend(btn) {
   const popup = document.createElement('div');
   popup.id = 'ma-legend-popup';
   popup.innerHTML =
-    `<div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px">Legenda MA 50/200</div>` +
-    row(true,  true,  'Prezzo sopra MA50 e MA200 &rarr; trend rialzista') +
-    row(false, true,  'Sotto MA50, sopra MA200 &rarr; possibile correzione') +
-    row(true,  false, 'Sopra MA50, sotto MA200 &rarr; rimbalzo in corso') +
-    row(false, false, 'Sotto MA50 e MA200 &rarr; trend ribassista') +
-    `<div style="font-size:10px;color:var(--text3);margin-top:8px">● sinistro = MA50 &nbsp;|&nbsp; ● destro = MA200</div>`;
+    `<div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px">Legenda MM 50/200</div>` +
+    row(true,  true,  'Prezzo sopra MM50 e MM200 &rarr; trend rialzista') +
+    row(false, true,  'Sotto MM50, sopra MM200 &rarr; possibile correzione') +
+    row(true,  false, 'Sopra MM50, sotto MM200 &rarr; rimbalzo in corso') +
+    row(false, false, 'Sotto MM50 e MM200 &rarr; trend ribassista') +
+    `<div style="font-size:10px;color:var(--text3);margin-top:8px">● sinistro = MM50 &nbsp;|&nbsp; ● destro = MM200</div>`;
 
   Object.assign(popup.style, {
     position:'fixed', zIndex:'9999',
@@ -2066,7 +2100,7 @@ function showMomentumLegend(btn) {
      </div>`;
 
   popup.innerHTML =
-    `<div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px">Come funziona il Momentum Score</div>` +
+    `<div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px">Come funziona il Forza del Trend</div>` +
 
     `<div style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.5">
        Misura la <b style="color:var(--text)">forza del trend</b> su più orizzonti temporali.<br>
@@ -2173,7 +2207,7 @@ function showMomentumSortMenu(btn) {
   });
 
   const title = document.createElement('div');
-  title.textContent = 'Ordina Momentum Score';
+  title.textContent = 'Ordina Forza del Trend';
   Object.assign(title.style, {
     fontSize:'10px', fontWeight:'700', color:'var(--text3)',
     letterSpacing:'.5px', textTransform:'uppercase',
@@ -3381,7 +3415,7 @@ buildThead = function() {
     const lbl = c.key === 'ma'
       ? `MA<br>50/200&thinsp;<span onclick="event.stopPropagation();showMaLegend(this)" title="Legenda" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span>`
       : c.key === '_momentum'
-      ? `Momentum<br>Score&thinsp;<span onclick="event.stopPropagation();showMomentumLegend(this)" title="Come funziona il Momentum Score" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span><span onclick="event.stopPropagation();showMomentumSortMenu(this)" title="Ordina" style="cursor:pointer;font-size:14px;opacity:.95;vertical-align:middle;user-select:none;margin-left:3px">${sortCol==='_momentum'?(sortDir===1?'↑':'↓'):'⇅'}</span>`
+      ? `Forza<br>del Trend&thinsp;<span onclick="event.stopPropagation();showMomentumLegend(this)" title="Come funziona il Forza del Trend" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span><span onclick="event.stopPropagation();showMomentumSortMenu(this)" title="Ordina" style="cursor:pointer;font-size:14px;opacity:.95;vertical-align:middle;user-select:none;margin-left:3px">${sortCol==='_momentum'?(sortDir===1?'↑':'↓'):'⇅'}</span>`
       : c.key === '_rs'
       ? `Forza<br>Relativa&thinsp;<span onclick="event.stopPropagation();showRsLegend(this)" title="Come funziona la Forza Relativa" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span><span onclick="event.stopPropagation();showRsConfig(this)" title="Configura benchmark e periodo" style="cursor:pointer;font-size:14px;opacity:.95;vertical-align:middle;user-select:none;margin-left:3px">⚙</span>`
       : c.label.replace('\n','<br>');
@@ -4117,6 +4151,101 @@ function renderNews(articles) {
   }).join('');
 }
 
+
+// ═══════════════════════════════════════════════════
+//  CORRELATION MATRIX
+// ═══════════════════════════════════════════════════
+let corrDays  = 252;
+let corrGroup = '_sintesi';
+
+function corrBg(v) {
+  if (v === null || v === undefined) return 'rgba(128,128,128,.12)';
+  const a = Math.min(Math.abs(v), 1);
+  const alpha = (0.12 + a * 0.68).toFixed(2);
+  return v >= 0 ? `rgba(76,175,80,${alpha})` : `rgba(239,83,80,${alpha})`;
+}
+function corrFg(v) {
+  if (v === null) return 'var(--text3)';
+  return Math.abs(v) > 0.55 ? '#fff' : 'var(--text)';
+}
+function corrLabel(sym) {
+  const r = rows.find(x => x.s === sym);
+  if (r && r.m) return r.m.length > 10 ? r.m.slice(0, 9) + '…' : r.m;
+  return sym.replace(/^\^/, '').replace(/=X$/, '').replace(/=F$/, '').replace(/-USD$/, '').split('.')[0].slice(0, 9);
+}
+function corrFullName(sym) {
+  const r = rows.find(x => x.s === sym);
+  return r ? (r.i || r.m || sym) : sym;
+}
+
+function getCorrSymbols() {
+  if (corrGroup === '_current') {
+    return applyFilters(rows).filter(r => !r._loading && !r._err && r.valore).map(r => r.s);
+  }
+  const grp = EXCEL_GROUPS[corrGroup];
+  if (!grp) return [];
+  return [...grp].filter(s => rows.some(r => r.s === s && !r._loading && !r._err && r.valore));
+}
+
+async function renderCorrelation() {
+  const el = document.getElementById('corr-matrix');
+  el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:50px">⏳ Calcolo in corso… (può richiedere 5-15 secondi)</div>';
+  const syms = getCorrSymbols();
+  if (syms.length < 2) {
+    el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:50px">Nessun dato disponibile per il gruppo selezionato</div>';
+    return;
+  }
+  try {
+    const r = await fetch(`/correlation?symbols=${syms.join(',')}&days=${corrDays}`);
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    const { symbols, matrix } = d;
+    const labels   = symbols.map(corrLabel);
+    const fullNames = symbols.map(corrFullName);
+    let html = '<table class="corr-table"><thead><tr><th></th>';
+    labels.forEach((l, i) => html += `<th title="${fullNames[i]}\n${symbols[i]}">${l}</th>`);
+    html += '</tr></thead><tbody>';
+    matrix.forEach((row, i) => {
+      html += `<tr><td class="corr-label" title="${fullNames[i]}">${labels[i]}</td>`;
+      row.forEach((v, j) => {
+        const diag = i === j;
+        const val  = v !== null ? (diag ? '1.00' : v.toFixed(2)) : '—';
+        html += `<td style="background:${corrBg(v ?? (diag?1:null))};color:${corrFg(v ?? (diag?1:null))};${diag?'font-weight:900':''}"
+                     title="${fullNames[i]} ↔ ${fullNames[j]}: ${val}">${val}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    html += `<div class="corr-legend">
+      <span class="leg-box" style="background:rgba(239,83,80,.8);color:#fff">-1.0 Inversa</span>
+      <span class="leg-box" style="background:rgba(239,83,80,.45)">-0.5</span>
+      <span class="leg-box" style="background:rgba(128,128,128,.25)">0 Nessuna</span>
+      <span class="leg-box" style="background:rgba(76,175,80,.45)">+0.5</span>
+      <span class="leg-box" style="background:rgba(76,175,80,.8);color:#fff">+1.0 Perfetta</span>
+      <span style="margin-left:8px;color:var(--text3);font-size:10px">Calcolato su ${d.days} giorni · ${symbols.length} strumenti</span>
+    </div>`;
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--red);padding:20px;font-size:12px">⚠ ${e.message}</div>`;
+  }
+}
+
+// Gestione pulsanti periodo/gruppo
+document.querySelectorAll('[data-corrdays]').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('[data-corrdays]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    corrDays = parseInt(b.dataset.corrdays);
+  });
+});
+document.querySelectorAll('[data-corrgroup]').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('[data-corrgroup]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    corrGroup = b.dataset.corrgroup;
+  });
+});
+document.getElementById('btn-corr-calc').addEventListener('click', renderCorrelation);
 
 // ═══════════════════════════════════════════════════
 //  INIT

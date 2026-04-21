@@ -34,6 +34,7 @@ _monthly_cache = {}; _monthly_lock = threading.Lock(); MONTHLY_TTL = 3600
 _weekly_cache  = {}; _weekly_lock  = threading.Lock(); WEEKLY_TTL  = 3600
 _ma_cache      = {}; _ma_lock      = threading.Lock(); MA_TTL      = 300
 _seasonal_cache= {}; _seasonal_lock= threading.Lock(); SEASONAL_TTL= 21600  # 6 ore
+_corr_cache  = {}; _corr_lock  = threading.Lock(); CORR_TTL  = 1800
 # ISIN cache — permanente (ISIN non cambia mai)
 
 
@@ -550,6 +551,61 @@ def _parse_news_item(n):
     return title, summary, url, publisher or '', pub_time
 
 
+def fetch_correlation(symbols, days=252):
+    """Matrice di correlazione rendimenti giornalieri — cache 30 min."""
+    import pandas as pd
+    symbols = [s for s in symbols if s][:40]
+    if len(symbols) < 2:
+        return {'error': 'Servono almeno 2 strumenti'}
+    cache_key = f"{','.join(sorted(symbols))}|{days}"
+    with _corr_lock:
+        c = _corr_cache.get(cache_key)
+        if c and (time.time() - c['ts']) < CORR_TTL:
+            return c['data']
+    try:
+        today    = datetime.date.today()
+        start    = today - datetime.timedelta(days=days + 60)
+        end_date = today + datetime.timedelta(days=1)
+        # Fetch parallelo
+        def _fetch_one(sym):
+            try:
+                h = yf.Ticker(sym).history(start=str(start), end=str(end_date),
+                                           interval='1d', auto_adjust=True)
+                if not h.empty and len(h) > 20:
+                    return sym, h['Close']
+            except Exception:
+                pass
+            return sym, None
+        prices = {}
+        with ThreadPoolExecutor(max_workers=10) as ex:
+            for sym, s in ex.map(_fetch_one, symbols):
+                if s is not None:
+                    prices[sym] = s
+        if len(prices) < 2:
+            result = {'error': 'Dati storici insufficienti'}
+        else:
+            df      = pd.DataFrame(prices).dropna(thresh=max(2, len(prices)//2))
+            returns = df.pct_change().dropna(how='all')
+            corr    = returns.corr()
+            valid   = [s for s in symbols if s in corr.columns and not corr[s].isna().all()]
+            matrix  = []
+            for s1 in valid:
+                row = []
+                for s2 in valid:
+                    try:
+                        v = corr.loc[s1, s2]
+                        row.append(None if pd.isna(v) else round(float(v), 2))
+                    except Exception:
+                        row.append(None)
+                matrix.append(row)
+            result = {'symbols': valid, 'matrix': matrix, 'days': days}
+    except Exception as e:
+        result = {'error': str(e)}
+    with _corr_lock:
+        _corr_cache[cache_key] = {'data': result, 'ts': time.time()}
+    return result
+
+
 def fetch_news(symbol):
     """Ultime news via yfinance — cache 15 min.
     Prova prima con il ticker diretto; se vuoto (indici/valute/ETF) usa
@@ -826,6 +882,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif self.path.startswith('/seasonal/'):
             sym = urllib.parse.unquote(self.path[len('/seasonal/'):].split('?')[0])
             self._json(fetch_seasonal(sym))
+        elif self.path.startswith('/correlation'):
+            parsed = urllib.parse.urlparse(self.path)
+            params = urllib.parse.parse_qs(parsed.query)
+            syms   = [s for s in params.get('symbols', [''])[0].split(',') if s]
+            days   = int(params.get('days', ['252'])[0])
+            self._json(fetch_correlation(syms, days))
         else:
             super().do_GET()
 
