@@ -1057,11 +1057,9 @@ const INSTRUMENTS = [
   {s:'NDIA.L',    a:'ETF INDICI', m:'NDIA',   i:'WisdomTree MSCI India',        c:'GBP'},
   {s:'HMCH.L',    a:'ETF INDICI', m:'HMCH',   i:'HSBC MSCI Hong Kong',          c:'GBP'},
   // ── Nuovi strumenti per Sintesi / Indici ──────────────────────
-  {s:'DX=F',      a:'VALUTA',                 m:'DX',     i:'US Dollar Index',         c:'USD'},
+  {s:'DX-Y.NYB',      a:'VALUTA',                 m:'DX',     i:'US Dollar Index',         c:'USD'},
   {s:'BTC-USD',   a:'VALUTA',                 m:'BTC',    i:'Bitcoin (USD)',            c:'USD', noEur:true},
   {s:'ZN=F',      a:'INDICE OBBLIGAZIONARIO', m:'ZN',     i:'T-Note 10Y (fut)',         c:'USD'},
-  {s:'FGBL=F',    a:'INDICE OBBLIGAZIONARIO', m:'FGBL',   i:'Bund 10Y (fut)',           c:'EUR'},
-  {s:'FBTG=F',    a:'INDICE OBBLIGAZIONARIO', m:'FBTG',   i:'BTP 10Y (fut)',            c:'EUR'},
   {s:'^TWII',     a:'INDICE AZIONARIO',       m:'TWII',   i:'Taiwan Weighted',          c:'TWD', noEur:true},
   {s:'^RUT',      a:'INDICE AZIONARIO',       m:'RUT',    i:'Russell 2000',             c:'USD'},
   {s:'^KS11',     a:'INDICE AZIONARIO',       m:'KS11',   i:'KOSPI (Corea)',            c:'KRW', noEur:true},
@@ -1069,7 +1067,7 @@ const INSTRUMENTS = [
   {s:'^MERV',     a:'INDICE AZIONARIO',       m:'MERV',   i:'Merval (Argentina)',       c:'ARS', noEur:true},
   {s:'^STI',      a:'INDICE AZIONARIO',       m:'STI',    i:'Straits Times (Singap.)',  c:'SGD', noEur:true},
   {s:'^GSPTSE',   a:'INDICE AZIONARIO',       m:'GSPTSE', i:'TSX Composite (Canada)',   c:'CAD', noEur:true},
-  {s:'^PSEI',     a:'INDICE AZIONARIO',       m:'PSEI',   i:'PSEi (Filippine)',         c:'PHP', noEur:true},
+  {s:'PSEI.PS',     a:'INDICE AZIONARIO',       m:'PSEI',   i:'PSEi (Filippine)',         c:'PHP', noEur:true},
   {s:'^JKSE',     a:'INDICE AZIONARIO',       m:'JKSE',   i:'Jakarta Composite',        c:'IDR', noEur:true}
 ];
 
@@ -1084,8 +1082,8 @@ const FX_SYMBOLS = ['EURUSD=X','EURGBP=X','EURJPY=X','EURCHF=X',
 const EXCEL_GROUPS = {
   _sintesi: new Set([
     'FTSEMIB.MI','BZ=F','^N225','AEEM.PA','^NDX',
-    'DX=F','IWRD.AS','^STOXX50E','^GSPC','GC=F',
-    'EURUSD=X','BTC-USD','ZN=F','XCS6.DE','FGBL=F','FBTG=F',
+    'DX-Y.NYB','IWRD.AS','^STOXX50E','^GSPC','GC=F',
+    'EURUSD=X','BTC-USD','ZN=F','XCS6.DE',
   ]),
   _asset_globale: new Set([
     '^DJI','BRNT.L','AEJ.PA','ETFMIB.MI','FTSEMIB.MI',
@@ -1093,9 +1091,9 @@ const EXCEL_GROUPS = {
     '^N225','^VIX','HG=F','EURJPY=X','^FTSE','MEU.PA',
     '^STOXX','^NDX','IWDE.AS','UST.PA','WLD.PA','PHAU.AS',
     'IWRD.AS','^STOXX50E','^GSPC','IUSE.L','GC=F','PHAG.AS',
-    'SI=F','DX=F','000001.SS','^FCHI','MUSA.PA','EURUSD=X',
-    'IBTM.L','^SSMI','EGOV.PA','IEAC.AS','FGBL=F','IHYG.L',
-    'FBTG=F','EURGBP=X','IHYU.L','^BSESN','^GDAXI',
+    'SI=F','DX-Y.NYB','000001.SS','^FCHI','MUSA.PA','EURUSD=X',
+    'IBTM.L','^SSMI','EGOV.PA','IEAC.AS','IHYG.L',
+    'EURGBP=X','IHYU.L','^BSESN','^GDAXI',
     'PHAG.AS','XCS6.DE','BZ=F','SI=F','PL=F','EURJPY=X',
   ]),
   _indici: new Set([
@@ -1105,7 +1103,7 @@ const EXCEL_GROUPS = {
     '^NDX','MEU.PA','^AXJO','^MXX','IWRD.AS',
     '^STOXX50E','^GSPC','IWDE.AS','000001.SS','^FCHI',
     '^SSMI','^HSI','^DJI','^BSESN','^JKSE',
-    'XCS6.DE','^GDAXI','^PSEI','^NDX','^IXIC',
+    'XCS6.DE','^GDAXI','PSEI.PS','^NDX','^IXIC',
     '^DJI','ETFMIB.MI',
   ]),
 };
