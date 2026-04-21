@@ -3791,20 +3791,42 @@ function buildMonthlyTable(d) {
 }
 
 function buildWeeklyTable(d) {
-  const currentYear = String(new Date().getFullYear());
-  const yearData = d.data[currentYear] || {};
-  const weeks = Object.keys(yearData).map(Number).sort((a,b) => a-b);
-  if (!weeks.length) return '<div style="color:var(--text3);font-size:11px">Nessun dato per l\'anno corrente</div>';
+  if (!d || !d.years || !d.years.length)
+    return '<div style="color:var(--text3);font-size:11px">Nessun dato settimanale</div>';
+
+  // Calcola la settimana massima tra tutti gli anni (di solito 52 o 53)
+  let maxWeek = 0;
+  d.years.forEach(y => {
+    const ks = Object.keys(d.data[y] || {}).map(Number);
+    if (ks.length) maxWeek = Math.max(maxWeek, ...ks);
+  });
+  if (!maxWeek) return '<div style="color:var(--text3);font-size:11px">Nessun dato settimanale</div>';
+
+  const weeks = [];
+  for (let w = 1; w <= maxWeek; w++) weeks.push(w);
+
+  const years = d.years.slice().reverse(); // più recente in cima
+
   let html = '<table class="weekly-table"><thead><tr><th>Anno</th>';
   weeks.forEach(w => html += `<th>W${String(w).padStart(2,'0')}</th>`);
-  html += '</tr></thead><tbody><tr>';
-  html += `<td>${currentYear}</td>`;
-  weeks.forEach(w => {
-    const v = yearData[String(w)];
-    const s = v>0?'+':'';
-    html += `<td class="${mretClass(v)}" title="W${w}: ${s}${v.toFixed(2)}%">${s}${v.toFixed(1)}%</td>`;
+  html += '</tr></thead><tbody>';
+
+  years.forEach(year => {
+    const yearData = d.data[year] || {};
+    html += `<tr><td>${year}</td>`;
+    weeks.forEach(w => {
+      const v = yearData[String(w)];
+      if (v === undefined || v === null) {
+        html += '<td class="empty" style="color:var(--text3)">—</td>';
+      } else {
+        const s = v > 0 ? '+' : '';
+        html += `<td class="${mretClass(v)}" title="W${w} ${year}: ${s}${v.toFixed(2)}%">${s}${v.toFixed(1)}%</td>`;
+      }
+    });
+    html += '</tr>';
   });
-  return html + '</tr></tbody></table>';
+
+  return html + '</tbody></table>';
 }
 
 // ═══════════════════════════════════════════════════
