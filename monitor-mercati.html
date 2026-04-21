@@ -71,9 +71,6 @@ body.light .statusbar { background:var(--bg2); border-top:1px solid var(--border
 body.light #cd-bar-wrap { background:rgba(26,35,126,.08); }
 body.light .tb-panel { background:var(--bg3); }
 body.light .tb-item:hover { background:var(--bg2); }
-body.light .cal-panel { background:var(--bg3); }
-body.light .cal-event { background:var(--bg2) !important; border-color:rgba(255,152,0,.4); }
-body.light .cal-event.past { border-color:var(--border) !important; }
 body.light .modal { background:var(--bg2); border-color:var(--border); }
 body.light .modal-stats { background:var(--bg3); border-bottom-color:var(--border); }
 body.light .modal-tabs { background:var(--bg3); border-bottom-color:var(--border); }
@@ -295,22 +292,6 @@ td.ora{color:#64b5f6;font-size:10px}
 .ai-disclaimer{font-size:10px;color:var(--text3);font-style:italic;text-align:center}
 .ai-gen-time{font-size:10px;color:var(--text3);text-align:right}
 
-/* ── CALENDARIO ECONOMICO ────────────────────────── */
-.cal-panel{background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0}
-.cal-panel-header{display:flex;align-items:center;justify-content:space-between;padding:7px 16px;cursor:pointer;user-select:none}
-.cal-panel-header span{color:#ff9800;font-size:12px;font-weight:700}
-.cal-panel-body{padding:8px 16px 10px;overflow-x:auto;display:flex;gap:8px;flex-wrap:wrap}
-.cal-panel-body.collapsed{display:none}
-.cal-event{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid rgba(255,152,0,.35);border-radius:8px;padding:6px 10px;min-width:200px}
-.cal-event.past{opacity:.45;border-color:var(--border)}
-.cal-flag{font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap;min-width:44px}
-.cal-info{flex:1;min-width:0}
-.cal-title{font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cal-time{font-size:9.5px;color:var(--text3)}
-.cal-vals{display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-size:9.5px}
-.cal-forecast{color:#64b5f6}
-.cal-prev{color:var(--text3)}
-.cal-loading{color:var(--text3);font-size:11px;padding:4px 0}
 
 /* ── PERFORMANCE MENSILE ─────────────────────────── */
 .monthly-wrap{flex:1;overflow-y:auto;padding:16px 20px}
@@ -566,6 +547,7 @@ td.ora{color:#64b5f6;font-size:10px}
     <button class="font-btn" id="font-btn-s" onclick="setFontSize('S')">S</button>
     <button class="font-btn active" id="font-btn-m" onclick="setFontSize('M')">M</button>
     <button class="font-btn" id="font-btn-l" onclick="setFontSize('L')">L</button>
+    <button class="filter-btn" id="btn-breadth" onclick="toggleBreadthPanel()">📊 Market Breadth</button>
     <div class="cols-btn-wrap" id="cols-btn-wrap">
       <button class="filter-btn" id="btn-cols" onclick="toggleColsDropdown(event)">⚙ Colonne</button>
       <div class="cols-dropdown" id="cols-dropdown" style="display:none"></div>
@@ -574,17 +556,6 @@ td.ora{color:#64b5f6;font-size:10px}
     <button class="btn-refresh" id="btn-refresh">↻ Aggiorna</button>
   </div>
   <div class="progress-bar-wrap" id="prog-wrap"><div class="progress-bar" id="prog-bar"></div></div>
-  <!-- Calendario economico alto impatto -->
-  <div class="cal-panel" id="cal-panel">
-    <div class="cal-panel-header" onclick="toggleCalPanel()">
-      <span>📅 Calendario Economico — Alto Impatto</span>
-      <span id="cal-chevron">▼</span>
-    </div>
-    <div class="cal-panel-body collapsed" id="cal-panel-body">
-      <div class="cal-loading" id="cal-events">Caricamento eventi…</div>
-    </div>
-  </div>
-
   <!-- ── Market Breadth Panel ── -->
   <div id="breadth-panel" style="display:none"></div>
 
@@ -1199,13 +1170,24 @@ function heatWrap(content, val, maxPct) {
   return `<div style="background:rgba(${rgb},${alpha});padding:4px 8px;margin:-6px -10px;min-height:28px;display:flex;align-items:center;justify-content:center">${content}</div>`;
 }
 
-// 5 colori fissi e molto distinti per il Momentum Score
+// 5 colori fissi per il Momentum Score — adattati al tema chiaro/scuro
 function momentumColor(score) {
-  if (score >= 75) return { fc:'#00e676', bg:'rgba(0,230,118,.18)' };   // verde smeraldo
-  if (score >= 55) return { fc:'#aeea00', bg:'rgba(174,234,0,.18)' };   // lime
-  if (score >= 45) return { fc:'#ffc400', bg:'rgba(255,196,0,.18)' };   // ambra/oro
-  if (score >= 25) return { fc:'#ff6d00', bg:'rgba(255,109,0,.18)' };   // arancio bruciato
-  return                  { fc:'#ff1744', bg:'rgba(255,23,68,.18)' };   // rosso vivo
+  const light = document.body.classList.contains('light');
+  if (score >= 75) return light
+    ? { fc:'#1a7a2a', bg:'rgba(26,122,42,.15)' }    // verde scuro
+    : { fc:'#00e676', bg:'rgba(0,230,118,.18)' };   // verde smeraldo
+  if (score >= 55) return light
+    ? { fc:'#4e7c0d', bg:'rgba(139,195,74,.18)' }   // lime scuro
+    : { fc:'#aeea00', bg:'rgba(174,234,0,.18)' };   // lime
+  if (score >= 45) return light
+    ? { fc:'#e65100', bg:'rgba(255,152,0,.18)' }    // ambra scura
+    : { fc:'#ffc400', bg:'rgba(255,196,0,.18)' };   // ambra/oro
+  if (score >= 25) return light
+    ? { fc:'#bf360c', bg:'rgba(255,87,34,.18)' }    // arancio scuro
+    : { fc:'#ff6d00', bg:'rgba(255,109,0,.18)' };   // arancio bruciato
+  return light
+    ? { fc:'#c62828', bg:'rgba(198,40,40,.15)' }    // rosso scuro
+    : { fc:'#ff1744', bg:'rgba(255,23,68,.18)' };   // rosso vivo
 }
 
 function fmtCell(col, row) {
@@ -1255,12 +1237,12 @@ function fmtCell(col, row) {
       const mkDot = (val, label) => {
         const col = val === null ? 'var(--text3)' : val ? 'var(--green)' : 'var(--red)';
         const tip = val === null ? `MA${label}: dati insuff.` : val ? `MA${label}: ↑ sopra` : `MA${label}: ↓ sotto`;
-        return `<span title="${tip}" style="display:inline-flex;flex-direction:column;align-items:center;gap:1px">` +
-               `<span style="width:9px;height:9px;border-radius:50%;background:${col};display:block"></span>` +
-               `<span style="font-size:8px;color:${col};line-height:1;font-weight:700">${label}</span>` +
+        return `<span title="${tip}" style="display:inline-flex;flex-direction:column;align-items:center;gap:2px">` +
+               `<span style="width:11px;height:11px;border-radius:50%;background:${col};display:block;border:1.5px solid ${col === 'var(--text3)' ? 'var(--border)' : col}"></span>` +
+               `<span style="font-size:9px;color:${col};line-height:1;font-weight:800">${label}</span>` +
                `</span>`;
       };
-      return `<div style="display:flex;gap:6px;justify-content:center;align-items:center">${mkDot(row._ma50,'50')}${mkDot(row._ma200,'200')}</div>`;
+      return `<div style="display:flex;gap:7px;justify-content:center;align-items:center">${mkDot(row._ma50,'50')}${mkDot(row._ma200,'200')}</div>`;
     }
     default: return v ?? '';
   }
@@ -1861,11 +1843,23 @@ function showRsConfig(btn) {
 }
 
 // ═══════════════════════════════════════════════════
-//  FEATURE 5 — MARKET BREADTH PANEL
+//  FEATURE 5 — MARKET BREADTH PANEL (a tendina)
 // ═══════════════════════════════════════════════════
+let breadthOpen = localStorage.getItem('mm_breadth_open') === 'true';
+
+function toggleBreadthPanel() {
+  breadthOpen = !breadthOpen;
+  localStorage.setItem('mm_breadth_open', String(breadthOpen));
+  const btn = document.getElementById('btn-breadth');
+  if (btn) btn.classList.toggle('active', breadthOpen);
+  updateBreadthPanel();
+}
+
 function updateBreadthPanel() {
   const panel = document.getElementById('breadth-panel');
   if (!panel) return;
+  // Se la tendina è chiusa, nascondi sempre
+  if (!breadthOpen) { panel.style.display = 'none'; return; }
 
   // Usa gli stessi strumenti visibili nella tabella (rispetta filtro attivo + ricerca)
   const visible = applyFilters(rows);
@@ -4040,78 +4034,15 @@ function renderNews(articles) {
   }).join('');
 }
 
-// ═══════════════════════════════════════════════════
-//  CALENDARIO ECONOMICO
-// ═══════════════════════════════════════════════════
-let calCollapsed = localStorage.getItem('mm_cal_collapsed') !== 'false';
-
-const FLAG_MAP = {
-  USD:'🇺🇸', EUR:'🇪🇺', GBP:'🇬🇧', JPY:'🇯🇵',
-  CNY:'🇨🇳', CAD:'🇨🇦', AUD:'🇦🇺', CHF:'🇨🇭',
-  NZD:'🇳🇿', SEK:'🇸🇪', NOK:'🇳🇴', CHF:'🇨🇭',
-};
-function flagOf(code) { return FLAG_MAP[code] || '🌍'; }
-
-async function loadCalendar() {
-  try {
-    const r = await fetch('/calendar');
-    const events = await r.json();
-    renderCalendar(events);
-  } catch(e) {
-    document.getElementById('cal-events').textContent = 'Errore caricamento calendario';
-  }
-}
-
-function renderCalendar(events) {
-  const el = document.getElementById('cal-events');
-  if (!events || !events.length) {
-    el.outerHTML = '<div class="cal-loading" id="cal-events">Nessun evento ad alto impatto questa settimana</div>';
-    return;
-  }
-  const now = Date.now();
-  const html = events.map(e => {
-    let timeStr = e.date || '';
-    let isPast = false;
-    try {
-      const dt = new Date(e.date);
-      isPast = dt < now;
-      timeStr = dt.toLocaleDateString('it-IT',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-    } catch {}
-    return `<div class="cal-event ${isPast ? 'past' : 'upcoming'}">
-      <div class="cal-flag">${flagOf(e.country)} ${e.country||''}</div>
-      <div class="cal-info">
-        <div class="cal-title" title="${e.title||''}">${e.title||''}</div>
-        <div class="cal-time">${timeStr}</div>
-      </div>
-      <div class="cal-vals">
-        ${e.forecast ? `<span class="cal-forecast">Prev: ${e.forecast}</span>` : ''}
-        ${e.previous ? `<span class="cal-prev">Prec: ${e.previous}</span>` : ''}
-      </div>
-    </div>`;
-  }).join('');
-  el.outerHTML = `<div id="cal-events" style="display:flex;gap:8px;flex-wrap:wrap">${html}</div>`;
-}
-
-function toggleCalPanel() {
-  calCollapsed = !calCollapsed;
-  localStorage.setItem('mm_cal_collapsed', String(!calCollapsed));
-  const body = document.getElementById('cal-panel-body');
-  body.classList.toggle('collapsed', calCollapsed);
-  document.getElementById('cal-chevron').textContent = calCollapsed ? '▼' : '▲';
-  if (!calCollapsed) loadCalendar(); // carica solo quando aperto
-}
-
-// Inizializza stato calendario
-(function() {
-  const body = document.getElementById('cal-panel-body');
-  body.classList.toggle('collapsed', calCollapsed);
-  document.getElementById('cal-chevron').textContent = calCollapsed ? '▼' : '▲';
-  if (!calCollapsed) loadCalendar();
-})();
 
 // ═══════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════
+// Inizializza stato bottone breadth
+(function() {
+  const btn = document.getElementById('btn-breadth');
+  if (btn) btn.classList.toggle('active', breadthOpen);
+})();
 loadAll();
 </script>
 </body>
