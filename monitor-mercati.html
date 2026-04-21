@@ -610,19 +610,6 @@ body.light .corr-table td.corr-label{background:var(--bg3) !important}
       </select>
       <input type="number" class="screen-num" id="sv2" step="any" placeholder="valore">
     </div>
-    <!-- Criterio 3 -->
-    <div class="screen-row">
-      <select class="screen-sel" id="sf3" style="min-width:140px">
-        <option value="">Campo…</option>
-        <option value="_momentum">Forza Trend (0–100)</option>
-        <option value="_rs">Forza Relativa %</option>
-      </select>
-      <select class="screen-sel" id="so3" style="width:52px">
-        <option value="gte">≥</option><option value="gt">></option>
-        <option value="lte">≤</option><option value="lt"><</option>
-      </select>
-      <input type="number" class="screen-num" id="sv3" step="any" placeholder="valore">
-    </div>
     <!-- Filtro MM -->
     <select class="screen-sel" id="screen-ma" style="min-width:180px">
       <option value="">MM: tutti</option>
@@ -2373,7 +2360,7 @@ function toggleScreeningPanel() {
 
 function applyScreening() {
   screeningRules = [];
-  for (let i = 1; i <= 3; i++) {
+  for (let i = 1; i <= 2; i++) {
     const field = document.getElementById(`sf${i}`).value;
     const op    = document.getElementById(`so${i}`).value;
     const raw   = document.getElementById(`sv${i}`).value.trim();
@@ -2388,7 +2375,7 @@ function applyScreening() {
 function resetScreening() {
   screeningRules = [];
   screeningMA    = '';
-  for (let i = 1; i <= 3; i++) {
+  for (let i = 1; i <= 2; i++) {
     document.getElementById(`sf${i}`).value = '';
     document.getElementById(`sv${i}`).value = '';
   }
@@ -2435,7 +2422,7 @@ function doScreeningFilter(data) {
 }
 
 // Applica con tasto Invio nei campi valore
-['sv1','sv2','sv3'].forEach(id => {
+['sv1','sv2'].forEach(id => {
   document.addEventListener('DOMContentLoaded', () => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') applyScreening(); });
