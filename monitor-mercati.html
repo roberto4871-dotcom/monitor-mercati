@@ -3729,7 +3729,7 @@ setInterval(updateMarkets, 60000);
 let scatterGroup = '_sintesi';
 let scatterChartInst = null;
 
-// Plugin: sfondi colorati per i 4 quadranti + linee divisorie + etichette angolo
+// Plugin 1 — sfondi quadranti + linee divisorie + etichette CENTRATE
 const scatterQuadrantPlugin = {
   id: 'scatterQuadrant',
   beforeDraw(chart) {
@@ -3737,44 +3737,81 @@ const scatterQuadrantPlugin = {
     const mx = x.getPixelForValue(50);
     const my = y.getPixelForValue(0);
     ctx.save();
-    // Sfondi quadranti
-    const fill = (x1,y1,x2,y2,rgba) => { ctx.fillStyle=rgba; ctx.fillRect(x1,y1,x2-x1,y2-y1); };
-    fill(mx, top,  right, my,     'rgba(76,175,80,.07)');   // alto-dx  LEADER
-    fill(left, top, mx,   my,     'rgba(33,150,243,.07)');  // alto-sx  RECUPERO
-    fill(mx,  my,  right, bottom, 'rgba(255,152,0,.07)');   // basso-dx MISTO
-    fill(left, my,  mx,   bottom, 'rgba(239,83,80,.07)');   // basso-sx EVITARE
-    // Linee tratteggiate centrali
-    ctx.strokeStyle = 'rgba(255,255,255,.18)';
-    ctx.lineWidth = 1; ctx.setLineDash([5,5]);
-    ctx.beginPath(); ctx.moveTo(mx,top); ctx.lineTo(mx,bottom); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(left,my); ctx.lineTo(right,my); ctx.stroke();
+
+    // Sfondi (più decisi per distinguere i quadranti)
+    const fill = (x1,y1,x2,y2,c) => { ctx.fillStyle=c; ctx.fillRect(x1,y1,x2-x1,y2-y1); };
+    fill(mx,   top, right,  my,     'rgba(76,175,80,.11)');
+    fill(left,  top, mx,    my,     'rgba(33,150,243,.11)');
+    fill(mx,    my,  right,  bottom, 'rgba(255,152,0,.11)');
+    fill(left,  my,  mx,    bottom, 'rgba(239,83,80,.11)');
+
+    // Linee divisorie
+    ctx.strokeStyle = 'rgba(255,255,255,.30)';
+    ctx.lineWidth = 1.5; ctx.setLineDash([6,5]);
+    ctx.beginPath(); ctx.moveTo(mx,top);  ctx.lineTo(mx,bottom); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(left,my); ctx.lineTo(right,my);  ctx.stroke();
     ctx.setLineDash([]);
-    // Etichette quadranti (angoli)
-    ctx.font = '700 10.5px system-ui'; ctx.textBaseline = 'top';
-    ctx.fillStyle = 'rgba(76,175,80,.55)';  ctx.textAlign='right'; ctx.fillText('✅ LEADER',   right-8, top+7);
-    ctx.fillStyle = 'rgba(33,150,243,.55)'; ctx.textAlign='left';  ctx.fillText('🔄 RECUPERO', left+8,  top+7);
-    ctx.textBaseline = 'bottom';
-    ctx.fillStyle = 'rgba(255,152,0,.55)';  ctx.textAlign='right'; ctx.fillText('⚠️ MISTO',    right-8, bottom-7);
-    ctx.fillStyle = 'rgba(239,83,80,.55)';  ctx.textAlign='left';  ctx.fillText('❌ EVITARE',  left+8,  bottom-7);
+
+    // Centri dei 4 quadranti
+    const cxR = (mx+right)/2, cxL = (left+mx)/2;
+    const cyT = (top+my)/2,   cyB = (my+bottom)/2;
+
+    const drawQ = (cx, cy, icon, title, sub, col) => {
+      ctx.textAlign = 'center';
+      // Titolo grande
+      ctx.font = 'bold 15px system-ui';
+      ctx.fillStyle = col.replace('COL', '.50');
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(icon + '  ' + title, cx, cy - 6);
+      // Sottotitolo piccolo
+      ctx.font = '11px system-ui';
+      ctx.fillStyle = col.replace('COL', '.35');
+      ctx.fillText(sub, cx, cy + 14);
+    };
+
+    drawQ(cxR, cyT, '✅', 'LEADER',   'Forte su tutti i fronti',    'rgba(76,175,80,COL)');
+    drawQ(cxL, cyT, '🔄', 'RECUPERO', 'In accelerazione relativa',  'rgba(33,150,243,COL)');
+    drawQ(cxR, cyB, '⚠️', 'MISTO',    'Momentum ma perde terreno',  'rgba(255,152,0,COL)');
+    drawQ(cxL, cyB, '❌', 'EVITARE',  'Debole su tutti i fronti',   'rgba(239,83,80,COL)');
+
     ctx.restore();
   }
 };
 
-// Plugin: label testo su ogni punto
+// Plugin 2 — label sui punti con anti-overlap: mostra solo se non troppo vicino ad un altro
 const scatterLabelPlugin = {
   id: 'scatterLabels',
   afterDatasetsDraw(chart) {
     const ctx = chart.ctx;
     const dark = !document.body.classList.contains('light');
-    ctx.font = '700 8.5px system-ui';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    const MIN_DIST = 28; // px — sotto questa soglia sopprime il label
+
+    // Raccogli tutti i punti con coordinate canvas
+    const pts = [];
     chart.data.datasets.forEach((ds, di) => {
-      chart.getDatasetMeta(di).data.forEach((pt, pi) => {
+      chart.getDatasetMeta(di).data.forEach((el, pi) => {
         const d = ds.data[pi];
-        if (!d?.label) return;
-        ctx.fillStyle = dark ? 'rgba(255,255,255,.82)' : 'rgba(10,10,30,.75)';
-        ctx.fillText(d.label, pt.x, pt.y - 7);
+        if (d?.label) pts.push({ px: el.x, py: el.y, label: d.label, color: ds.borderColor });
       });
+    });
+
+    // Disegna label solo se il punto è abbastanza isolato
+    const drawn = [];
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    pts.forEach(pt => {
+      const tooClose = drawn.some(d => Math.hypot(d.px - pt.px, d.py - pt.py) < MIN_DIST);
+      if (tooClose) return;
+      drawn.push(pt);
+      // Sfondo semitrasparente per leggibilità
+      ctx.font = '700 9px system-ui';
+      const w = ctx.measureText(pt.label).width + 6;
+      const bx = pt.px - w/2, by = pt.py - 23;
+      ctx.fillStyle = dark ? 'rgba(10,15,30,.55)' : 'rgba(255,255,255,.60)';
+      ctx.beginPath();
+      ctx.roundRect?.(bx, by, w, 13, 3) || ctx.rect(bx, by, w, 13);
+      ctx.fill();
+      ctx.fillStyle = dark ? 'rgba(255,255,255,.90)' : 'rgba(10,10,30,.85)';
+      ctx.fillText(pt.label, pt.px, pt.py - 11);
     });
   }
 };
@@ -3802,7 +3839,6 @@ function renderScatter() {
   const canvas = document.getElementById('scatter-canvas');
   if (!canvas) return;
 
-  // Dividi in 4 dataset per quadrante (colore)
   const Q = [
     { label:'✅ Leader',        color:'#4caf50', pts:[] },
     { label:'🔄 Recupero',      color:'#2196f3', pts:[] },
@@ -3818,8 +3854,8 @@ function renderScatter() {
   });
 
   const dark = !document.body.classList.contains('light');
-  const textC = dark ? 'rgba(220,230,255,.7)' : 'rgba(20,20,60,.65)';
-  const gridC = dark ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.07)';
+  const textC = dark ? 'rgba(200,215,255,.75)' : 'rgba(20,20,60,.65)';
+  const gridC = dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.06)';
 
   if (scatterChartInst) { scatterChartInst.destroy(); scatterChartInst = null; }
 
@@ -3829,42 +3865,59 @@ function renderScatter() {
       datasets: Q.map(q => ({
         label: q.label,
         data: q.pts,
-        backgroundColor: q.color + 'bb',
+        backgroundColor: q.color + 'cc',
         borderColor: q.color,
-        borderWidth: 1.5,
-        pointRadius: 7,
-        pointHoverRadius: 10,
+        borderWidth: 2,
+        pointRadius: 9,
+        pointHoverRadius: 12,
       }))
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       animation: { duration: 350 },
-      layout: { padding: { top: 10 } },
+      layout: { padding: { top: 8, right: 16, bottom: 4, left: 8 } },
       scales: {
         x: {
           min: 0, max: 100,
-          title: { display:true, text:'Forza del Trend  (0 – 100)', color:textC, font:{size:11,weight:'600'} },
+          title: {
+            display: true,
+            text: '◀  Trend debole          Forza del Trend  (0 – 100)          Trend forte  ▶',
+            color: textC, font: { size: 11, weight: '600' }
+          },
           grid:  { color: gridC },
-          ticks: { color: textC, font:{size:10} }
+          ticks: { color: textC, font: { size: 10 } }
         },
         y: {
-          title: { display:true, text:'Forza Relativa %  (vs benchmark)', color:textC, font:{size:11,weight:'600'} },
+          title: {
+            display: true,
+            text: 'Forza Relativa %  (vs benchmark configurato)',
+            color: textC, font: { size: 11, weight: '600' }
+          },
           grid:  { color: gridC },
-          ticks: { color:textC, font:{size:10}, callback: v => (v>0?'+':'')+v.toFixed(1)+'%' }
+          ticks: { color: textC, font: { size: 10 }, callback: v => (v>0?'+':'')+v.toFixed(1)+'%' }
         }
       },
       plugins: {
         legend: {
-          display: true, position:'bottom',
-          labels: { color:textC, font:{size:11}, boxWidth:12, padding:18 }
+          display: true, position: 'bottom',
+          labels: { color: textC, font: { size: 11, weight: '600' }, boxWidth: 14, padding: 20 }
         },
         tooltip: {
+          backgroundColor: dark ? 'rgba(10,15,35,.95)' : 'rgba(255,255,255,.97)',
+          titleColor: dark ? '#fff' : '#111',
+          bodyColor:  dark ? 'rgba(200,215,255,.85)' : 'rgba(30,30,80,.8)',
+          borderColor: dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.1)',
+          borderWidth: 1,
+          padding: 10,
           callbacks: {
-            title: () => '',
+            title: ctx => ctx[0]?.raw?.fullName || '',
             label: ctx => {
               const d = ctx.raw;
-              return ` ${d.fullName}   |   Trend: ${d.x.toFixed(0)}   |   RS: ${d.y>0?'+':''}${d.y.toFixed(2)}%`;
+              return [
+                `  Forza Trend:    ${d.x.toFixed(0)} / 100`,
+                `  Forza Relativa: ${d.y > 0 ? '+' : ''}${d.y.toFixed(2)}%`,
+              ];
             }
           }
         }
