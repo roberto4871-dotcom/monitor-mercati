@@ -170,6 +170,8 @@ thead th{background:var(--blue);color:var(--accent);padding:8px 10px;text-align:
 thead th:hover{background:#1f2e9e}
 thead th.sorted-asc::after{content:' ▲';font-size:9px}
 thead th.sorted-desc::after{content:' ▼';font-size:9px}
+thead th span[onclick]{display:inline-block;transition:transform .15s,opacity .15s}
+thead th span[onclick]:hover{opacity:1!important;transform:scale(1.25)}
 tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
 tbody tr:hover{background:#141e33!important}
 .section-header td{background:#101830;color:var(--accent);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:1px;padding:5px 12px;border-top:2px solid var(--border)}
@@ -3204,11 +3206,11 @@ buildThead = function() {
   tr.innerHTML = starTh + visibleCols.map(c => {
     const cls = sortCol === c.key ? (sortDir===1 ? 'sorted-asc':'sorted-desc') : '';
     const lbl = c.key === 'ma'
-      ? `MA<br>50/200&thinsp;<span onclick="event.stopPropagation();showMaLegend(this)" title="Legenda" style="cursor:pointer;font-size:10px;opacity:.7;vertical-align:middle;user-select:none">ℹ</span>`
+      ? `MA<br>50/200&thinsp;<span onclick="event.stopPropagation();showMaLegend(this)" title="Legenda" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span>`
       : c.key === '_momentum'
-      ? `Momentum<br>Score&thinsp;<span onclick="event.stopPropagation();showMomentumLegend(this)" title="Come funziona il Momentum Score" style="cursor:pointer;font-size:10px;opacity:.7;vertical-align:middle;user-select:none">ℹ</span><span onclick="event.stopPropagation();showMomentumSortMenu(this)" title="Ordina" style="cursor:pointer;font-size:11px;opacity:.7;vertical-align:middle;user-select:none;margin-left:2px">${sortCol==='_momentum'?(sortDir===1?'↑':'↓'):'⇅'}</span>`
+      ? `Momentum<br>Score&thinsp;<span onclick="event.stopPropagation();showMomentumLegend(this)" title="Come funziona il Momentum Score" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span><span onclick="event.stopPropagation();showMomentumSortMenu(this)" title="Ordina" style="cursor:pointer;font-size:14px;opacity:.95;vertical-align:middle;user-select:none;margin-left:3px">${sortCol==='_momentum'?(sortDir===1?'↑':'↓'):'⇅'}</span>`
       : c.key === '_rs'
-      ? `Forza<br>Relativa&thinsp;<span onclick="event.stopPropagation();showRsLegend(this)" title="Come funziona la Forza Relativa" style="cursor:pointer;font-size:10px;opacity:.7;vertical-align:middle;user-select:none">ℹ</span><span onclick="event.stopPropagation();showRsConfig(this)" title="Configura benchmark e periodo" style="cursor:pointer;font-size:11px;opacity:.8;vertical-align:middle;user-select:none;margin-left:2px">⚙</span>`
+      ? `Forza<br>Relativa&thinsp;<span onclick="event.stopPropagation();showRsLegend(this)" title="Come funziona la Forza Relativa" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span><span onclick="event.stopPropagation();showRsConfig(this)" title="Configura benchmark e periodo" style="cursor:pointer;font-size:14px;opacity:.95;vertical-align:middle;user-select:none;margin-left:3px">⚙</span>`
       : c.label.replace('\n','<br>');
     return `<th class="${cls}" onclick="doSort('${c.key}')">${lbl}</th>`;
   }).join('');
