@@ -1865,8 +1865,15 @@ function updateBreadthPanel() {
   const visible = applyFilters(rows);
   const withMA  = visible.filter(r => r._ma50 !== undefined && r._ma200 !== undefined && !r._loading);
 
-  // Nascondi il panel se non ci sono dati MA per la selezione corrente
-  if (!withMA.length) { panel.style.display = 'none'; return; }
+  // Se dati MA non ancora caricati o filtro corrente non ha strumenti con MA
+  if (!withMA.length) {
+    panel.style.display = '';
+    const maLoaded = rows.some(r => r._ma50 !== undefined);
+    panel.innerHTML = `<div style="padding:10px 16px;font-size:12px;color:var(--text3)">
+      ${maLoaded ? '— Nessun dato MA disponibile per la selezione corrente.' : '⏳ Caricamento dati MA50/MA200 in corso…'}
+    </div>`;
+    return;
+  }
 
   const n       = withMA.length;
   const ab50    = withMA.filter(r => r._ma50  === true).length;
