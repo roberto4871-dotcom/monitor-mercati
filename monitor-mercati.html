@@ -368,6 +368,31 @@ td.ora{color:#64b5f6;font-size:10px}
 .ext-link.tv{color:#2962ff;background:rgba(41,98,255,.12);border:1px solid rgba(41,98,255,.35)}
 .ext-link.bi{color:#00897b;background:rgba(0,137,123,.12);border:1px solid rgba(0,137,123,.35)}
 .ext-link.yf{color:#6a0dad;background:rgba(106,13,173,.12);border:1px solid rgba(106,13,173,.35)}
+
+/* ── STAMPA MODAL ──────────────────────────────────── */
+@media print {
+  @page { margin:12mm; }
+  body > * { display:none!important }
+  .modal-overlay {
+    display:block!important;
+    position:static!important;
+    background:none!important;
+  }
+  .modal {
+    width:100%!important;
+    max-height:none!important;
+    overflow:visible!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+    border:none!important;
+    resize:none!important;
+  }
+  .mtab-panel:not(.active) { display:none!important; }
+  .modal-close, .modal-tabs { display:none!important; }
+  /* nasconde bottone PDF stesso */
+  .modal-header button[onclick*="exportModalPDF"] { display:none!important; }
+  * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; }
+}
 </style>
 </head>
 <body>
@@ -387,7 +412,11 @@ td.ora{color:#64b5f6;font-size:10px}
           </div>
         </div>
       </div>
-      <button class="modal-close" id="modal-close">✕</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button onclick="exportModalPDF()" title="Esporta in PDF"
+          style="background:rgba(255,215,0,.12);border:1.5px solid var(--accent);color:var(--accent);font-weight:800;font-size:11px;padding:4px 12px;border-radius:16px;cursor:pointer;white-space:nowrap">📄 PDF</button>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
     </div>
   <div class="modal-resize-handle" id="modal-resize-handle"></div>
     <div class="modal-stats" id="modal-stats"></div>
@@ -583,9 +612,9 @@ td.ora{color:#64b5f6;font-size:10px}
         <button class="chart-btn" data-cat="ETF MEGATREND">Megatrend</button>
       </div>
     </div>
-    <div class="chart-ctrl-row" style="flex-wrap:nowrap;align-items:flex-start">
-      <span class="chart-ctrl-label" style="padding-top:3px">Metrica</span>
-      <div class="chart-btn-group" id="chart-metric-btns" style="flex:1">
+    <div class="chart-ctrl-row">
+      <span class="chart-ctrl-label">Metrica</span>
+      <div class="chart-btn-group" id="chart-metric-btns">
         <button class="chart-metric active" data-metric="ytdEur">YTD in €</button>
         <button class="chart-metric" data-metric="ytdLocal">YTD Locale</button>
         <button class="chart-metric" data-metric="varAtt">Oggi</button>
@@ -594,8 +623,8 @@ td.ora{color:#64b5f6;font-size:10px}
         <button class="chart-metric" data-metric="p60">60 Giorni</button>
         <button class="chart-metric" data-metric="p90">90 Giorni</button>
       </div>
-      <button class="chart-btn" onclick="exportChartPDF()" title="Esporta in PDF"
-        style="flex-shrink:0;margin-left:10px;border-color:rgba(255,215,0,.5);color:var(--accent);font-weight:700">📄 PDF</button>
+      <button onclick="exportChartPDF()" title="Esporta il grafico in PDF"
+        style="margin-left:auto;flex-shrink:0;background:rgba(255,215,0,.12);border:1.5px solid var(--accent);color:var(--accent);font-weight:800;font-size:12px;padding:4px 16px;border-radius:20px;cursor:pointer;white-space:nowrap;letter-spacing:.3px">📄 Esporta PDF</button>
     </div>
   </div>
 
@@ -2377,6 +2406,11 @@ document.getElementById('chart-metric-btns').addEventListener('click', e => {
   chartMetric = btn.dataset.metric;
   renderCharts();
 });
+
+function exportModalPDF() {
+  // Usa window.print() — il @media print nel CSS nasconde tutto tranne il modal
+  window.print();
+}
 
 function exportChartPDF() {
   const chart  = charts['c-main'];
