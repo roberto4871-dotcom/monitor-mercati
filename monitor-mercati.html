@@ -371,7 +371,7 @@ td.ora{color:#64b5f6;font-size:10px}
 
 /* ── STAMPA MODAL ──────────────────────────────────── */
 @media print {
-  @page { margin:12mm; }
+  @page { size:A4 landscape; margin:5mm; }
   body > * { display:none!important }
   .modal-overlay {
     display:block!important;
@@ -386,11 +386,14 @@ td.ora{color:#64b5f6;font-size:10px}
     border-radius:0!important;
     border:none!important;
     resize:none!important;
+    zoom:0.72;
   }
   .mtab-panel:not(.active) { display:none!important; }
   .modal-close, .modal-tabs { display:none!important; }
-  /* nasconde bottone PDF stesso */
   .modal-header button[onclick*="exportModalPDF"] { display:none!important; }
+  /* sblocca tutte le aree scroll del modal */
+  .seasonal-wrap,.seas-scroll,.modal-body,
+  .mtab-panel,.fund-section { overflow:visible!important; max-height:none!important; }
   * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; }
 }
 </style>
@@ -2408,7 +2411,33 @@ document.getElementById('chart-metric-btns').addEventListener('click', e => {
 });
 
 function exportModalPDF() {
-  // Usa window.print() — il @media print nel CSS nasconde tutto tranne il modal
+  // Calcola lo zoom necessario per far stare tutto in una pagina A4 landscape
+  // A4 landscape a 96dpi con 5mm margini ≈ 1112 × 784 px disponibili
+  const modal = document.querySelector('.modal');
+  // Misura l'altezza del contenuto effettivo (senza max-height)
+  const savedMaxH = modal.style.maxHeight;
+  const savedOver = modal.style.overflow;
+  modal.style.maxHeight = 'none';
+  modal.style.overflow  = 'visible';
+  const contentH = modal.scrollHeight;
+  const contentW = modal.scrollWidth;
+  modal.style.maxHeight = savedMaxH;
+  modal.style.overflow  = savedOver;
+
+  const pageH = 784;   // A4 landscape px netti (≈ 210mm-10mm a 96dpi)
+  const pageW = 1112;  // A4 landscape px netti (≈ 297mm-10mm a 96dpi)
+  const zoomH = pageH / contentH;
+  const zoomW = pageW / contentW;
+  const zoom  = Math.min(zoomH, zoomW, 1).toFixed(3); // mai > 1, mai < ~0.5
+
+  // Inietta zoom come variabile CSS nel @media print tramite una classe temporanea
+  const styleId = '__mm-print-zoom';
+  let s = document.getElementById(styleId);
+  if (!s) { s = document.createElement('style'); s.id = styleId; document.head.appendChild(s); }
+  s.textContent = `@media print { .modal { zoom:${zoom} !important; } }`;
+
+  const cleanup = () => { s.textContent = ''; window.removeEventListener('afterprint', cleanup); };
+  window.addEventListener('afterprint', cleanup);
   window.print();
 }
 
@@ -2417,43 +2446,54 @@ function exportChartPDF() {
   const title  = document.getElementById('chart-main-title').textContent;
   const kpiEl  = document.getElementById('chart-kpis');
   const imgSrc = chart ? chart.toBase64Image('image/png', 1) : null;
-  const now    = new Date().toLocaleString('it-IT');
+  const now    = new Date().toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
 
-  // Raccoglie KPI come testo
   const kpis = [...kpiEl.querySelectorAll('.chart-kpi')].map(el => ({
     label: el.querySelector('.chart-kpi-label')?.textContent || '',
     name:  el.querySelector('.chart-kpi-name')?.textContent  || '',
     val:   el.querySelector('.chart-kpi-val')?.textContent   || '',
-    color: el.querySelector('.chart-kpi-val')?.style.color   || '#000',
+    color: el.querySelector('.chart-kpi-val')?.style.color   || '#4caf50',
   }));
 
   const kpiHtml = kpis.map(k =>
-    `<div style="flex:1;min-width:130px;border:1px solid #ddd;border-radius:8px;padding:10px 14px">
-       <div style="font-size:9px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${k.label}</div>
-       <div style="font-size:11px;color:#555;margin-bottom:6px">${k.name}</div>
-       <div style="font-size:20px;font-weight:800;color:${k.color}">${k.val}</div>
+    `<div style="flex:1;min-width:0;background:#111827;border:1px solid #1e2d45;border-radius:8px;padding:8px 12px">
+       <div style="font-size:8px;font-weight:700;color:#546e7a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">${k.label}</div>
+       <div style="font-size:10px;color:#8fa8c8;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${k.name}</div>
+       <div style="font-size:16px;font-weight:800;color:${k.color}">${k.val}</div>
      </div>`
   ).join('');
 
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>${title}</title>
-    <style>
-      body{font-family:'Segoe UI',sans-serif;margin:0;padding:24px;background:#fff;color:#1a2332}
-      h1{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#1a237e;margin-bottom:4px}
-      .sub{font-size:11px;color:#888;margin-bottom:16px}
-      .kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
-      img{width:100%;border:1px solid #eee;border-radius:8px}
-      @media print{body{padding:12px}@page{margin:15mm}}
-    </style>
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    @page{size:A4 landscape;margin:6mm}
+    html,body{width:100%;height:100%;background:#07090f;color:#dce6f5;font-family:'Segoe UI',system-ui,sans-serif}
+    .page{display:flex;flex-direction:column;height:100vh;padding:10px 14px;gap:8px}
+    .hdr{display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid #ffd700;padding-bottom:6px;flex-shrink:0}
+    .hdr-title{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#ffd700}
+    .hdr-meta{font-size:9px;color:#546e7a}
+    .kpis{display:flex;gap:6px;flex-shrink:0}
+    .chart-wrap{flex:1;min-height:0;border:1px solid #1e2d45;border-radius:8px;overflow:hidden;background:#0d1220;display:flex;align-items:center;justify-content:center}
+    .chart-wrap img{width:100%;height:100%;object-fit:contain;display:block}
+    .footer{font-size:8px;color:#546e7a;text-align:right;flex-shrink:0}
+  </style>
   </head><body>
-    <h1>${title}</h1>
-    <div class="sub">Monitor Mercati · Esportato il ${now}</div>
+  <div class="page">
+    <div class="hdr">
+      <span class="hdr-title">${title}</span>
+      <span class="hdr-meta">Monitor Mercati · ${now}</span>
+    </div>
     <div class="kpis">${kpiHtml}</div>
-    ${imgSrc ? `<img src="${imgSrc}" alt="Grafico">` : '<p style="color:#999">Nessun grafico disponibile.</p>'}
-    <script>window.onload=()=>{window.print()}<\/script>
+    <div class="chart-wrap">
+      ${imgSrc ? `<img src="${imgSrc}" alt="Grafico">` : '<p style="color:#546e7a;font-size:12px">Nessun grafico disponibile.</p>'}
+    </div>
+    <div class="footer">Generato da Monitor Mercati — dati a scopo informativo</div>
+  </div>
+  <script>window.onload=()=>setTimeout(()=>window.print(),200)<\/script>
   </body></html>`;
 
   const win = window.open('', '_blank');
+  if (!win) { alert('Abilita i popup per esportare in PDF'); return; }
   win.document.write(html);
   win.document.close();
 }
