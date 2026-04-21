@@ -317,6 +317,15 @@ td.ora{color:#64b5f6;font-size:10px}
 .mret-neg-lo{background:rgba(239,83,80,.14);color:#ef9a9a}
 .mret-zero{background:rgba(96,125,139,.1);color:var(--text3)}
 
+/* ── SCREENING PANEL ─────────────────────────────── */
+#screening-panel{display:none;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px 16px 12px;background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0}
+.screen-row{display:flex;align-items:center;gap:5px}
+.screen-sel{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;cursor:pointer;outline:none}
+.screen-sel:focus{border-color:var(--accent)}
+.screen-num{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:11px;width:68px;outline:none}
+.screen-num:focus{border-color:var(--accent)}
+#screen-result{font-size:11px;color:var(--accent);font-weight:700;margin-left:4px}
+
 /* ── MARKET BREADTH PANEL ────────────────────────── */
 #breadth-panel{background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0}
 .breadth-inner{padding:8px 16px 10px}
@@ -562,6 +571,7 @@ body.light .corr-table td.corr-label{background:var(--bg3) !important}
     <button class="font-btn" id="font-btn-s" onclick="setFontSize('S')">S</button>
     <button class="font-btn active" id="font-btn-m" onclick="setFontSize('M')">M</button>
     <button class="font-btn" id="font-btn-l" onclick="setFontSize('L')">L</button>
+    <button class="filter-btn" id="btn-screening" onclick="toggleScreeningPanel()">🔍 Screening</button>
     <button class="filter-btn" id="btn-breadth" onclick="toggleBreadthPanel()">📊 Market Breadth</button>
     <div class="cols-btn-wrap" id="cols-btn-wrap">
       <button class="filter-btn" id="btn-cols" onclick="toggleColsDropdown(event)">⚙ Colonne</button>
@@ -571,6 +581,87 @@ body.light .corr-table td.corr-label{background:var(--bg3) !important}
     <button class="btn-refresh" id="btn-refresh">↻ Aggiorna</button>
   </div>
   <div class="progress-bar-wrap" id="prog-wrap"><div class="progress-bar" id="prog-bar"></div></div>
+  <!-- ── Screening Panel ── -->
+  <div id="screening-panel">
+    <span class="controls-label" style="font-size:11px;font-weight:700;letter-spacing:.4px">🔍 SCREENING</span>
+    <!-- Criterio 1 -->
+    <div class="screen-row">
+      <select class="screen-sel" id="sf1" style="min-width:140px">
+        <option value="">Campo…</option>
+        <option value="varAtt">Var. oggi %</option>
+        <option value="ytdEur">YTD EUR %</option>
+        <option value="ytdLocal">YTD locale %</option>
+        <option value="_momentum">Forza Trend (0–100)</option>
+        <option value="p7">Perf. 7 giorni %</option>
+        <option value="p30">Perf. 1 mese %</option>
+        <option value="p90">Perf. 3 mesi %</option>
+        <option value="p180">Perf. 6 mesi %</option>
+        <option value="p365">Perf. 1 anno %</option>
+        <option value="yld">Rendimento %</option>
+      </select>
+      <select class="screen-sel" id="so1" style="width:52px">
+        <option value="gte">≥</option><option value="gt">></option>
+        <option value="lte">≤</option><option value="lt"><</option>
+      </select>
+      <input type="number" class="screen-num" id="sv1" step="any" placeholder="valore">
+    </div>
+    <!-- Criterio 2 -->
+    <div class="screen-row">
+      <select class="screen-sel" id="sf2" style="min-width:140px">
+        <option value="">Campo…</option>
+        <option value="varAtt">Var. oggi %</option>
+        <option value="ytdEur">YTD EUR %</option>
+        <option value="ytdLocal">YTD locale %</option>
+        <option value="_momentum">Forza Trend (0–100)</option>
+        <option value="p7">Perf. 7 giorni %</option>
+        <option value="p30">Perf. 1 mese %</option>
+        <option value="p90">Perf. 3 mesi %</option>
+        <option value="p180">Perf. 6 mesi %</option>
+        <option value="p365">Perf. 1 anno %</option>
+        <option value="yld">Rendimento %</option>
+      </select>
+      <select class="screen-sel" id="so2" style="width:52px">
+        <option value="gte">≥</option><option value="gt">></option>
+        <option value="lte">≤</option><option value="lt"><</option>
+      </select>
+      <input type="number" class="screen-num" id="sv2" step="any" placeholder="valore">
+    </div>
+    <!-- Criterio 3 -->
+    <div class="screen-row">
+      <select class="screen-sel" id="sf3" style="min-width:140px">
+        <option value="">Campo…</option>
+        <option value="varAtt">Var. oggi %</option>
+        <option value="ytdEur">YTD EUR %</option>
+        <option value="ytdLocal">YTD locale %</option>
+        <option value="_momentum">Forza Trend (0–100)</option>
+        <option value="p7">Perf. 7 giorni %</option>
+        <option value="p30">Perf. 1 mese %</option>
+        <option value="p90">Perf. 3 mesi %</option>
+        <option value="p180">Perf. 6 mesi %</option>
+        <option value="p365">Perf. 1 anno %</option>
+        <option value="yld">Rendimento %</option>
+      </select>
+      <select class="screen-sel" id="so3" style="width:52px">
+        <option value="gte">≥</option><option value="gt">></option>
+        <option value="lte">≤</option><option value="lt"><</option>
+      </select>
+      <input type="number" class="screen-num" id="sv3" step="any" placeholder="valore">
+    </div>
+    <!-- Filtro MM -->
+    <select class="screen-sel" id="screen-ma" style="min-width:180px">
+      <option value="">MM: tutti</option>
+      <option value="above50">↑ Sopra MM50</option>
+      <option value="below50">↓ Sotto MM50</option>
+      <option value="above200">↑ Sopra MM200</option>
+      <option value="below200">↓ Sotto MM200</option>
+      <option value="bull">📈 Sopra entrambe (rialzista)</option>
+      <option value="bear">📉 Sotto entrambe (ribassista)</option>
+    </select>
+    <button class="btn-refresh" onclick="applyScreening()">Applica</button>
+    <button class="filter-btn" onclick="resetScreening()" style="color:var(--red)">✕ Reset</button>
+    <span id="screen-result"></span>
+  </div>
+
   <!-- ── Market Breadth Panel ── -->
   <div id="breadth-panel" style="display:none"></div>
 
@@ -1169,6 +1260,8 @@ let sortCol = null;
 let sortDir = 1;
 let activeFilter = '_sintesi';
 let maBreadthFilter = null;   // null | 'ma50' | 'ma200' | 'maBoth'
+let screeningRules = [];      // [{field, op, val}, ...]
+let screeningMA    = '';      // '' | 'above50' | 'below50' | 'above200' | 'below200' | 'bull' | 'bear'
 let rsConfig = JSON.parse(localStorage.getItem('mm_rs_config') || 'null') ||
                { sym: '^GSPC', label: 'S&P 500', period: 'p30' };
 let refreshTimer, cdTimer;
@@ -2272,7 +2365,8 @@ function buildThead() {
 function renderTable() {
   buildThead();
   const filtered = applyFilters(rows);
-  const sorted   = applySort(filtered);
+  const screened = doScreeningFilter(filtered);
+  const sorted   = applySort(screened);
   buildRows(sorted);
 }
 
@@ -2290,6 +2384,87 @@ function updateRow(idx) {
     tr.style.cursor = 'pointer';
   }
 }
+
+// ═══════════════════════════════════════════════════
+//  SCREENING AVANZATO
+// ═══════════════════════════════════════════════════
+function toggleScreeningPanel() {
+  const p   = document.getElementById('screening-panel');
+  const vis = p.style.display === 'flex';
+  p.style.display = vis ? 'none' : 'flex';
+  document.getElementById('btn-screening').classList.toggle('active', !vis);
+}
+
+function applyScreening() {
+  screeningRules = [];
+  for (let i = 1; i <= 3; i++) {
+    const field = document.getElementById(`sf${i}`).value;
+    const op    = document.getElementById(`so${i}`).value;
+    const raw   = document.getElementById(`sv${i}`).value.trim();
+    const val   = parseFloat(raw);
+    if (field && raw !== '' && !isNaN(val)) screeningRules.push({field, op, val});
+  }
+  screeningMA = document.getElementById('screen-ma').value;
+  _updateScreenBtn();
+  renderTable();
+}
+
+function resetScreening() {
+  screeningRules = [];
+  screeningMA    = '';
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById(`sf${i}`).value = '';
+    document.getElementById(`sv${i}`).value = '';
+  }
+  document.getElementById('screen-ma').value = '';
+  _updateScreenBtn();
+  document.getElementById('screen-result').textContent = '';
+  renderTable();
+}
+
+function _updateScreenBtn() {
+  const n   = screeningRules.length + (screeningMA ? 1 : 0);
+  const btn = document.getElementById('btn-screening');
+  btn.textContent = n > 0 ? `🔍 Screening (${n})` : '🔍 Screening';
+  btn.classList.toggle('active', n > 0);
+}
+
+function doScreeningFilter(data) {
+  if (!screeningRules.length && !screeningMA) return data;
+  const result = data.filter(r => {
+    // Criteri numerici
+    for (const {field, op, val} of screeningRules) {
+      const rv = r[field];
+      if (rv === null || rv === undefined || isNaN(rv)) return false;
+      if (op === 'gt'  && !(rv >  val)) return false;
+      if (op === 'gte' && !(rv >= val)) return false;
+      if (op === 'lt'  && !(rv <  val)) return false;
+      if (op === 'lte' && !(rv <= val)) return false;
+    }
+    // Filtro medie mobili
+    if (screeningMA === 'above50'  && r._ma50  !== true)  return false;
+    if (screeningMA === 'below50'  && r._ma50  !== false) return false;
+    if (screeningMA === 'above200' && r._ma200 !== true)  return false;
+    if (screeningMA === 'below200' && r._ma200 !== false) return false;
+    if (screeningMA === 'bull' && !(r._ma50 === true  && r._ma200 === true))  return false;
+    if (screeningMA === 'bear' && !(r._ma50 === false && r._ma200 === false)) return false;
+    return true;
+  });
+  // Aggiorna contatore risultati
+  const el = document.getElementById('screen-result');
+  if (el) el.textContent = (screeningRules.length || screeningMA)
+    ? `→ ${result.length} strument${result.length === 1 ? 'o' : 'i'} trovati`
+    : '';
+  return result;
+}
+
+// Applica con tasto Invio nei campi valore
+['sv1','sv2','sv3'].forEach(id => {
+  document.addEventListener('DOMContentLoaded', () => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') applyScreening(); });
+  });
+});
 
 function applyFilters(data) {
   const q = document.getElementById('search-box').value.toLowerCase().trim();
