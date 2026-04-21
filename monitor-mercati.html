@@ -650,7 +650,14 @@ body.light .corr-table td.corr-label{background:var(--bg3) !important}
     <button class="filter-btn active" data-corrgroup="_sintesi">📊 Sintesi</button>
     <button class="filter-btn" data-corrgroup="_asset_globale">🌍 Asset Globale</button>
     <button class="filter-btn" data-corrgroup="_indici">📈 Indici</button>
-    <button class="filter-btn" data-corrgroup="_current">Filtro attivo</button>
+    <button class="filter-btn" data-corrgroup="INDICE AZIONARIO">Azionari</button>
+    <button class="filter-btn" data-corrgroup="INDICE OBBLIGAZIONARIO">Obbligazionari</button>
+    <button class="filter-btn" data-corrgroup="MATERIA PRIMA">Materie Prime</button>
+    <button class="filter-btn" data-corrgroup="VALUTA">Valute</button>
+    <button class="filter-btn" data-corrgroup="ETF AZ. MASTER">ETF Az.</button>
+    <button class="filter-btn" data-corrgroup="ETF OBB. MASTER">ETF Obb.</button>
+    <button class="filter-btn" data-corrgroup="TITOLI IT BIG CAP">Titoli IT</button>
+    <button class="filter-btn" data-corrgroup="TITOLI USA">Titoli USA</button>
     <button class="btn-refresh" id="btn-corr-calc">Calcola ↻</button>
   </div>
   <div style="flex:1;overflow:auto;padding:16px 20px" id="corr-wrap">
@@ -4179,12 +4186,19 @@ function corrFullName(sym) {
 }
 
 function getCorrSymbols() {
-  if (corrGroup === '_current') {
-    return applyFilters(rows).filter(r => !r._loading && !r._err && r.valore).map(r => r.s);
+  // Gruppi Excel predefiniti (_sintesi, _asset_globale, _indici)
+  if (EXCEL_GROUPS[corrGroup]) {
+    const grp = EXCEL_GROUPS[corrGroup];
+    const seen = new Set();
+    return [...grp].filter(s => {
+      if (seen.has(s)) return false;
+      seen.add(s);
+      return rows.some(r => r.s === s && !r._loading && !r._err && r.valore);
+    });
   }
-  const grp = EXCEL_GROUPS[corrGroup];
-  if (!grp) return [];
-  return [...grp].filter(s => rows.some(r => r.s === s && !r._loading && !r._err && r.valore));
+  // Filtro per asset class (es. 'INDICE AZIONARIO', 'VALUTA', ecc.)
+  const ready = rows.filter(r => !r._loading && !r._err && r.valore);
+  return ready.filter(r => r.a === corrGroup).map(r => r.s);
 }
 
 async function renderCorrelation() {
