@@ -1824,21 +1824,18 @@ function computeRS() {
   }
 
   const benchVal = bench ? bench[activePeriod] : null;
+  // Aggiorna solo i dati _rs in memoria (nessun DOM per ogni riga)
   rows.forEach((row, idx) => {
-    if (row.s === rsConfig.sym) {
-      rows[idx]._rs = null; // il benchmark stesso non ha RS vs se stesso
-      return;
-    }
+    if (row.s === rsConfig.sym) { rows[idx]._rs = null; return; }
     const instVal = row[activePeriod];
-    if (instVal === null || instVal === undefined || benchVal === null || benchVal === undefined) {
+    if (instVal == null || benchVal == null) {
       rows[idx]._rs = null;
     } else {
-      // Ratio composto: vera % di sovra/sotto performance rispetto al benchmark
-      // es. strumento +10%, bench +6%  →  (1.10/1.06 - 1)*100 = +3.77%
       rows[idx]._rs = ((1 + instVal / 100) / (1 + benchVal / 100) - 1) * 100;
     }
-    updateRow(idx);
   });
+  // Un solo re-render al termine invece di updateRow() per ogni riga
+  renderTable();
 }
 
 function showRsLegend(btn) {
@@ -3756,23 +3753,35 @@ const scatterQuadrantPlugin = {
     const cxR = (mx+right)/2, cxL = (left+mx)/2;
     const cyT = (top+my)/2,   cyB = (my+bottom)/2;
 
-    const drawQ = (cx, cy, icon, title, sub, col) => {
+    const drawQ = (cx, cy, icon, title, sub, solidCol) => {
       ctx.textAlign = 'center';
-      // Titolo grande
-      ctx.font = 'bold 15px system-ui';
-      ctx.fillStyle = col.replace('COL', '.50');
+      // Misura larghezza per sfondo pill
+      ctx.font = 'bold 14px system-ui';
+      const titleText = icon + '  ' + title;
+      const tw = Math.max(ctx.measureText(titleText).width, ctx.measureText(sub).width) + 24;
+      const th = 38;
+      // Sfondo semitrasparente
+      ctx.fillStyle = 'rgba(0,0,0,.38)';
+      ctx.beginPath();
+      ctx.roundRect?.(cx - tw/2, cy - 22, tw, th, 7) || ctx.rect(cx - tw/2, cy - 22, tw, th);
+      ctx.fill();
+      // Titolo
+      ctx.font = 'bold 14px system-ui';
+      ctx.fillStyle = solidCol;
       ctx.textBaseline = 'alphabetic';
-      ctx.fillText(icon + '  ' + title, cx, cy - 6);
-      // Sottotitolo piccolo
+      ctx.fillText(titleText, cx, cy - 5);
+      // Sottotitolo
       ctx.font = '11px system-ui';
-      ctx.fillStyle = col.replace('COL', '.35');
-      ctx.fillText(sub, cx, cy + 14);
+      ctx.fillStyle = solidCol;
+      ctx.globalAlpha = 0.75;
+      ctx.fillText(sub, cx, cy + 12);
+      ctx.globalAlpha = 1;
     };
 
-    drawQ(cxR, cyT, '✅', 'LEADER',   'Forte su tutti i fronti',    'rgba(76,175,80,COL)');
-    drawQ(cxL, cyT, '🔄', 'RECUPERO', 'In accelerazione relativa',  'rgba(33,150,243,COL)');
-    drawQ(cxR, cyB, '⚠️', 'MISTO',    'Momentum ma perde terreno',  'rgba(255,152,0,COL)');
-    drawQ(cxL, cyB, '❌', 'EVITARE',  'Debole su tutti i fronti',   'rgba(239,83,80,COL)');
+    drawQ(cxR, cyT, '✅', 'LEADER',   'Forte su tutti i fronti',    '#5dca64');
+    drawQ(cxL, cyT, '🔄', 'RECUPERO', 'In accelerazione relativa',  '#42a5f5');
+    drawQ(cxR, cyB, '⚠️', 'MISTO',    'Momentum ma perde terreno',  '#ffa726');
+    drawQ(cxL, cyB, '❌', 'EVITARE',  'Debole su tutti i fronti',   '#ef5350');
 
     ctx.restore();
   }

@@ -55,11 +55,11 @@ def fetch_symbol(symbol, period='3mo', interval='1d'):
         today  = datetime.date.today()
         if period in LONG_PERIODS:
             start = today.replace(year=today.year - LONG_PERIODS[period])
-            hist  = ticker.history(start=start, end=today, interval=interval, auto_adjust=True)
+            hist  = ticker.history(start=start, end=today, interval=interval, auto_adjust=False)
         elif period == 'max':
-            hist  = ticker.history(start='1970-01-01', end=today, interval=interval, auto_adjust=True)
+            hist  = ticker.history(start='1970-01-01', end=today, interval=interval, auto_adjust=False)
         else:
-            hist  = ticker.history(period=period, interval=interval, auto_adjust=True)
+            hist  = ticker.history(period=period, interval=interval, auto_adjust=False)
         info   = ticker.fast_info
 
         if hist.empty:
@@ -155,18 +155,18 @@ def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
         if period in LONG_PERIODS:
             start = today.replace(year=today.year - LONG_PERIODS[period])
             raw = yf.download(to_fetch, start=str(start), end=str(today),
-                              interval=interval, auto_adjust=True,
+                              interval=interval, auto_adjust=False,
                               group_by='ticker', progress=False, threads=True)
         elif period == 'max':
             raw = yf.download(to_fetch, start='1970-01-01', end=str(today),
-                              interval=interval, auto_adjust=True,
+                              interval=interval, auto_adjust=False,
                               group_by='ticker', progress=False, threads=True)
         else:
             # Partiamo dal 26 dic anno precedente; end=domani per includere barra di oggi
             start = datetime.date(today.year - 1, 12, 26)
             end   = today + datetime.timedelta(days=1)
             raw = yf.download(to_fetch, start=str(start), end=str(end),
-                              interval=interval, auto_adjust=True,
+                              interval=interval, auto_adjust=False,
                               group_by='ticker', progress=False, threads=True)
     except Exception as e:
         print(f'  [batch] yf.download fallito ({e}), uso fetch individuale')
@@ -289,7 +289,7 @@ def fetch_ma_batch(symbols):
             start=str(start),
             end=str(today + datetime.timedelta(days=1)),
             interval='1d',
-            auto_adjust=True,
+            auto_adjust=False,
             group_by='ticker',
             progress=False,
             threads=True,
@@ -333,7 +333,7 @@ def fetch_ma_batch(symbols):
                 start_l = today_l - datetime.timedelta(days=365)
                 hist = yf.Ticker(sym).history(
                     start=str(start_l), end=str(today_l),
-                    interval='1d', auto_adjust=True
+                    interval='1d', auto_adjust=False
                 )
                 if hist.empty:
                     return sym, {'above50': None, 'above200': None, 'ma50': None, 'ma200': None}
@@ -575,7 +575,7 @@ def fetch_correlation(symbols, days=252):
             warnings.simplefilter('ignore')
             raw = yf.download(
                 symbols, start=str(start), end=str(end_date),
-                interval='1d', auto_adjust=True,
+                interval='1d', auto_adjust=False,
                 group_by='ticker', progress=False, threads=True
             )
 
@@ -682,7 +682,7 @@ def fetch_monthly(symbol):
         start    = datetime.date(today.year - 5, 1, 1)
         end_date = datetime.date(today.year + 1, 12, 31)
         hist  = yf.Ticker(symbol).history(
-            start=str(start), end=str(end_date), interval='1mo', auto_adjust=True
+            start=str(start), end=str(end_date), interval='1mo', auto_adjust=False
         )
         if hist.empty:
             return {'error': 'Nessun dato mensile disponibile'}
@@ -730,7 +730,7 @@ def fetch_weekly(symbol):
         start    = datetime.date(today.year - 4, 1, 1)
         end_date = datetime.date(today.year + 1, 12, 31)
         hist  = yf.Ticker(symbol).history(
-            start=str(start), end=str(end_date), interval='1wk', auto_adjust=True
+            start=str(start), end=str(end_date), interval='1wk', auto_adjust=False
         )
         if hist.empty:
             return {'error': 'Nessun dato settimanale'}
@@ -768,7 +768,7 @@ def fetch_seasonal(symbol):
         today = datetime.date.today()
         start = datetime.date(today.year - 10, 1, 1)
         hist  = yf.Ticker(symbol).history(
-            start=str(start), end=str(today), interval='1mo', auto_adjust=True
+            start=str(start), end=str(today), interval='1mo', auto_adjust=False
         )
         if hist.empty:
             result = {'error': 'Nessun dato stagionale disponibile'}
