@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Monitor Mercati</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
@@ -1241,8 +1244,8 @@ const EXCEL_GROUPS = {
   ]),
 };
 
-// Unix timestamp: Jan 1, 2026 00:00 UTC → last price before this = Dec 31, 2025 close
-const DEC31_TS = 1767225600;
+/// Unix timestamp: Jan 1 dell'anno corrente 00:00 UTC → ultimo prezzo prima = close Dec 31 anno prec.
+const DEC31_TS = Math.floor(new Date(`${new Date().getFullYear()}-01-01T00:00:00Z`).getTime() / 1000);
 
 // ═══════════════════════════════════════════════════
 //  STATE
@@ -1356,20 +1359,20 @@ function heatWrap(content, val, maxPct) {
 function momentumColor(score) {
   const light = document.body.classList.contains('light');
   if (score >= 75) return light
-    ? { fc:'#1a7a2a', bg:'rgba(26,122,42,.15)' }    // verde scuro
-    : { fc:'#00e676', bg:'rgba(0,230,118,.18)' };   // verde smeraldo
+    ? { fc:'#145a1e', bg:'rgba(26,122,42,.32)',  bar:'#1a7a2a'  }   // verde intenso
+    : { fc:'#00e676', bg:'rgba(0,230,118,.18)',  bar:'#00e676'  };  // verde smeraldo
   if (score >= 55) return light
-    ? { fc:'#4e7c0d', bg:'rgba(139,195,74,.18)' }   // lime scuro
-    : { fc:'#aeea00', bg:'rgba(174,234,0,.18)' };   // lime
+    ? { fc:'#3a5c04', bg:'rgba(100,160,30,.28)', bar:'#4e7c0d'  }   // lime scuro
+    : { fc:'#aeea00', bg:'rgba(174,234,0,.18)',  bar:'#aeea00'  };  // lime
   if (score >= 45) return light
-    ? { fc:'#e65100', bg:'rgba(255,152,0,.18)' }    // ambra scura
-    : { fc:'#ffc400', bg:'rgba(255,196,0,.18)' };   // ambra/oro
+    ? { fc:'#b84800', bg:'rgba(230,120,0,.30)',  bar:'#e65100'  }   // ambra
+    : { fc:'#ffc400', bg:'rgba(255,196,0,.18)',  bar:'#ffc400'  };  // oro
   if (score >= 25) return light
-    ? { fc:'#bf360c', bg:'rgba(255,87,34,.18)' }    // arancio scuro
-    : { fc:'#ff6d00', bg:'rgba(255,109,0,.18)' };   // arancio bruciato
+    ? { fc:'#922300', bg:'rgba(220,70,20,.28)',  bar:'#bf360c'  }   // arancio scuro
+    : { fc:'#ff6d00', bg:'rgba(255,109,0,.18)',  bar:'#ff6d00'  };  // arancio
   return light
-    ? { fc:'#c62828', bg:'rgba(198,40,40,.15)' }    // rosso scuro
-    : { fc:'#ff1744', bg:'rgba(255,23,68,.18)' };   // rosso vivo
+    ? { fc:'#991b1b', bg:'rgba(185,28,28,.28)',  bar:'#c62828'  }   // rosso
+    : { fc:'#ff1744', bg:'rgba(255,23,68,.18)',  bar:'#ff1744'  };  // rosso vivo
 }
 
 function fmtCell(col, row) {
@@ -1406,9 +1409,12 @@ function fmtCell(col, row) {
     case 'momentum': {
       if (v === null || v === undefined) return '<span class="na">—</span>';
       const score = Math.round(v);
-      const {fc, bg} = momentumColor(score);
-      const bar = `<div style="width:${score}%;height:3px;background:${fc};border-radius:2px;margin-top:2px"></div>`;
-      return `<div style="text-align:center"><span style="background:${bg};color:${fc};font-size:11px;font-weight:700;padding:2px 7px;border-radius:8px">${score}</span>${bar}</div>`;
+      const {fc, bg, bar: barCol} = momentumColor(score);
+      const light = document.body.classList.contains('light');
+      const border = light ? `1.5px solid ${fc}` : 'none';
+      const barH   = light ? '4px' : '3px';
+      const barDiv = `<div style="width:${score}%;height:${barH};background:${barCol};border-radius:2px;margin-top:3px"></div>`;
+      return `<div style="text-align:center"><span style="background:${bg};color:${fc};font-size:11px;font-weight:800;padding:2px 8px;border-radius:8px;border:${border}">${score}</span>${barDiv}</div>`;
     }
     case 'spark': return buildSparkSVG(row._hist);
     case 'ma': {
@@ -1416,11 +1422,18 @@ function fmtCell(col, row) {
       if (row._loading) return '<span class="loading-cell">…</span>';
       if (row._ma50 === undefined && row._ma200 === undefined)
         return '<span class="na" style="font-size:10px">·</span>';
+      const isLightMA = document.body.classList.contains('light');
       const mkDot = (val, label) => {
-        const col = val === null ? 'var(--text3)' : val ? 'var(--green)' : 'var(--red)';
+        // Tema chiaro: colori espliciti più saturi per miglior visibilità
+        const col = val === null ? 'var(--text3)'
+          : val ? (isLightMA ? '#1a7a2a' : 'var(--green)')
+                : (isLightMA ? '#c62828' : 'var(--red)');
+        const sz  = isLightMA ? '13px' : '11px';
+        const bdr = val === null ? '1.5px solid var(--border)'
+                  : (isLightMA ? `2px solid ${col}` : `1.5px solid ${col}`);
         const tip = val === null ? `MA${label}: dati insuff.` : val ? `MA${label}: ↑ sopra` : `MA${label}: ↓ sotto`;
         return `<span title="${tip}" style="display:inline-flex;flex-direction:column;align-items:center;gap:2px">` +
-               `<span style="width:11px;height:11px;border-radius:50%;background:${col};display:block;border:1.5px solid ${col === 'var(--text3)' ? 'var(--border)' : col}"></span>` +
+               `<span style="width:${sz};height:${sz};border-radius:50%;background:${col};display:block;border:${bdr}"></span>` +
                `<span style="font-size:9px;color:${col};line-height:1;font-weight:800">${label}</span>` +
                `</span>`;
       };
@@ -1476,10 +1489,26 @@ function calcSMA(pairs, period) {
 }
 
 function priceAtDec31(pairs) {
-  // last price with timestamp < DEC31_TS (Jan 1 2026 00:00 UTC)
-  let last = null;
-  for (const p of pairs) { if (p.t < DEC31_TS) last = p.c; else break; }
-  return last;
+  // Ultimo prezzo con timestamp < DEC31_TS (Jan 1 anno corrente 00:00 UTC) = close fine anno prec.
+  const candidates = [];
+  for (const p of pairs) {
+    if (p.t >= DEC31_TS) break;
+    candidates.push(p);
+  }
+  if (!candidates.length) return null;
+  const lastPrice = candidates[candidates.length - 1].c;
+
+  // Rileva "plateau" di dati stantii: se 15+ barre consecutive a fine anno hanno
+  // tutte lo stesso identico prezzo, yfinance ha inserito un placeholder errato
+  // (accade dopo share consolidation/riorganizzazione → es. PHAU.AS, PHAG.AS)
+  let plateau = 0;
+  for (let i = candidates.length - 1; i >= 0; i--) {
+    if (Math.abs(candidates[i].c - lastPrice) < 0.0001) plateau++;
+    else break;
+  }
+  if (plateau >= 15) return null;  // dati non affidabili → YTD mostrerà —
+
+  return lastPrice;
 }
 
 function priceNAgo(pairs, n) {
@@ -1513,8 +1542,9 @@ function processChart(inst, res) {
   const p90raw   = priceNAgo(pairs, 63);   // ~90 giorni calendario = 63 giorni borsa
   const p180raw  = priceNAgo(pairs, 118);  // ~6 mesi ≈ 118 bar (safe margin dentro 6mo)
   const p365raw  = priceNAgo(pairs, 240);  // ~1 anno — disponibile solo con dati >1y
-  const varYTD   = (cur !== null && fine2025 !== null) ? cur - fine2025 : null;
-  const ytdLocal = fine2025 ? (cur / fine2025 - 1) * 100 : null;
+  // noYTD=true → indici di livello (VIX, MOVE) — nessun rendimento ha senso
+  const varYTD   = inst.noYTD ? null : (cur !== null && fine2025 !== null) ? cur - fine2025 : null;
+  const ytdLocal = inst.noYTD ? null : (fine2025 ? (cur / fine2025 - 1) * 100 : null);
   const perf7    = p7raw   ? (cur / p7raw   - 1) * 100 : null;
   const perf30   = p30raw  ? (cur / p30raw  - 1) * 100 : null;
   const perf60   = p60raw  ? (cur / p60raw  - 1) * 100 : null;
@@ -1524,7 +1554,7 @@ function processChart(inst, res) {
 
   // EUR conversion (requires fxHist data)
   let ytdEur = null;
-  if (inst.noEur) {
+  if (inst.noYTD || inst.noEur) {
     ytdEur = null;
   } else if (inst.c === 'EUR') {
     ytdEur = ytdLocal;

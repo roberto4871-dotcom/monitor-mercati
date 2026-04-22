@@ -162,8 +162,8 @@ def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
                               interval=interval, auto_adjust=False,
                               group_by='ticker', progress=False, threads=True)
         else:
-            # Partiamo dal 26 dic anno precedente; end=domani per includere barra di oggi
-            start = datetime.date(today.year - 1, 12, 26)
+            # 400 giorni garantisce: priceAtDec31 (fine anno prec.) + p180 (118 barre) + p365 (240 barre)
+            start = today - datetime.timedelta(days=400)
             end   = today + datetime.timedelta(days=1)
             raw = yf.download(to_fetch, start=str(start), end=str(end),
                               interval=interval, auto_adjust=False,
