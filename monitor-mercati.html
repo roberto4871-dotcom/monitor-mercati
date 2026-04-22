@@ -1005,8 +1005,8 @@ const INSTRUMENTS = [
   {s:'XEMB.DE',   a:'ETF OBB. MASTER', m:'XEMB',   i:'Xtrackers EM Bond EUR H',    c:'EUR'},
   {s:'XGIN.DE',   a:'ETF OBB. MASTER', m:'XGIN',   i:'Xtrackers Gl Inf-Link',      c:'EUR'},
   // ── ETF MASTER — COMMODITIES ──────────────────────────────────
-  {s:'PHAU.AS',   a:'ETF COMM. MASTER', m:'PHAU',  i:'WisdomTree Phys. Gold',      c:'EUR'},
-  {s:'PHAG.AS',   a:'ETF COMM. MASTER', m:'PHAG',  i:'WisdomTree Phys. Silver',    c:'EUR'},
+  {s:'PHAU.AS',   a:'ETF COMM. MASTER', m:'PHAU',  i:'WisdomTree Phys. Gold',      c:'EUR', proxyFor:'GC=F'},
+  {s:'PHAG.AS',   a:'ETF COMM. MASTER', m:'PHAG',  i:'WisdomTree Phys. Silver',    c:'EUR', proxyFor:'SI=F'},
   {s:'COMO.PA',   a:'ETF COMM. MASTER', m:'COMO',  i:'Amundi Bloom. Cmd Ex Agr',   c:'EUR'},
   {s:'BRNT.L',    a:'ETF COMM. MASTER', m:'BRNT',  i:'WisdomTree Brent Crude',     c:'EUR'},
   {s:'INFL.PA',   a:'ETF OBB. MASTER', m:'INFL',   i:'Lyxor EUR 2-10y Inflat.',    c:'EUR'},
@@ -1675,6 +1675,18 @@ async function loadAll() {
 
   // Carica rendimento (yield) per strumenti obbligazionari — fetch individuali parallele
   await loadYields();
+
+  // Post-processing: per strumenti con dati storici rotti (plateau yfinance),
+  // usa il proxy dell'underlying commodity per calcolare YTD approssimativo
+  rows.forEach((row, idx) => {
+    if (row.fine2025 !== null || !row.proxyFor) return;
+    const proxy = rows.find(r => r.s === row.proxyFor);
+    if (!proxy) return;
+    // Usa YTD EUR del proxy (gold futures / silver futures) come stima
+    if (proxy.ytdEur !== null) rows[idx].ytdEur   = proxy.ytdEur;
+    if (proxy.ytdLocal !== null) rows[idx].ytdLocal = proxy.ytdLocal;
+    if (proxy.fine2025 !== null) rows[idx].fine2025 = null; // non mostrare prezzo fuorviante
+  });
 
   // Calcola Score Momentum Composito (client-side, dai dati p7/p30/p60/p90 già disponibili)
   computeMomentumScores();
