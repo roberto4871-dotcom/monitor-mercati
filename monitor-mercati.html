@@ -4273,18 +4273,16 @@ function buildMonthlyTable(d) {
 }
 
 function buildWeeklyTable(d) {
-  // Cerca i dati dell'anno corrente; se non trovati prova l'anno precedente come fallback
+  // Mostra SOLO l'anno corrente (rendimenti settimanali da inizio anno)
   const curYear  = String(new Date().getFullYear());
-  const prevYear = String(new Date().getFullYear() - 1);
-  const yearKey  = d.data[curYear] && Object.keys(d.data[curYear]).length ? curYear : prevYear;
-  const yearData = d.data[yearKey] || {};
+  const yearData = (d.data && d.data[curYear]) || {};
   const weeks    = Object.keys(yearData).map(Number).sort((a, b) => a - b);
-  if (!weeks.length) return '<div style="color:var(--text3);font-size:11px">Nessun dato per l\'anno corrente</div>';
+  if (!weeks.length) return `<div style="color:var(--text3);font-size:11px">Nessun dato settimanale per il ${curYear}</div>`;
 
   let html = '<table class="weekly-table"><thead><tr><th>Anno</th>';
   weeks.forEach(w => html += `<th>W${String(w).padStart(2,'0')}</th>`);
   html += '</tr></thead><tbody><tr>';
-  html += `<td>${yearKey}</td>`;
+  html += `<td>${curYear}</td>`;
   weeks.forEach(w => {
     const v = yearData[String(w)];
     const s = v > 0 ? '+' : '';

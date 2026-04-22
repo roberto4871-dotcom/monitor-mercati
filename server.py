@@ -718,17 +718,19 @@ def fetch_monthly(symbol):
 
 
 def fetch_weekly(symbol):
-    """Rendimenti settimanali ultimi 4 anni — cache 1h."""
+    """Rendimenti settimanali da inizio anno corrente (ISO) — cache 1h."""
     with _weekly_lock:
         c = _weekly_cache.get(symbol)
         if c and (time.time() - c['ts']) < WEEKLY_TTL:
             return c['data']
     try:
-        today = datetime.date.today()
-        # Usa start 4 anni fa e end 1 anno avanti per catturare
-        # sempre le settimane più recenti a prescindere dal clock del server
-        start    = datetime.date(today.year - 4, 1, 1)
-        end_date = datetime.date(today.year + 1, 12, 31)
+        today    = datetime.date.today()
+        cur_year = today.year
+        # Partiamo da dicembre dell'anno precedente per avere il close di chiusura
+        # dell'ultima settimana dell'anno scorso (necessario per calcolare il rendimento
+        # della settimana 1 dell'anno corrente, che spesso inizia a fine dicembre ISO)
+        start    = datetime.date(cur_year - 1, 12, 1)
+        end_date = today + datetime.timedelta(days=7)
         hist  = yf.Ticker(symbol).history(
             start=str(start), end=str(end_date), interval='1wk', auto_adjust=False
         )
@@ -740,13 +742,19 @@ def fetch_weekly(symbol):
 
         weekly = {}
         for i in range(1, len(closes)):
-            dt   = dates[i]
-            year = str(dt.year)
-            week = str(dt.isocalendar()[1])  # numero settimana ISO
-            ret  = round((closes[i] / closes[i - 1] - 1) * 100, 2)
-            if year not in weekly:
-                weekly[year] = {}
-            weekly[year][week] = ret
+            dt  = dates[i]
+            # Usa isocalendar per ENTRAMBI anno e settimana (ISO 8601 coerente)
+            # Esempio: 29 dic 2025 → ISO year=2026, week=1 (non year=2025!)
+            iso      = dt.isocalendar()
+            iso_year = str(iso[0])
+            iso_week = str(iso[1])
+            # Mostra solo l'anno corrente (l'utente vuole solo da inizio anno)
+            if iso_year != str(cur_year):
+                continue
+            ret = round((closes[i] / closes[i - 1] - 1) * 100, 2)
+            if iso_year not in weekly:
+                weekly[iso_year] = {}
+            weekly[iso_year][iso_week] = ret
 
         years = sorted(weekly.keys())
         result = {'data': weekly, 'years': years}
