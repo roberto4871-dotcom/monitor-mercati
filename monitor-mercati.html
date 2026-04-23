@@ -789,10 +789,14 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
     <button class="filter-btn" data-scatter="SVIZZERA">Svizzera</button>
     <button class="filter-btn" data-scatter="ULTRABIG">Ultrabig</button>
     <div class="spacer"></div>
+    <button class="filter-btn" id="btn-scatter-view" onclick="toggleScatterView()" title="Alterna tra Scatter e Vista a Barre">📊 Barre</button>
     <button class="btn-refresh" style="border-color:var(--text2);color:var(--text2)" onclick="printScatter()">🖨 PDF</button>
   </div>
-  <div style="flex:1;min-height:0;position:relative;padding:14px 20px 10px">
+  <div style="flex:1;min-height:0;position:relative;padding:14px 20px 10px" id="scatter-scatter-wrap">
     <canvas id="scatter-canvas"></canvas>
+  </div>
+  <div style="flex:1;min-height:0;overflow-y:auto;padding:10px 20px;display:none" id="scatter-bar-wrap">
+    <canvas id="scatter-bar-canvas"></canvas>
   </div>
 </div>
 
@@ -4040,13 +4044,154 @@ function renderScatter() {
   });
 }
 
+// ── Vista a barre per lo scatter ──────────────────────────────
+let scatterView    = 'scatter';
+let scatterBarInst = null;
+
+function toggleScatterView() {
+  scatterView = scatterView === 'scatter' ? 'bar' : 'scatter';
+  const scWrap  = document.getElementById('scatter-scatter-wrap');
+  const barWrap = document.getElementById('scatter-bar-wrap');
+  const btn     = document.getElementById('btn-scatter-view');
+  if (scatterView === 'bar') {
+    scWrap.style.display  = 'none';
+    barWrap.style.display = '';
+    btn.classList.add('active');
+    btn.textContent = '🔵 Scatter';
+    renderScatterBar();
+  } else {
+    scWrap.style.display  = '';
+    barWrap.style.display = 'none';
+    btn.classList.remove('active');
+    btn.textContent = '📊 Barre';
+    renderScatter();
+  }
+}
+
+function renderScatterBar() {
+  const instruments = getScatterInstruments()
+    .slice()
+    .sort((a, b) => b._momentum - a._momentum);
+  const canvas = document.getElementById('scatter-bar-canvas');
+  if (!canvas) return;
+
+  const dark  = !document.body.classList.contains('light');
+  const textC = dark ? 'rgba(200,215,255,.85)' : 'rgba(20,20,60,.8)';
+  const gridC = dark ? 'rgba(255,255,255,.06)'  : 'rgba(0,0,0,.06)';
+
+  const labels  = instruments.map(r => r.i || r.m);
+  const momData = instruments.map(r => r._momentum);
+  const colors  = instruments.map(r => {
+    if (r._momentum >= 50 && r._rs >= 0) return 'rgba(76,175,80,.75)';
+    if (r._momentum <  50 && r._rs >= 0) return 'rgba(33,150,243,.75)';
+    if (r._momentum >= 50 && r._rs <  0) return 'rgba(255,152,0,.75)';
+    return 'rgba(239,83,80,.75)';
+  });
+  const borders = instruments.map(r => {
+    if (r._momentum >= 50 && r._rs >= 0) return '#4caf50';
+    if (r._momentum <  50 && r._rs >= 0) return '#2196f3';
+    if (r._momentum >= 50 && r._rs <  0) return '#ff9800';
+    return '#ef5350';
+  });
+
+  // Altezza dinamica: almeno 28px per voce
+  canvas.parentElement.style.minHeight = Math.max(400, instruments.length * 30) + 'px';
+
+  if (scatterBarInst) { scatterBarInst.destroy(); scatterBarInst = null; }
+
+  scatterBarInst = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: momData,
+        backgroundColor: colors,
+        borderColor: borders,
+        borderWidth: 1.5,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { right: 72, left: 4, top: 4, bottom: 4 } },
+      scales: {
+        x: {
+          min: 0, max: 100,
+          grid:  { color: gridC },
+          ticks: { color: textC, font: { size: 10 } },
+          title: { display: true, text: '◀  Trend debole          Forza del Trend (0–100)          Trend forte  ▶',
+                   color: textC, font: { size: 11, weight: '600' } }
+        },
+        y: {
+          grid:  { display: false },
+          ticks: { color: textC, font: { size: 11 }, autoSkip: false }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: dark ? 'rgba(10,15,35,.95)' : 'rgba(255,255,255,.97)',
+          titleColor: dark ? '#fff' : '#111',
+          bodyColor:  dark ? 'rgba(200,215,255,.85)' : 'rgba(30,30,80,.8)',
+          borderColor: dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.1)',
+          borderWidth: 1, padding: 10,
+          callbacks: {
+            title: ctx => ctx[0]?.label || '',
+            label: ctx => {
+              const r = instruments[ctx.dataIndex];
+              const rs = r._rs;
+              return [
+                `  Forza Trend:    ${r._momentum.toFixed(0)} / 100`,
+                `  Forza Relativa: ${rs > 0 ? '+' : ''}${rs.toFixed(2)}%`,
+              ];
+            }
+          }
+        }
+      }
+    },
+    plugins: [{
+      id: 'barRsLabel',
+      afterDatasetsDraw(chart) {
+        const { ctx, scales: { x } } = chart;
+        ctx.save();
+        instruments.forEach((r, i) => {
+          const el = chart.getDatasetMeta(0).data[i];
+          if (!el) return;
+          const rs  = r._rs;
+          const txt = (rs > 0 ? '+' : '') + rs.toFixed(1) + '%';
+          ctx.font      = 'bold 10px system-ui';
+          ctx.fillStyle = rs >= 0 ? '#4caf50' : '#ef5350';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(txt, x.getPixelForValue(r._momentum) + 6, el.y);
+        });
+        ctx.restore();
+      }
+    }, {
+      id: 'neutralLine',
+      beforeDraw(chart) {
+        const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+        const px = x.getPixelForValue(50);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,.35)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath(); ctx.moveTo(px, top); ctx.lineTo(px, bottom); ctx.stroke();
+        ctx.restore();
+      }
+    }]
+  });
+}
+
 // Pulsanti gruppo scatter
 document.querySelectorAll('[data-scatter]').forEach(b => {
   b.addEventListener('click', () => {
     document.querySelectorAll('[data-scatter]').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
     scatterGroup = b.dataset.scatter;
-    renderScatter();
+    if (scatterView === 'bar') renderScatterBar(); else renderScatter();
   });
 });
 
@@ -4983,23 +5128,34 @@ function printNewsTab() {
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Monitor Mercati — News ${catLabel}</title>
   <style>
-    body{font-family:Arial,sans-serif;font-size:12px;color:#000;margin:24px}
-    h1{font-size:16px;margin:0 0 4px}
-    .meta{font-size:10px;color:#555;margin-bottom:16px}
-    .card{border-bottom:1px solid #ddd;padding:10px 0;break-inside:avoid}
-    .src{font-size:9px;font-weight:bold;background:#eee;padding:1px 6px;border-radius:8px}
-    .time{font-size:10px;color:#777;margin-left:6px}
-    .title{font-size:13px;font-weight:bold;margin:4px 0 2px}
-    .summary{font-size:11px;color:#333;line-height:1.4}
-    a{color:#000}
+    *{box-sizing:border-box;margin:0;padding:0}
+    @page{size:A4 portrait;margin:12mm 14mm}
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#111;background:#fff;line-height:1.45}
+    .hdr{display:flex;align-items:baseline;justify-content:space-between;border-bottom:2.5px solid #1a237e;padding-bottom:6px;margin-bottom:12px}
+    .hdr-title{font-size:16px;font-weight:800;color:#1a237e;letter-spacing:.5px}
+    .hdr-meta{font-size:9px;color:#666}
+    .card{border-bottom:1px solid #e8edf5;padding:10px 0;break-inside:avoid}
+    .card-meta{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+    .src{font-size:9px;font-weight:800;background:#e8edf5;color:#1a237e;padding:1px 8px;border-radius:8px;white-space:nowrap}
+    .time{font-size:9px;color:#888}
+    .title{font-size:13px;font-weight:700;color:#111;margin-bottom:3px}
+    .summary{font-size:10.5px;color:#444;line-height:1.45}
+    a{color:#1a237e;text-decoration:none}
+    .footer{margin-top:16px;font-size:8px;color:#aaa;text-align:center;border-top:1px solid #e8edf5;padding-top:6px}
   </style></head><body>
-  <h1>📰 Monitor Mercati — News: ${catLabel}</h1>
-  <div class="meta">Stampato il ${now} · ${items.length} notizie</div>
+  <div class="hdr">
+    <span class="hdr-title">📰 Monitor Mercati — News: ${catLabel}</span>
+    <span class="hdr-meta">${now} · ${items.length} notizie</span>
+  </div>
   ${items.map(it => `<div class="card">
-    <span class="src">${it.src}</span><span class="time">${nfFmtTime(it.ts)}</span>
+    <div class="card-meta">
+      <span class="src">${it.src}</span>
+      <span class="time">🕐 ${nfFmtTime(it.ts)}</span>
+    </div>
     <div class="title">${it.link ? `<a href="${it.link}">${it.title}</a>` : it.title}</div>
     ${it.summary ? `<div class="summary">${it.summary}</div>` : ''}
   </div>`).join('')}
+  <div class="footer">Generato da Monitor Mercati — dati a scopo informativo</div>
   </body></html>`;
 
   const w = window.open('', '_blank');
@@ -5028,52 +5184,122 @@ document.getElementById('nf-btn-refresh')?.addEventListener('click', () => loadN
 
 // ── PRINT: SCATTER ──────────────────────────────────────────
 function printScatter() {
-  const canvas = document.getElementById('scatter-canvas');
-  if (!canvas) return;
-  const img    = canvas.toDataURL('image/png');
-  const group  = document.querySelector('[data-scatter].active')?.textContent || 'Scatter';
-  const now    = new Date().toLocaleString('it-IT');
-  const w = window.open('', '_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  const group = document.querySelector('[data-scatter].active')?.textContent?.trim() || 'Scatter';
+  const now   = new Date().toLocaleDateString('it-IT', {day:'2-digit', month:'long', year:'numeric'});
+
+  // Costruisci sidebar con lista asset per quadrante
+  const instruments = getScatterInstruments();
+  const Q = { leader:[], recupero:[], misto:[], evitare:[] };
+  instruments.forEach(r => {
+    const name = (r.i || r.m) + ` (${r.m})`;
+    const rs   = (r._rs > 0 ? '+' : '') + r._rs.toFixed(2) + '%';
+    const line = `${name} — Trend ${r._momentum.toFixed(0)}, RS ${rs}`;
+    if      (r._momentum >= 50 && r._rs >= 0) Q.leader.push({line, color:'#4caf50'});
+    else if (r._momentum <  50 && r._rs >= 0) Q.recupero.push({line, color:'#2196f3'});
+    else if (r._momentum >= 50 && r._rs <  0) Q.misto.push({line, color:'#ff9800'});
+    else                                        Q.evitare.push({line, color:'#ef5350'});
+  });
+  const makeQHtml = (items) => items.length
+    ? items.map(it => `<li style="color:${it.color}">${it.line}</li>`).join('')
+    : '<li style="color:#546e7a">—</li>';
+
+  // Prendi screenshot del canvas attivo
+  let imgHtml = '';
+  if (scatterView === 'bar') {
+    const bc = document.getElementById('scatter-bar-canvas');
+    if (bc) imgHtml = `<img src="${bc.toDataURL('image/png')}">`;
+  } else {
+    const sc = document.getElementById('scatter-canvas');
+    if (sc) imgHtml = `<img src="${sc.toDataURL('image/png')}">`;
+  }
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Scatter — ${group}</title>
   <style>
-    body{margin:24px;font-family:Arial,sans-serif;color:#000}
-    h2{font-size:16px;margin:0 0 4px}
-    .meta{font-size:10px;color:#555;margin-bottom:16px}
-    img{max-width:100%;border:1px solid #ccc}
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+    @page{size:A4 landscape;margin:7mm}
+    html,body{height:100%;background:#07090f;color:#dce6f5;font-family:'Segoe UI',Arial,sans-serif;font-size:11px}
+    .page{display:grid;grid-template-rows:auto 1fr auto;height:100vh;gap:8px;padding:8px}
+    .hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #ffd700;padding-bottom:6px;flex-shrink:0}
+    .hdr-title{font-size:15px;font-weight:800;color:#ffd700;letter-spacing:1px;text-transform:uppercase}
+    .hdr-meta{font-size:9px;color:#546e7a}
+    .body{display:grid;grid-template-columns:1fr 230px;gap:12px;min-height:0;overflow:hidden}
+    .chart-wrap{background:#0d1220;border:1px solid #1e2d45;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:6px}
+    .chart-wrap img{max-width:100%;max-height:100%;object-fit:contain}
+    .sidebar{display:flex;flex-direction:column;gap:7px;overflow:hidden}
+    .q-block{background:#0d1220;border:1px solid #1e2d45;border-radius:6px;padding:7px 10px;flex:1;min-height:0;overflow:hidden}
+    .q-title{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+    .q-block ul{list-style:none;font-size:8px;line-height:1.55;color:#8fa8c8}
+    .footer{font-size:8px;color:#546e7a;text-align:right;flex-shrink:0}
   </style></head><body>
-  <h2>🎯 Scatter — ${group}</h2>
-  <div class="meta">Stampato il ${now}</div>
-  <img src="${img}">
-  </body></html>`);
-  w.document.close();
-  w.onload = () => w.print();
+  <div class="page">
+    <div class="hdr">
+      <span class="hdr-title">🎯 Scatter — ${group}</span>
+      <span class="hdr-meta">Monitor Mercati · ${now}</span>
+    </div>
+    <div class="body">
+      <div class="chart-wrap">${imgHtml}</div>
+      <div class="sidebar">
+        <div class="q-block"><div class="q-title" style="color:#4caf50">✅ LEADER</div><ul>${makeQHtml(Q.leader)}</ul></div>
+        <div class="q-block"><div class="q-title" style="color:#2196f3">🔄 RECUPERO</div><ul>${makeQHtml(Q.recupero)}</ul></div>
+        <div class="q-block"><div class="q-title" style="color:#ff9800">⚠️ MISTO</div><ul>${makeQHtml(Q.misto)}</ul></div>
+        <div class="q-block"><div class="q-title" style="color:#ef5350">❌ EVITARE</div><ul>${makeQHtml(Q.evitare)}</ul></div>
+      </div>
+    </div>
+    <div class="footer">Generato da Monitor Mercati — dati a scopo informativo</div>
+  </div>
+  <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { alert('Abilita i popup per esportare in PDF'); return; }
+  w.document.write(html); w.document.close();
 }
 
 // ── PRINT: CORRELAZIONE ─────────────────────────────────────
 function printCorrMatrix() {
   const wrap = document.getElementById('corr-matrix');
-  if (!wrap) return;
-  const group  = document.querySelector('[data-corrgroup].active')?.textContent || '';
-  const period = document.querySelector('[data-corrdays].active')?.textContent  || '';
-  const now    = new Date().toLocaleString('it-IT');
-  const w = window.open('', '_blank');
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  if (!wrap || !wrap.querySelector('table')) {
+    alert('Calcola prima la matrice di correlazione.'); return;
+  }
+  const group  = document.querySelector('[data-corrgroup].active')?.textContent?.trim() || '';
+  const period = document.querySelector('[data-corrdays].active')?.textContent?.trim()  || '';
+  const now    = new Date().toLocaleDateString('it-IT', {day:'2-digit', month:'long', year:'numeric'});
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Correlazione — ${group} ${period}</title>
   <style>
-    body{margin:24px;font-family:Arial,sans-serif;font-size:11px;color:#000}
-    h2{font-size:16px;margin:0 0 4px}
-    .meta{font-size:10px;color:#555;margin-bottom:16px}
-    table{border-collapse:collapse;font-size:10px}
-    td,th{border:1px solid #ccc;padding:3px 5px;text-align:center;white-space:nowrap}
-    th{background:#eee;font-weight:bold}
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+    @page{size:A4 landscape;margin:7mm}
+    html,body{height:100%;background:#07090f;color:#dce6f5;font-family:'Segoe UI',Arial,sans-serif;font-size:10px}
+    .page{display:flex;flex-direction:column;height:100vh;gap:8px;padding:8px}
+    .hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #ffd700;padding-bottom:6px;flex-shrink:0}
+    .hdr-title{font-size:15px;font-weight:800;color:#ffd700;letter-spacing:1px;text-transform:uppercase}
+    .hdr-meta{font-size:9px;color:#546e7a}
+    .matrix-wrap{flex:1;overflow:hidden;background:#0d1220;border:1px solid #1e2d45;border-radius:8px;padding:10px}
+    table{border-collapse:collapse;font-size:10px;white-space:nowrap}
+    th{background:#1a237e;color:#ffd700;padding:5px 7px;text-align:center;font-size:9px;font-weight:700;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    th:first-child{min-width:110px;text-align:left}
+    td{padding:6px 9px;text-align:center;min-width:58px;font-weight:700;font-size:10px;border:1px solid rgba(255,255,255,.07)}
+    td.corr-label{background:#111827!important;color:#dce6f5;font-weight:700;text-align:left;padding:6px 10px;min-width:110px;max-width:130px;overflow:hidden;text-overflow:ellipsis;border-right:2px solid #1e2d45}
+    .corr-legend{display:flex;align-items:center;gap:12px;padding:8px 0 0;font-size:10px;color:#8fa8c8;flex-wrap:wrap;flex-shrink:0}
+    .leg-box{padding:2px 10px;border-radius:4px;font-weight:700;font-size:10px}
+    .footer{font-size:8px;color:#546e7a;text-align:right;flex-shrink:0}
   </style></head><body>
-  <h2>📐 Correlazione — ${group} · ${period}</h2>
-  <div class="meta">Stampato il ${now}</div>
-  ${wrap.innerHTML}
-  </body></html>`);
-  w.document.close();
-  w.onload = () => w.print();
+  <div class="page">
+    <div class="hdr">
+      <span class="hdr-title">📐 Correlazione — ${group} · ${period}</span>
+      <span class="hdr-meta">Monitor Mercati · ${now}</span>
+    </div>
+    <div class="matrix-wrap">${wrap.innerHTML}</div>
+    <div class="footer">Generato da Monitor Mercati — dati a scopo informativo</div>
+  </div>
+  <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { alert('Abilita i popup per esportare in PDF'); return; }
+  w.document.write(html); w.document.close();
 }
 </script>
 </body>
