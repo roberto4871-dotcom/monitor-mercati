@@ -4927,9 +4927,16 @@ async function loadNfSingleAsset(sym, label, btn) {
   try {
     const data = await fetch(`/news/${encodeURIComponent(sym)}`).then(r => r.json());
     const items = Array.isArray(data)
-      ? data.map(n => ({...n, src: label, ts: typeof n.time === 'number' ? n.time : 0}))
-          .filter(n => n.title)
-          .sort((a, b) => b.ts - a.ts)
+      ? data.map(n => {
+          let ts = 0;
+          if (typeof n.time === 'number' && n.time > 0) {
+            ts = n.time;
+          } else if (typeof n.time === 'string' && n.time) {
+            const p = Date.parse(n.time);
+            if (!isNaN(p)) ts = Math.floor(p / 1000);
+          }
+          return {...n, src: label, ts};
+        }).filter(n => n.title).sort((a, b) => b.ts - a.ts)
       : [];
     _nfAssetItems = items;
     el.innerHTML = items.length
