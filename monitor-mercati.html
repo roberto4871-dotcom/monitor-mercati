@@ -796,7 +796,9 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
     <canvas id="scatter-canvas"></canvas>
   </div>
   <div style="flex:1;min-height:0;overflow-y:auto;padding:10px 20px;display:none" id="scatter-bar-wrap">
-    <canvas id="scatter-bar-canvas"></canvas>
+    <div id="scatter-bar-inner" style="position:relative;width:100%">
+      <canvas id="scatter-bar-canvas"></canvas>
+    </div>
   </div>
 </div>
 
@@ -4094,8 +4096,11 @@ function renderScatterBar() {
     return '#ef5350';
   });
 
-  // Altezza dinamica: almeno 28px per voce
-  canvas.parentElement.style.minHeight = Math.max(400, instruments.length * 30) + 'px';
+  // Altezza dinamica: 30px per riga, min 400px — l'inner div cresce e il wrapper scrolla
+  const rowH   = 30;
+  const totalH = Math.max(400, instruments.length * rowH + 60);
+  const inner  = document.getElementById('scatter-bar-inner');
+  inner.style.height = totalH + 'px';
 
   if (scatterBarInst) { scatterBarInst.destroy(); scatterBarInst = null; }
 
