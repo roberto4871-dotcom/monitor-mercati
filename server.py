@@ -35,6 +35,7 @@ _weekly_cache  = {}; _weekly_lock  = threading.Lock(); WEEKLY_TTL  = 3600
 _ma_cache      = {}; _ma_lock      = threading.Lock(); MA_TTL      = 300
 _seasonal_cache= {}; _seasonal_lock= threading.Lock(); SEASONAL_TTL= 21600  # 6 ore
 _corr_cache  = {}; _corr_lock  = threading.Lock(); CORR_TTL  = 1800
+_rss_cache  = {}; _rss_lock  = threading.Lock(); RSS_TTL = 600  # 10 min
 # ISIN cache — permanente (ISIN non cambia mai)
 
 
@@ -616,6 +617,133 @@ def fetch_correlation(symbols, days=252):
     return result
 
 
+RSS_SOURCES = [
+    # ── Italiane ─────────────────────────────────────────────────────────────
+    {'url':'https://www.ilsole24ore.com/rss/economia-e-finanza.xml',                              'src':'Il Sole 24 Ore',   'lang':'it'},
+    {'url':'https://www.milanofinanza.it/rss',                                                    'src':'Milano Finanza',   'lang':'it'},
+    # ── Internazionali ───────────────────────────────────────────────────────
+    {'url':'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114','src':'CNBC',             'lang':'en'},
+    {'url':'https://feeds.content.dowjones.io/public/rss/mw_topstories',                         'src':'MarketWatch',      'lang':'en'},
+    {'url':'https://feeds.content.dowjones.io/public/rss/mw_marketpulse',                        'src':'MarketWatch Mkt',  'lang':'en'},
+    {'url':'https://www.investing.com/rss/news_25.rss',                                          'src':'Inv. Azioni',      'lang':'en'},
+    {'url':'https://www.investing.com/rss/news_14.rss',                                          'src':'Inv. Forex',       'lang':'en'},
+    {'url':'https://www.investing.com/rss/news_301.rss',                                         'src':'Inv. Commodities', 'lang':'en'},
+    {'url':'https://www.investing.com/rss/news_95.rss',                                         'src':'Inv. Bonds',       'lang':'en'},
+    # ── Banche Centrali ──────────────────────────────────────────────────────
+    {'url':'https://www.ecb.europa.eu/rss/press.html',                                           'src':'BCE',              'lang':'en'},
+    {'url':'https://www.federalreserve.gov/feeds/press_all.xml',                                 'src':'Federal Reserve',  'lang':'en'},
+    # ── Yahoo Finance (simboli chiave) ───────────────────────────────────────
+    {'url':'https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC&region=US&lang=en-US',   'src':'YF S&P 500',       'lang':'en'},
+    {'url':'https://feeds.finance.yahoo.com/rss/2.0/headline?s=GC%3DF&region=US&lang=en-US',    'src':'YF Gold',          'lang':'en'},
+    {'url':'https://feeds.finance.yahoo.com/rss/2.0/headline?s=CL%3DF&region=US&lang=en-US',    'src':'YF Oil',           'lang':'en'},
+    {'url':'https://feeds.finance.yahoo.com/rss/2.0/headline?s=EURUSD%3DX&region=US&lang=en-US','src':'YF EUR/USD',       'lang':'en'},
+    {'url':'https://feeds.finance.yahoo.com/rss/2.0/headline?s=BTC-USD&region=US&lang=en-US',   'src':'YF Bitcoin',       'lang':'en'},
+]
+
+
+def _parse_rss_source(src):
+    """Scarica e parsa un singolo feed RSS/Atom. Restituisce lista di item."""
+    import xml.etree.ElementTree as ET
+    import re as _re
+    try:
+        import requests as req
+        r = req.get(src['url'], timeout=9,
+                    headers={'User-Agent': 'Mozilla/5.0 (compatible; MonitorMercati/1.0)'})
+        if r.status_code != 200:
+            return []
+        raw = r.content
+        # Rimuovi caratteri di controllo che rompono il parser XML
+        raw = _re.sub(b'[\x00-\x08\x0b\x0c\x0e-\x1f]', b'', raw)
+        try:
+            root = ET.fromstring(raw)
+        except ET.ParseError:
+            return []
+
+        # RSS 2.0 → //item ; Atom → //entry
+        items = root.findall('.//item')
+        if not items:
+            items = root.findall('.//{http://www.w3.org/2005/Atom}entry')
+
+        results = []
+        for item in items[:20]:
+            def _t(tag, alt=None):
+                v = item.findtext(tag)
+                if v is None and alt:
+                    v = item.findtext(alt) or item.findtext('{http://www.w3.org/2005/Atom}' + alt)
+                return (v or '').strip()
+
+            title   = _t('title')
+            link    = _t('link') or _t('guid')
+            summary = _t('description') or _t('summary')
+            pubdate = _t('pubDate') or _t('updated') or _t('dc:date')
+
+            # Pulisci HTML dal sommario
+            summary = _re.sub(r'<[^>]+>', '', summary)[:280].strip()
+
+            # Timestamp
+            ts = 0
+            if pubdate:
+                try:
+                    from email.utils import parsedate_to_datetime
+                    ts = int(parsedate_to_datetime(pubdate).timestamp())
+                except Exception:
+                    try:
+                        import datetime as _dt
+                        dt = _dt.datetime.fromisoformat(pubdate.replace('Z', '+00:00'))
+                        ts = int(dt.timestamp())
+                    except Exception:
+                        ts = int(time.time())
+
+            if title:
+                results.append({'title': title, 'link': link, 'summary': summary,
+                                'ts': ts or int(time.time()), 'src': src['src'], 'lang': src['lang']})
+        return results
+    except Exception:
+        return []
+
+
+def fetch_aggregated_news():
+    """Flusso aggregato da più fonti RSS — cache 10 min."""
+    with _rss_lock:
+        c = _rss_cache.get('feed')
+        if c and (time.time() - c['ts']) < RSS_TTL:
+            return c['data']
+
+    all_items = []
+    with ThreadPoolExecutor(max_workers=12) as ex:
+        futures = {ex.submit(_parse_rss_source, src): src for src in RSS_SOURCES}
+        for fut in as_completed(futures, timeout=18):
+            try:
+                all_items.extend(fut.result())
+            except Exception:
+                pass
+
+    # Traduzione in parallelo — solo titoli (sommari in italiano già dall'utente)
+    to_tr = [it for it in all_items if it.get('lang') != 'it']
+    if to_tr:
+        def _tr(item):
+            item['title']   = _translate_it(item['title'])
+            if item['summary']:
+                item['summary'] = _translate_it(item['summary'][:300])
+            return item
+        with ThreadPoolExecutor(max_workers=10) as ex:
+            list(ex.map(_tr, to_tr))
+
+    # Ordina per data, deduplicazione per titolo (primi 55 caratteri)
+    all_items.sort(key=lambda x: x['ts'], reverse=True)
+    seen, unique = set(), []
+    for it in all_items:
+        key = it['title'][:55].lower().strip()
+        if key not in seen and it['title']:
+            seen.add(key)
+            unique.append(it)
+
+    result = unique[:150]
+    with _rss_lock:
+        _rss_cache['feed'] = {'data': result, 'ts': time.time()}
+    return result
+
+
 def fetch_news(symbol):
     """Ultime news via yfinance — cache 15 min.
     Prova prima con il ticker diretto; se vuoto (indici/valute/ETF) usa
@@ -906,6 +1034,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             syms   = [s for s in params.get('symbols', [''])[0].split(',') if s]
             days   = int(params.get('days', ['252'])[0])
             self._json(fetch_correlation(syms, days))
+        elif self.path.startswith('/news-feed'):
+            self._json(fetch_aggregated_news())
         else:
             super().do_GET()
 

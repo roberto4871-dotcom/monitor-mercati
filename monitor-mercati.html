@@ -401,6 +401,29 @@ td.ora{color:#64b5f6;font-size:10px}
 .corr-legend .leg-box{padding:3px 12px;border-radius:4px;font-weight:700;font-size:11px}
 body.light .corr-table th{background:#1e2ea8}
 body.light .corr-table td.corr-label{background:var(--bg3) !important}
+/* ── NEWS FEED TAB ──────────────────────────────────── */
+.nf-controls{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0}
+.nf-wrap{flex:1;overflow-y:auto;padding:0}
+.nf-card{padding:11px 20px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:5px;transition:background .12s;cursor:default}
+.nf-card:hover{background:var(--bg2)}
+.nf-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.nf-src{background:var(--bg3);border:1px solid var(--border);padding:1px 7px;border-radius:10px;font-weight:700;font-size:9px;color:var(--text2);white-space:nowrap;flex-shrink:0}
+.nf-time{font-size:10px;color:var(--text3);white-space:nowrap}
+.nf-title{font-size:13px;font-weight:700;color:var(--text);line-height:1.4}
+.nf-title a{color:inherit;text-decoration:none}
+.nf-title a:hover{color:var(--accent)}
+.nf-summary{font-size:11px;color:var(--text2);line-height:1.45}
+.nf-empty{padding:60px;text-align:center;color:var(--text3);font-size:13px}
+/* Light mode */
+body.light .nf-card:hover{background:var(--bg3)}
+body.light .nf-src{background:#e8edf5;border-color:var(--border)}
+/* Print */
+@media print {
+  #tab-newsfeed .nf-controls{display:none!important}
+  .nf-wrap{overflow:visible!important;max-height:none!important}
+  .nf-card{break-inside:avoid;border-bottom:1px solid #ccc}
+  .nf-title a{color:#000!important;text-decoration:none!important}
+}
 </style>
 </head>
 <body>
@@ -546,6 +569,7 @@ body.light .corr-table td.corr-label{background:var(--bg3) !important}
   <div class="tab" data-tab="heatmap">🔥 Heatmap</div>
   <div class="tab" data-tab="correlation">📐 Correlazione</div>
   <div class="tab" data-tab="scatter">🎯 Scatter</div>
+  <div class="tab" data-tab="newsfeed">📰 News</div>
 </div>
 
 <div class="tab-content active" id="tab-table">
@@ -758,6 +782,30 @@ body.light .corr-table td.corr-label{background:var(--bg3) !important}
   </div>
   <div style="flex:1;min-height:0;position:relative;padding:14px 20px 10px">
     <canvas id="scatter-canvas"></canvas>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!--  TAB: NEWS FEED                                        -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="tab-content" id="tab-newsfeed">
+  <div class="nf-controls">
+    <span class="controls-label">Filtra:</span>
+    <button class="filter-btn active" data-nfcat="all">🗞 Tutte</button>
+    <button class="filter-btn" data-nfcat="macro">🌐 Macro</button>
+    <button class="filter-btn" data-nfcat="equity">📈 Azionario</button>
+    <button class="filter-btn" data-nfcat="bonds">📉 Obbligazionario</button>
+    <button class="filter-btn" data-nfcat="fx">💱 Valute</button>
+    <button class="filter-btn" data-nfcat="comm">🛢 Commodities</button>
+    <button class="filter-btn" data-nfcat="crypto">₿ Cripto</button>
+    <button class="filter-btn" data-nfcat="asset">🎯 Per Asset</button>
+    <div class="spacer"></div>
+    <span id="nf-lastupdate" style="color:var(--text3);font-size:10px"></span>
+    <button class="btn-refresh" id="nf-btn-refresh">↺ Aggiorna</button>
+    <button class="btn-refresh" id="nf-btn-pdf" style="border-color:var(--text2);color:var(--text2)" onclick="printNewsTab()">🖨 PDF</button>
+  </div>
+  <div class="nf-wrap" id="nf-content">
+    <div class="nf-empty">Clicca su 📰 News per caricare il flusso</div>
   </div>
 </div>
 
@@ -2927,6 +2975,8 @@ document.querySelectorAll('.tab').forEach(t => {
     if (t.dataset.tab === 'charts') renderCharts();
     if (t.dataset.tab === 'heatmap') renderHeatmap();
     if (t.dataset.tab === 'scatter') renderScatter();
+    if (t.dataset.tab === 'newsfeed') { loadNewsTab(); nfStartAutoRefresh(); }
+    if (t.dataset.tab !== 'newsfeed') nfStopAutoRefresh();
   });
 });
 
@@ -4721,6 +4771,205 @@ document.getElementById('btn-corr-calc').addEventListener('click', renderCorrela
   if (btn) btn.classList.toggle('active', breadthOpen);
 })();
 loadAll();
+
+// ═══════════════════════════════════════════════════
+//  NEWS FEED TAB
+// ═══════════════════════════════════════════════════
+
+// Simboli chiave per la sezione "Per Asset" (subset degli strumenti)
+const NF_ASSET_SYMS = [
+  {s:'^GSPC',      label:'S&P 500'},
+  {s:'FTSEMIB.MI', label:'FTSE MIB'},
+  {s:'^STOXX50E',  label:'Euro Stoxx 50'},
+  {s:'^NDX',       label:'Nasdaq 100'},
+  {s:'EURUSD=X',   label:'EUR/USD'},
+  {s:'DX-Y.NYB',   label:'USD Index'},
+  {s:'GC=F',       label:'Oro'},
+  {s:'CL=F',       label:'Petrolio Brent'},
+  {s:'BTC-USD',    label:'Bitcoin'},
+  {s:'SWDA.MI',    label:'MSCI World ETF'},
+  {s:'XBAG.MI',    label:'EUR Gov Bond ETF'},
+];
+
+const NF_KEYWORDS = {
+  macro:  ['fed','federal reserve','bce','ecb','banca centrale','central bank','inflazione','inflation',
+            'pil','gdp','recessione','recession','tassi','interest rate','cpi','pmi','occupazione',
+            'jobs','disoccupazione','unemployment','economia','economy','crescita','growth','debito',
+            'debt','deficit','dazi','tariff','commercio','trade war','sanzioni','geopolitic'],
+  equity: ['azioni','borsa','stock','equity','s&p','nasdaq','ftse','dow','msci','earnings','utile',
+            'fatturato','revenue','trimestrale','quarterly','dividendo','dividend','ipo','merger',
+            'acquisizione','buyback','wall street','azionario','indice','titolo','quotazione'],
+  bonds:  ['bond','btp','treasury','yield','obbligazioni','spread','bund','gilt','rating',
+            'investment grade','high yield','credit','credito','fixed income','duration',
+            'cedola','coupon','interest','interesse','default'],
+  fx:     ['euro','dollaro','dollar','yen','yuan','forex','valuta','currency','eurusd','gbp',
+            'sterlina','franc','franco','cambio','exchange rate','pound','cny','chf'],
+  comm:   ['oil','petrolio','gold','oro','silver','argento','copper','rame','natural gas',
+            'gas naturale','commodity','commodities','materie prime','opec','wheat','grano',
+            'corn','mais','brent','wti','platino','platinum','palladio'],
+  crypto: ['bitcoin','ethereum','crypto','blockchain','defi','nft','criptovalute','btc','eth',
+            'altcoin','binance','coinbase','cripto','token','web3'],
+};
+
+function nfCategorize(item) {
+  const text = (item.title + ' ' + (item.summary||'')).toLowerCase();
+  for (const [cat, kws] of Object.entries(NF_KEYWORDS)) {
+    if (kws.some(kw => text.includes(kw))) return cat;
+  }
+  return 'other';
+}
+
+function nfFmtTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts * 1000);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 60000); // minuti
+  if (diff < 1)  return 'Adesso';
+  if (diff < 60) return `${diff} min fa`;
+  if (diff < 1440) return `${Math.floor(diff/60)}h fa`;
+  return d.toLocaleDateString('it-IT', {day:'numeric', month:'short'});
+}
+
+function nfRenderItems(items) {
+  if (!items.length) return '<div class="nf-empty">Nessuna notizia trovata per questo filtro.</div>';
+  return items.map(it => {
+    const titleHtml = it.link
+      ? `<a href="${it.link}" target="_blank" rel="noopener">${it.title}</a>`
+      : it.title;
+    return `<div class="nf-card">
+      <div class="nf-meta">
+        <span class="nf-src">${it.src}</span>
+        <span class="nf-time">🕐 ${nfFmtTime(it.ts)}</span>
+      </div>
+      <div class="nf-title">${titleHtml}</div>
+      ${it.summary ? `<div class="nf-summary">${it.summary}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+let _nfAllItems   = [];
+let _nfActiveCat  = 'all';
+let _nfAssetItems = [];
+let _nfAssetLoaded = false;
+let _nfTimer = null;
+
+function nfApplyFilter(cat) {
+  _nfActiveCat = cat;
+  document.querySelectorAll('[data-nfcat]').forEach(b => {
+    b.classList.toggle('active', b.dataset.nfcat === cat);
+  });
+  const el = document.getElementById('nf-content');
+  if (cat === 'asset') {
+    if (_nfAssetLoaded) {
+      el.innerHTML = nfRenderItems(_nfAssetItems);
+    } else {
+      el.innerHTML = '<div class="nf-empty">⏳ Caricamento news per asset…</div>';
+      loadNfAssetNews();
+    }
+  } else {
+    const filtered = cat === 'all'
+      ? _nfAllItems
+      : _nfAllItems.filter(it => nfCategorize(it) === cat);
+    el.innerHTML = nfRenderItems(filtered);
+  }
+}
+
+async function loadNfAssetNews() {
+  try {
+    const fetches = NF_ASSET_SYMS.map(({s, label}) =>
+      fetch(`/news/${encodeURIComponent(s)}`).then(r => r.json())
+        .then(arr => arr.map(n => ({...n, src: label, ts: typeof n.time === 'number' ? n.time : 0})))
+        .catch(() => [])
+    );
+    const results = await Promise.all(fetches);
+    _nfAssetItems = results.flat()
+      .filter(n => n.title)
+      .sort((a,b) => b.ts - a.ts);
+    _nfAssetLoaded = true;
+    if (_nfActiveCat === 'asset') {
+      document.getElementById('nf-content').innerHTML = nfRenderItems(_nfAssetItems);
+    }
+  } catch(e) {
+    if (_nfActiveCat === 'asset') {
+      document.getElementById('nf-content').innerHTML = '<div class="nf-empty">⚠ Errore caricamento news asset.</div>';
+    }
+  }
+}
+
+async function loadNewsTab(force = false) {
+  const el = document.getElementById('nf-content');
+  if (!force && _nfAllItems.length) return; // già caricato
+  el.innerHTML = '<div class="nf-empty">⏳ Caricamento flusso news…</div>';
+  document.getElementById('nf-btn-refresh').disabled = true;
+  try {
+    const data = await fetch('/news-feed').then(r => r.json());
+    _nfAllItems    = Array.isArray(data) ? data : [];
+    _nfAssetLoaded = false; // reset per asset (si ricaricano freschi)
+    _nfAssetItems  = [];
+    const lastUpd  = document.getElementById('nf-lastupdate');
+    if (lastUpd) lastUpd.textContent = 'Agg. ' + new Date().toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'});
+    nfApplyFilter(_nfActiveCat);
+  } catch(e) {
+    el.innerHTML = `<div class="nf-empty">⚠ Errore caricamento: ${e.message}</div>`;
+  } finally {
+    document.getElementById('nf-btn-refresh').disabled = false;
+  }
+}
+
+function printNewsTab() {
+  const items = _nfActiveCat === 'asset' ? _nfAssetItems
+    : _nfActiveCat === 'all' ? _nfAllItems
+    : _nfAllItems.filter(it => nfCategorize(it) === _nfActiveCat);
+
+  const catLabel = {all:'Tutte',macro:'Macro',equity:'Azionario',bonds:'Obbligazionario',
+    fx:'Valute',comm:'Commodities',crypto:'Cripto',asset:'Per Asset'}[_nfActiveCat] || '';
+  const now = new Date().toLocaleString('it-IT');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Monitor Mercati — News ${catLabel}</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:12px;color:#000;margin:24px}
+    h1{font-size:16px;margin:0 0 4px}
+    .meta{font-size:10px;color:#555;margin-bottom:16px}
+    .card{border-bottom:1px solid #ddd;padding:10px 0;break-inside:avoid}
+    .src{font-size:9px;font-weight:bold;background:#eee;padding:1px 6px;border-radius:8px}
+    .time{font-size:10px;color:#777;margin-left:6px}
+    .title{font-size:13px;font-weight:bold;margin:4px 0 2px}
+    .summary{font-size:11px;color:#333;line-height:1.4}
+    a{color:#000}
+  </style></head><body>
+  <h1>📰 Monitor Mercati — News: ${catLabel}</h1>
+  <div class="meta">Stampato il ${now} · ${items.length} notizie</div>
+  ${items.map(it => `<div class="card">
+    <span class="src">${it.src}</span><span class="time">${nfFmtTime(it.ts)}</span>
+    <div class="title">${it.link ? `<a href="${it.link}">${it.title}</a>` : it.title}</div>
+    ${it.summary ? `<div class="summary">${it.summary}</div>` : ''}
+  </div>`).join('')}
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  w.onload = () => w.print();
+}
+
+// Auto-refresh ogni 10 min quando il tab news è attivo
+function nfStartAutoRefresh() {
+  nfStopAutoRefresh();
+  _nfTimer = setInterval(() => {
+    if (document.getElementById('tab-newsfeed')?.classList.contains('active')) {
+      loadNewsTab(true);
+    }
+  }, 600_000);
+}
+function nfStopAutoRefresh() {
+  if (_nfTimer) { clearInterval(_nfTimer); _nfTimer = null; }
+}
+
+document.querySelectorAll('[data-nfcat]').forEach(b => {
+  b.addEventListener('click', () => nfApplyFilter(b.dataset.nfcat));
+});
+document.getElementById('nf-btn-refresh')?.addEventListener('click', () => loadNewsTab(true));
 </script>
 </body>
 </html>
