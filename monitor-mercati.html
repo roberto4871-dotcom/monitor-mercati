@@ -4849,13 +4849,19 @@ function nfCategorize(item) {
 
 function nfFmtTime(ts) {
   if (!ts) return '';
-  const d = new Date(ts * 1000);
+  const d   = new Date(ts * 1000);
   const now = new Date();
-  const diff = Math.floor((now - d) / 60000); // minuti
-  if (diff < 1)  return 'Adesso';
-  if (diff < 60) return `${diff} min fa`;
-  if (diff < 1440) return `${Math.floor(diff/60)}h fa`;
-  return d.toLocaleDateString('it-IT', {day:'numeric', month:'short'});
+  const isToday = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
+  const date = isToday
+    ? `Oggi ${time}`
+    : d.toLocaleDateString('it-IT', {day:'numeric', month:'short'}) + ` ${time}`;
+  const diff = Math.floor((now - d) / 60000);
+  const ago  = diff < 1 ? 'Adesso'
+    : diff < 60  ? `${diff} min fa`
+    : diff < 1440 ? `${Math.floor(diff/60)}h fa`
+    : `${Math.floor(diff/1440)}g fa`;
+  return `${date} · ${ago}`;
 }
 
 function nfRenderItems(items) {
