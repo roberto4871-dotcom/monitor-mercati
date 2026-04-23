@@ -756,6 +756,7 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
     <button class="filter-btn" data-corrgroup="SVIZZERA">Svizzera</button>
     <button class="filter-btn" data-corrgroup="ULTRABIG">Ultrabig</button>
     <button class="btn-refresh" id="btn-corr-calc">Calcola ↻</button>
+    <button class="btn-refresh" id="btn-corr-pdf" style="border-color:var(--text2);color:var(--text2)" onclick="printCorrMatrix()">🖨 PDF</button>
   </div>
   <div style="flex:1;overflow:auto;padding:16px 20px" id="corr-wrap">
     <div id="corr-matrix" style="color:var(--text3);text-align:center;padding:60px;font-size:13px">
@@ -787,6 +788,8 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
     <button class="filter-btn" data-scatter="TITOLI USA">Titoli USA</button>
     <button class="filter-btn" data-scatter="SVIZZERA">Svizzera</button>
     <button class="filter-btn" data-scatter="ULTRABIG">Ultrabig</button>
+    <div class="spacer"></div>
+    <button class="btn-refresh" style="border-color:var(--text2);color:var(--text2)" onclick="printScatter()">🖨 PDF</button>
   </div>
   <div style="flex:1;min-height:0;position:relative;padding:14px 20px 10px">
     <canvas id="scatter-canvas"></canvas>
@@ -5022,6 +5025,56 @@ document.querySelectorAll('[data-nfcat]').forEach(b => {
   b.addEventListener('click', () => nfApplyFilter(b.dataset.nfcat));
 });
 document.getElementById('nf-btn-refresh')?.addEventListener('click', () => loadNewsTab(true));
+
+// ── PRINT: SCATTER ──────────────────────────────────────────
+function printScatter() {
+  const canvas = document.getElementById('scatter-canvas');
+  if (!canvas) return;
+  const img    = canvas.toDataURL('image/png');
+  const group  = document.querySelector('[data-scatter].active')?.textContent || 'Scatter';
+  const now    = new Date().toLocaleString('it-IT');
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Scatter — ${group}</title>
+  <style>
+    body{margin:24px;font-family:Arial,sans-serif;color:#000}
+    h2{font-size:16px;margin:0 0 4px}
+    .meta{font-size:10px;color:#555;margin-bottom:16px}
+    img{max-width:100%;border:1px solid #ccc}
+  </style></head><body>
+  <h2>🎯 Scatter — ${group}</h2>
+  <div class="meta">Stampato il ${now}</div>
+  <img src="${img}">
+  </body></html>`);
+  w.document.close();
+  w.onload = () => w.print();
+}
+
+// ── PRINT: CORRELAZIONE ─────────────────────────────────────
+function printCorrMatrix() {
+  const wrap = document.getElementById('corr-matrix');
+  if (!wrap) return;
+  const group  = document.querySelector('[data-corrgroup].active')?.textContent || '';
+  const period = document.querySelector('[data-corrdays].active')?.textContent  || '';
+  const now    = new Date().toLocaleString('it-IT');
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Correlazione — ${group} ${period}</title>
+  <style>
+    body{margin:24px;font-family:Arial,sans-serif;font-size:11px;color:#000}
+    h2{font-size:16px;margin:0 0 4px}
+    .meta{font-size:10px;color:#555;margin-bottom:16px}
+    table{border-collapse:collapse;font-size:10px}
+    td,th{border:1px solid #ccc;padding:3px 5px;text-align:center;white-space:nowrap}
+    th{background:#eee;font-weight:bold}
+  </style></head><body>
+  <h2>📐 Correlazione — ${group} · ${period}</h2>
+  <div class="meta">Stampato il ${now}</div>
+  ${wrap.innerHTML}
+  </body></html>`);
+  w.document.close();
+  w.onload = () => w.print();
+}
 </script>
 </body>
 </html>
