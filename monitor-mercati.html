@@ -403,6 +403,14 @@ body.light .corr-table th{background:#1e2ea8}
 body.light .corr-table td.corr-label{background:var(--bg3) !important}
 /* ── NEWS FEED TAB ──────────────────────────────────── */
 .nf-controls{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0}
+.nf-asset-bar{background:var(--bg3);border-bottom:2px solid var(--border);padding:7px 16px;display:none;flex-wrap:wrap;align-items:center;gap:6px;flex-shrink:0}
+.nf-asset-bar.open{display:flex}
+.nf-asset-group{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.nf-asset-group-label{font-size:9px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;padding-right:2px}
+.nf-asset-btn{background:var(--bg2);border:1px solid var(--border);color:var(--text2);padding:3px 9px;border-radius:12px;cursor:pointer;font-size:10px;font-weight:700;transition:all .14s;white-space:nowrap}
+.nf-asset-btn:hover{border-color:var(--accent);color:var(--text)}
+.nf-asset-btn.active{background:var(--blue2);color:#fff;border-color:var(--accent)}
+.nf-asset-sep{width:1px;height:18px;background:var(--border);margin:0 4px;flex-shrink:0}
 .nf-wrap{flex:1;overflow-y:auto;padding:0}
 .nf-card{padding:11px 20px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:5px;transition:background .12s;cursor:default}
 .nf-card:hover{background:var(--bg2)}
@@ -798,12 +806,13 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
     <button class="filter-btn" data-nfcat="fx">💱 Valute</button>
     <button class="filter-btn" data-nfcat="comm">🛢 Commodities</button>
     <button class="filter-btn" data-nfcat="crypto">₿ Cripto</button>
-    <button class="filter-btn" data-nfcat="asset">🎯 Per Asset</button>
+    <button class="filter-btn" data-nfcat="asset">🎯 Per Asset ▾</button>
     <div class="spacer"></div>
     <span id="nf-lastupdate" style="color:var(--text3);font-size:10px"></span>
     <button class="btn-refresh" id="nf-btn-refresh">↺ Aggiorna</button>
     <button class="btn-refresh" id="nf-btn-pdf" style="border-color:var(--text2);color:var(--text2)" onclick="printNewsTab()">🖨 PDF</button>
   </div>
+  <div class="nf-asset-bar" id="nf-asset-bar"><!-- popolato da JS --></div>
   <div class="nf-wrap" id="nf-content">
     <div class="nf-empty">Clicca su 📰 News per caricare il flusso</div>
   </div>
@@ -4776,19 +4785,45 @@ loadAll();
 //  NEWS FEED TAB
 // ═══════════════════════════════════════════════════
 
-// Simboli chiave per la sezione "Per Asset" (subset degli strumenti)
-const NF_ASSET_SYMS = [
-  {s:'^GSPC',      label:'S&P 500'},
-  {s:'FTSEMIB.MI', label:'FTSE MIB'},
-  {s:'^STOXX50E',  label:'Euro Stoxx 50'},
-  {s:'^NDX',       label:'Nasdaq 100'},
-  {s:'EURUSD=X',   label:'EUR/USD'},
-  {s:'DX-Y.NYB',   label:'USD Index'},
-  {s:'GC=F',       label:'Oro'},
-  {s:'CL=F',       label:'Petrolio Brent'},
-  {s:'BTC-USD',    label:'Bitcoin'},
-  {s:'SWDA.MI',    label:'MSCI World ETF'},
-  {s:'XBAG.MI',    label:'EUR Gov Bond ETF'},
+// Gruppi asset per il sotto-menu "Per Asset"
+const NF_ASSET_GROUPS = [
+  { label:'📊 Indici', items:[
+    {s:'^GSPC',      n:'S&P 500'},
+    {s:'FTSEMIB.MI', n:'FTSE MIB'},
+    {s:'^STOXX50E',  n:'Euro Stoxx 50'},
+    {s:'^NDX',       n:'Nasdaq 100'},
+    {s:'^N225',      n:'Nikkei 225'},
+    {s:'^FTSE',      n:'FTSE 100'},
+    {s:'^GDAXI',     n:'DAX'},
+  ]},
+  { label:'💱 Valute', items:[
+    {s:'EURUSD=X',   n:'EUR/USD'},
+    {s:'DX-Y.NYB',   n:'USD Index'},
+    {s:'GBPUSD=X',   n:'GBP/USD'},
+    {s:'USDJPY=X',   n:'USD/JPY'},
+  ]},
+  { label:'🛢 Commodities', items:[
+    {s:'GC=F',       n:'Oro'},
+    {s:'SI=F',       n:'Argento'},
+    {s:'CL=F',       n:'Petrolio'},
+    {s:'NG=F',       n:'Gas Naturale'},
+    {s:'HG=F',       n:'Rame'},
+  ]},
+  { label:'₿ Cripto', items:[
+    {s:'BTC-USD',    n:'Bitcoin'},
+    {s:'ETH-USD',    n:'Ethereum'},
+  ]},
+  { label:'📈 ETF', items:[
+    {s:'SWDA.MI',    n:'MSCI World'},
+    {s:'AEEM.MI',    n:'Emerging Mkt'},
+    {s:'XBAG.MI',    n:'Gov Bond EU'},
+    {s:'IHYG.MI',    n:'High Yield'},
+    {s:'LCUD.MI',    n:'US Corp Bond'},
+  ]},
+  { label:'🏦 Obbligazioni', items:[
+    {s:'^TNX',       n:'T-Note 10Y'},
+    {s:'^IRX',       n:'T-Bill 3M'},
+  ]},
 ];
 
 const NF_KEYWORDS = {
@@ -4847,26 +4882,35 @@ function nfRenderItems(items) {
   }).join('');
 }
 
-let _nfAllItems   = [];
-let _nfActiveCat  = 'all';
-let _nfAssetItems = [];
-let _nfAssetLoaded = false;
-let _nfTimer = null;
+let _nfAllItems      = [];
+let _nfActiveCat     = 'all';
+let _nfAssetItems    = [];
+let _nfSelectedAsset = null;
+let _nfTimer         = null;
 
 function nfApplyFilter(cat) {
   _nfActiveCat = cat;
   document.querySelectorAll('[data-nfcat]').forEach(b => {
     b.classList.toggle('active', b.dataset.nfcat === cat);
   });
-  const el = document.getElementById('nf-content');
+  const bar = document.getElementById('nf-asset-bar');
+  const el  = document.getElementById('nf-content');
   if (cat === 'asset') {
-    if (_nfAssetLoaded) {
-      el.innerHTML = nfRenderItems(_nfAssetItems);
-    } else {
-      el.innerHTML = '<div class="nf-empty">⏳ Caricamento news per asset…</div>';
-      loadNfAssetNews();
+    bar.classList.add('open');
+    if (!bar.dataset.built) {
+      bar.innerHTML = NF_ASSET_GROUPS.map((g, gi) =>
+        `${gi > 0 ? '<div class="nf-asset-sep"></div>' : ''}<div class="nf-asset-group"><span class="nf-asset-group-label">${g.label}</span>${
+          g.items.map(it => `<button class="nf-asset-btn" data-sym="${it.s}" data-label="${it.n}">${it.n}</button>`).join('')
+        }</div>`
+      ).join('');
+      bar.dataset.built = '1';
+      bar.querySelectorAll('.nf-asset-btn').forEach(b => {
+        b.addEventListener('click', () => loadNfSingleAsset(b.dataset.sym, b.dataset.label, b));
+      });
     }
+    el.innerHTML = '<div class="nf-empty">👆 Seleziona un asset per vedere le news specifiche</div>';
   } else {
+    bar.classList.remove('open');
     const filtered = cat === 'all'
       ? _nfAllItems
       : _nfAllItems.filter(it => nfCategorize(it) === cat);
@@ -4874,25 +4918,26 @@ function nfApplyFilter(cat) {
   }
 }
 
-async function loadNfAssetNews() {
+async function loadNfSingleAsset(sym, label, btn) {
+  document.querySelectorAll('.nf-asset-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _nfAssetItems    = [];
+  _nfSelectedAsset = label;
+  const el = document.getElementById('nf-content');
+  el.innerHTML = `<div class="nf-empty">⏳ Caricamento news per ${label}…</div>`;
   try {
-    const fetches = NF_ASSET_SYMS.map(({s, label}) =>
-      fetch(`/news/${encodeURIComponent(s)}`).then(r => r.json())
-        .then(arr => arr.map(n => ({...n, src: label, ts: typeof n.time === 'number' ? n.time : 0})))
-        .catch(() => [])
-    );
-    const results = await Promise.all(fetches);
-    _nfAssetItems = results.flat()
-      .filter(n => n.title)
-      .sort((a,b) => b.ts - a.ts);
-    _nfAssetLoaded = true;
-    if (_nfActiveCat === 'asset') {
-      document.getElementById('nf-content').innerHTML = nfRenderItems(_nfAssetItems);
-    }
+    const data = await fetch(`/news/${encodeURIComponent(sym)}`).then(r => r.json());
+    const items = Array.isArray(data)
+      ? data.map(n => ({...n, src: label, ts: typeof n.time === 'number' ? n.time : 0}))
+          .filter(n => n.title)
+          .sort((a, b) => b.ts - a.ts)
+      : [];
+    _nfAssetItems = items;
+    el.innerHTML = items.length
+      ? nfRenderItems(items)
+      : `<div class="nf-empty">Nessuna news disponibile per ${label}</div>`;
   } catch(e) {
-    if (_nfActiveCat === 'asset') {
-      document.getElementById('nf-content').innerHTML = '<div class="nf-empty">⚠ Errore caricamento news asset.</div>';
-    }
+    el.innerHTML = `<div class="nf-empty">⚠ Errore: ${e.message}</div>`;
   }
 }
 
@@ -4903,9 +4948,10 @@ async function loadNewsTab(force = false) {
   document.getElementById('nf-btn-refresh').disabled = true;
   try {
     const data = await fetch('/news-feed').then(r => r.json());
-    _nfAllItems    = Array.isArray(data) ? data : [];
-    _nfAssetLoaded = false; // reset per asset (si ricaricano freschi)
-    _nfAssetItems  = [];
+    _nfAllItems      = Array.isArray(data) ? data : [];
+    _nfAssetItems    = [];   // reset: asset si ricaricano al prossimo click
+    _nfSelectedAsset = null;
+    document.querySelectorAll('.nf-asset-btn').forEach(b => b.classList.remove('active'));
     const lastUpd  = document.getElementById('nf-lastupdate');
     if (lastUpd) lastUpd.textContent = 'Agg. ' + new Date().toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'});
     nfApplyFilter(_nfActiveCat);
@@ -4922,7 +4968,7 @@ function printNewsTab() {
     : _nfAllItems.filter(it => nfCategorize(it) === _nfActiveCat);
 
   const catLabel = {all:'Tutte',macro:'Macro',equity:'Azionario',bonds:'Obbligazionario',
-    fx:'Valute',comm:'Commodities',crypto:'Cripto',asset:'Per Asset'}[_nfActiveCat] || '';
+    fx:'Valute',comm:'Commodities',crypto:'Cripto',asset:_nfSelectedAsset||'Per Asset'}[_nfActiveCat] || '';
   const now = new Date().toLocaleString('it-IT');
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
