@@ -699,13 +699,18 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
     <div class="chart-ctrl-row">
       <span class="chart-ctrl-label">Metrica</span>
       <div class="chart-btn-group" id="chart-metric-btns">
-        <button class="chart-metric active" data-metric="ytdEur">YTD in €</button>
+        <button class="chart-metric active" data-metric="ytdEur">YTD €</button>
         <button class="chart-metric" data-metric="ytdLocal">YTD Locale</button>
         <button class="chart-metric" data-metric="varAtt">Oggi</button>
         <button class="chart-metric" data-metric="p7">7 Giorni</button>
         <button class="chart-metric" data-metric="p30">30 Giorni</button>
         <button class="chart-metric" data-metric="p60">60 Giorni</button>
         <button class="chart-metric" data-metric="p90">90 Giorni</button>
+        <button class="chart-metric" data-metric="p180">6 Mesi</button>
+        <button class="chart-metric" data-metric="p1y">1 Anno</button>
+        <button class="chart-metric" data-metric="p2y">2 Anni</button>
+        <button class="chart-metric" data-metric="p3y">3 Anni</button>
+        <button class="chart-metric" data-metric="p5y">5 Anni</button>
       </div>
       <button onclick="exportChartPDF()" title="Esporta il grafico in PDF"
         style="margin-left:auto;flex-shrink:0;background:rgba(255,215,0,.12);border:1.5px solid var(--accent);color:var(--accent);font-weight:800;font-size:12px;padding:4px 16px;border-radius:20px;cursor:pointer;white-space:nowrap;letter-spacing:.3px">📄 Esporta PDF</button>
@@ -718,17 +723,29 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
   <!-- ── Grafico principale ── -->
   <div class="chart-main-wrap">
     <div class="chart-main-title" id="chart-main-title"></div>
-    <div style="flex:1;min-height:0;position:relative">
-      <canvas id="c-main"></canvas>
+    <div style="flex:1;min-height:0;overflow-y:auto">
+      <div id="chart-main-inner" style="position:relative;width:100%">
+        <canvas id="c-main"></canvas>
+      </div>
     </div>
   </div>
 </div>
 
 <div class="tab-content" id="tab-heatmap">
-  <div class="hm-controls" style="padding:12px 16px 0">
+  <div class="hm-controls" style="padding:12px 16px 0;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
     <span class="controls-label">Colore per:</span>
-    <button class="filter-btn active" id="hm-btn-var" onclick="heatMetric='varAtt';document.getElementById('hm-btn-var').classList.add('active');document.getElementById('hm-btn-ytd').classList.remove('active');renderHeatmap()">Var. Giornaliera</button>
-    <button class="filter-btn" id="hm-btn-ytd" onclick="heatMetric='ytdEur';document.getElementById('hm-btn-ytd').classList.add('active');document.getElementById('hm-btn-var').classList.remove('active');renderHeatmap()">YTD €</button>
+    <button class="filter-btn active" data-hmmetric="varAtt">Oggi</button>
+    <button class="filter-btn" data-hmmetric="ytdEur">YTD €</button>
+    <button class="filter-btn" data-hmmetric="ytdLocal">YTD Locale</button>
+    <button class="filter-btn" data-hmmetric="p7">7 Giorni</button>
+    <button class="filter-btn" data-hmmetric="p30">30 Giorni</button>
+    <button class="filter-btn" data-hmmetric="p60">60 Giorni</button>
+    <button class="filter-btn" data-hmmetric="p90">90 Giorni</button>
+    <button class="filter-btn" data-hmmetric="p180">6 Mesi</button>
+    <button class="filter-btn" data-hmmetric="p1y">1 Anno</button>
+    <button class="filter-btn" data-hmmetric="p2y">2 Anni</button>
+    <button class="filter-btn" data-hmmetric="p3y">3 Anni</button>
+    <button class="filter-btn" data-hmmetric="p5y">5 Anni</button>
     <span class="controls-label" id="hm-count"></span>
   </div>
   <div id="heatmap-grid" style="padding:4px 16px 16px;overflow-y:auto;flex:1"></div>
@@ -1457,8 +1474,14 @@ function fmtCell(col, row) {
     case 'pct': {
       const inner = fmtP(v);
       if (col.key === 'varAtt') return heatWrap(inner, v, 5);
-      if (col.key === 'ytdEur') return heatWrap(inner, v, 30);
-      if (['p7','p30','p60','p90'].includes(col.key)) return heatWrap(inner, v, 15);
+      if (col.key === 'ytdEur' || col.key === 'ytdLocal') return heatWrap(inner, v, 30);
+      if (['p7'].includes(col.key))                         return heatWrap(inner, v, 10);
+      if (['p30','p60'].includes(col.key))                  return heatWrap(inner, v, 15);
+      if (['p90','p180'].includes(col.key))                 return heatWrap(inner, v, 25);
+      if (col.key === 'p1y')                                return heatWrap(inner, v, 40);
+      if (col.key === 'p2y')                                return heatWrap(inner, v, 60);
+      if (col.key === 'p3y')                                return heatWrap(inner, v, 80);
+      if (col.key === 'p5y')                                return heatWrap(inner, v, 120);
       return inner;
     }
     case 'numS': return fmtS(v);
@@ -1783,6 +1806,8 @@ async function loadAll() {
   startCdBar(600);
   // Carica MA50/MA200 in background (richiede ~365 giorni di dati)
   loadMA();
+  // Carica dati storici lunghi (1y/2y/3y/5y) in background
+  loadLongTermData();
 }
 
 // ═══════════════════════════════════════════════════
@@ -2646,13 +2671,18 @@ let chartCat    = 'INDICE AZIONARIO';
 let chartMetric = 'ytdEur';
 
 const METRIC_META = {
-  ytdEur:   { label:'Performance YTD in €',      unit:'%' },
+  ytdEur:   { label:'Performance YTD in €',         unit:'%' },
   ytdLocal: { label:'Performance YTD (val. locale)', unit:'%' },
-  varAtt:   { label:'Variazione Giornaliera',     unit:'%' },
-  p7:       { label:'Performance Ultimi 7 Giorni',unit:'%' },
-  p30:      { label:'Performance Ultimi 30 Giorni',unit:'%' },
-  p60:      { label:'Performance Ultimi 60 Giorni',unit:'%' },
-  p90:      { label:'Performance Ultimi 90 Giorni',unit:'%' },
+  varAtt:   { label:'Variazione Giornaliera',        unit:'%' },
+  p7:       { label:'Performance Ultimi 7 Giorni',   unit:'%' },
+  p30:      { label:'Performance Ultimi 30 Giorni',  unit:'%' },
+  p60:      { label:'Performance Ultimi 60 Giorni',  unit:'%' },
+  p90:      { label:'Performance Ultimi 90 Giorni',  unit:'%' },
+  p180:     { label:'Performance Ultimi 6 Mesi',     unit:'%' },
+  p1y:      { label:'Performance 1 Anno',            unit:'%' },
+  p2y:      { label:'Performance 2 Anni',            unit:'%' },
+  p3y:      { label:'Performance 3 Anni',            unit:'%' },
+  p5y:      { label:'Performance 5 Anni',            unit:'%' },
 };
 
 function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
@@ -2718,9 +2748,10 @@ function renderCharts() {
   const bgColors = vals.map(v => v >= 0 ? 'rgba(76,175,80,.75)' : 'rgba(239,83,80,.75)');
   const bdColors = vals.map(v => v >= 0 ? '#4caf50' : '#ef5350');
 
-  // Altezza dinamica: almeno 28px per barra
-  const barH = Math.max(26, Math.min(44, Math.floor((ctx.parentElement.clientHeight - 40) / data.length)));
-  ctx.style.height = (data.length * barH + 40) + 'px';
+  // Altezza fissa per barra: 36px — il wrapper scorre verticalmente
+  const barH   = 36;
+  const totalH = data.length * barH + 60;
+  document.getElementById('chart-main-inner').style.height = totalH + 'px';
 
   // Plugin: sfondo scuro baked-in nel canvas (necessario per toBase64Image leggibile)
   const bgPlugin = {
@@ -2742,7 +2773,7 @@ function renderCharts() {
       const { ctx: c2, data: d } = chart;
       const meta = chart.getDatasetMeta(0);
       c2.save();
-      c2.font = `bold ${Math.max(9, barH - 14)}px "Segoe UI", sans-serif`;
+      c2.font = `bold 12px "Segoe UI", sans-serif`;
       c2.textBaseline = 'middle';
       meta.data.forEach((bar, i) => {
         const value = d.datasets[0].data[i];
@@ -2798,13 +2829,13 @@ function renderCharts() {
       indexAxis: 'y',
       scales: {
         x: {
-          ticks: { color:'#8fa8c8', callback: v => v + '%', font:{size:10} },
+          ticks: { color:'#8fa8c8', callback: v => v + '%', font:{size:11} },
           grid:  { color:'#1e2d45' },
           border:{ color:'#1e2d45' },
           afterDataLimits: s => { s.min = Math.min(s.min, 0); s.max = Math.max(s.max, 0); }
         },
         y: {
-          ticks: { color:'#dce6f5', font:{size:10}, autoSkip:false },
+          ticks: { color:'#dce6f5', font:{size:12, weight:'600'}, autoSkip:false },
           grid:  { display: false },
         }
       }
@@ -2829,6 +2860,49 @@ document.getElementById('chart-metric-btns').addEventListener('click', e => {
   chartMetric = btn.dataset.metric;
   renderCharts();
 });
+
+// ── Click handler heatmap metric buttons ──────────────────
+document.querySelector('.hm-controls').addEventListener('click', e => {
+  const btn = e.target.closest('[data-hmmetric]');
+  if (!btn) return;
+  document.querySelectorAll('[data-hmmetric]').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  heatMetric = btn.dataset.hmmetric;
+  renderHeatmap();
+});
+
+// ── Carica dati storici lunghi (5y settimanale) in background ──
+async function loadLongTermData() {
+  const syms = [...new Set(INSTRUMENTS.map(i => i.s))];
+  let wData = {};
+  try {
+    const r = await fetch(`/yf/batch?syms=${encodeURIComponent(syms.join(','))}&period=5y&interval=1wk`);
+    wData = await r.json();
+  } catch(e) { console.warn('Long-term batch failed:', e); return; }
+
+  const perfW = (pairs, n, cur) => {
+    if (!pairs || pairs.length < n + 1 || !cur) return null;
+    const old = pairs[pairs.length - 1 - n]?.c;
+    return old ? (cur / old - 1) * 100 : null;
+  };
+
+  INSTRUMENTS.forEach((inst, idx) => {
+    const res = wData[inst.s];
+    if (!res || res.error) return;
+    const pairs = extractPairs(res);
+    const cur   = rows[idx]?.valore;
+    if (!cur || !pairs.length) return;
+    rows[idx].p1y  = perfW(pairs, 52,  cur);
+    rows[idx].p2y  = perfW(pairs, 104, cur);
+    rows[idx].p3y  = perfW(pairs, 156, cur);
+    rows[idx].p5y  = perfW(pairs, 260, cur);
+    // Migliora p180/p365 se non calcolabili dai dati giornalieri
+    if (!rows[idx].p180) rows[idx].p180 = perfW(pairs, 26, cur);
+    updateRow(idx);
+  });
+  renderCharts();
+  renderHeatmap();
+}
 
 function exportModalPDF() {
   // Calcola lo zoom necessario per far stare tutto in una pagina A4 landscape
