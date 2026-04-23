@@ -4120,14 +4120,23 @@ function renderScatterBar() {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { right: 72, left: 4, top: 4, bottom: 4 } },
+      layout: { padding: { right: 72, left: 4, top: 4, bottom: 24 } },
       scales: {
         x: {
+          position: 'top',
           min: 0, max: 100,
           grid:  { color: gridC },
           ticks: { color: textC, font: { size: 10 } },
           title: { display: true, text: '◀  Trend debole          Forza del Trend (0–100)          Trend forte  ▶',
                    color: textC, font: { size: 11, weight: '600' } }
+        },
+        xBottom: {
+          axis: 'x',
+          position: 'bottom',
+          min: 0, max: 100,
+          grid:  { display: false },
+          ticks: { color: textC, font: { size: 10 } },
+          title: { display: false }
         },
         y: {
           grid:  { display: false },
