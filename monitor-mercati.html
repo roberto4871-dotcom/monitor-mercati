@@ -2748,10 +2748,13 @@ function renderCharts() {
   const bgColors = vals.map(v => v >= 0 ? 'rgba(76,175,80,.75)' : 'rgba(239,83,80,.75)');
   const bdColors = vals.map(v => v >= 0 ? '#4caf50' : '#ef5350');
 
-  // Altezza fissa per barra: 36px — il wrapper scorre verticalmente
+  // Altezza fissa 36px per barra — inner div + canvas crescono, wrapper scorre
   const barH   = 36;
   const totalH = data.length * barH + 60;
-  document.getElementById('chart-main-inner').style.height = totalH + 'px';
+  const inner  = document.getElementById('chart-main-inner');
+  inner.style.height    = totalH + 'px';
+  ctx.style.height      = totalH + 'px';   // Chart.js legge l'altezza dal canvas
+  ctx.style.width       = '100%';
 
   // Plugin: sfondo scuro baked-in nel canvas (necessario per toBase64Image leggibile)
   const bgPlugin = {
