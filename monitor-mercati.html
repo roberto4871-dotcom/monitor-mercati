@@ -412,16 +412,16 @@ body.light .corr-table td.corr-label{background:var(--bg3) !important}
 .nf-asset-btn.active{background:var(--blue2);color:#fff;border-color:var(--accent)}
 .nf-asset-sep{width:1px;height:18px;background:var(--border);margin:0 4px;flex-shrink:0}
 .nf-wrap{flex:1;overflow-y:auto;padding:0}
-.nf-card{padding:14px 22px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:7px;transition:background .12s;cursor:default}
+.nf-card{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px;transition:background .12s;cursor:default}
 .nf-card:hover{background:var(--bg2)}
 .nf-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.nf-src{background:var(--bg3);border:1px solid var(--border);padding:2px 9px;border-radius:10px;font-weight:700;font-size:11px;color:var(--text2);white-space:nowrap;flex-shrink:0}
-.nf-time{font-size:12px;color:var(--text3);white-space:nowrap}
-.nf-title{font-size:15px;font-weight:700;color:var(--text);line-height:1.45}
+.nf-src{background:var(--bg3);border:1px solid var(--border);padding:3px 10px;border-radius:10px;font-weight:700;font-size:12px;color:var(--text2);white-space:nowrap;flex-shrink:0}
+.nf-time{font-size:13px;color:var(--text3);white-space:nowrap}
+.nf-title{font-size:17px;font-weight:700;color:var(--text);line-height:1.45}
 .nf-title a{color:inherit;text-decoration:none}
 .nf-title a:hover{color:var(--accent)}
-.nf-summary{font-size:13px;color:var(--text2);line-height:1.5}
-.nf-empty{padding:60px;text-align:center;color:var(--text3);font-size:14px}
+.nf-summary{font-size:15px;color:var(--text2);line-height:1.5}
+.nf-empty{padding:60px;text-align:center;color:var(--text3);font-size:15px}
 /* Light mode */
 body.light .nf-card:hover{background:var(--bg3)}
 body.light .nf-src{background:#e8edf5;border-color:var(--border)}
@@ -4785,46 +4785,39 @@ loadAll();
 //  NEWS FEED TAB
 // ═══════════════════════════════════════════════════
 
-// Gruppi asset per il sotto-menu "Per Asset"
-const NF_ASSET_GROUPS = [
-  { label:'📊 Indici', items:[
-    {s:'^GSPC',      n:'S&P 500'},
-    {s:'FTSEMIB.MI', n:'FTSE MIB'},
-    {s:'^STOXX50E',  n:'Euro Stoxx 50'},
-    {s:'^NDX',       n:'Nasdaq 100'},
-    {s:'^N225',      n:'Nikkei 225'},
-    {s:'^FTSE',      n:'FTSE 100'},
-    {s:'^GDAXI',     n:'DAX'},
-  ]},
-  { label:'💱 Valute', items:[
-    {s:'EURUSD=X',   n:'EUR/USD'},
-    {s:'DX-Y.NYB',   n:'USD Index'},
-    {s:'GBPUSD=X',   n:'GBP/USD'},
-    {s:'USDJPY=X',   n:'USD/JPY'},
-  ]},
-  { label:'🛢 Commodities', items:[
-    {s:'GC=F',       n:'Oro'},
-    {s:'SI=F',       n:'Argento'},
-    {s:'CL=F',       n:'Petrolio'},
-    {s:'NG=F',       n:'Gas Naturale'},
-    {s:'HG=F',       n:'Rame'},
-  ]},
-  { label:'₿ Cripto', items:[
-    {s:'BTC-USD',    n:'Bitcoin'},
-    {s:'ETH-USD',    n:'Ethereum'},
-  ]},
-  { label:'📈 ETF', items:[
-    {s:'SWDA.MI',    n:'MSCI World'},
-    {s:'AEEM.MI',    n:'Emerging Mkt'},
-    {s:'XBAG.MI',    n:'Gov Bond EU'},
-    {s:'IHYG.MI',    n:'High Yield'},
-    {s:'LCUD.MI',    n:'US Corp Bond'},
-  ]},
-  { label:'🏦 Obbligazioni', items:[
-    {s:'^TNX',       n:'T-Note 10Y'},
-    {s:'^IRX',       n:'T-Bill 3M'},
-  ]},
-];
+// Gruppi asset per il sotto-menu "Per Asset" — generati dinamicamente da INSTRUMENTS
+const NF_ASSET_GROUPS = (() => {
+  const CAT_LABELS = {
+    'INDICE AZIONARIO':       '📊 Indici',
+    'VOLATILITA':             '📉 Volatilità',
+    'INDICE OBBLIGAZIONARIO': '🏦 Ind. Obbligazionari',
+    'MATERIA PRIMA':          '🛢 Commodities',
+    'VALUTA':                 '💱 Valute',
+    'TITOLI EUROPA':          '🇪🇺 Titoli Europa',
+    'TITOLI IT BIG CAP':      '🇮🇹 Titoli Italia',
+    'TITOLI USA':             '🇺🇸 Titoli USA',
+    'ETF AZ. MASTER':         '📈 ETF Azionario',
+    'ETF OBB. MASTER':        '📉 ETF Obbligazionario',
+    'ETF COMM. MASTER':       '🛢 ETF Commodities',
+    'ETF MEGATREND':          '🚀 ETF Megatrend',
+    'ETF SINGLE COUNTRY':     '🌍 ETF Paese',
+    'SVIZZERA':               '🇨🇭 Svizzera',
+    'ETF INDICI':             '📊 ETF Indici',
+  };
+  // categorie da saltare (duplicati o non utili per news)
+  const SKIP = new Set(['ULTRABIG']);
+  const map = new Map();
+  const seen = new Set();
+  for (const inst of INSTRUMENTS) {
+    if (SKIP.has(inst.a)) continue;
+    if (seen.has(inst.s)) continue;
+    seen.add(inst.s);
+    const label = CAT_LABELS[inst.a] || inst.a;
+    if (!map.has(inst.a)) map.set(inst.a, { label, items: [] });
+    map.get(inst.a).items.push({ s: inst.s, n: inst.i || inst.m });
+  }
+  return [...map.values()];
+})();
 
 const NF_KEYWORDS = {
   macro:  ['fed','federal reserve','bce','ecb','banca centrale','central bank','inflazione','inflation',
