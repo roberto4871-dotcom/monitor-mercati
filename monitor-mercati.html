@@ -746,6 +746,8 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
     <button class="filter-btn" data-hmmetric="p2y">2 Anni</button>
     <button class="filter-btn" data-hmmetric="p3y">3 Anni</button>
     <button class="filter-btn" data-hmmetric="p5y">5 Anni</button>
+    <span style="width:1px;height:20px;background:var(--border);margin:0 4px;flex-shrink:0"></span>
+    <button id="hm-sort-btn" class="filter-btn" onclick="cycleHeatSort()" title="Ordina per rendimento">↕ Ordina</button>
     <span class="controls-label" id="hm-count"></span>
   </div>
   <div id="heatmap-grid" style="padding:4px 16px 16px;overflow-y:auto;flex:1"></div>
@@ -1349,6 +1351,16 @@ let charts = {};
 let loading = false;
 let favorites = new Set(JSON.parse(localStorage.getItem('mm_fav') || '[]'));
 let heatMetric = 'varAtt';
+let heatSort   = 'none'; // 'none' | 'desc' | 'asc'
+
+function cycleHeatSort() {
+  heatSort = heatSort === 'none' ? 'desc' : heatSort === 'desc' ? 'asc' : 'none';
+  const btn = document.getElementById('hm-sort-btn');
+  if (heatSort === 'none') { btn.textContent = '↕ Ordina'; btn.classList.remove('active'); }
+  else if (heatSort === 'desc') { btn.textContent = '↓ Migliori'; btn.classList.add('active'); }
+  else { btn.textContent = '↑ Peggiori'; btn.classList.add('active'); }
+  renderHeatmap();
+}
 let modalTA = {bb: false, rsi: false};
 let modalRsiChart = null;
 
@@ -3131,7 +3143,15 @@ function renderHeatmap() {
   let html = '';
   order.forEach(sec => {
     html += `<div class="hm-section-title">${sec}</div><div class="hm-grid">`;
-    groups[sec].forEach(r => {
+    const secRows = groups[sec].slice();
+    if (heatSort !== 'none') {
+      secRows.sort((a, b) => {
+        const va = a[heatMetric] ?? -Infinity;
+        const vb = b[heatMetric] ?? -Infinity;
+        return heatSort === 'desc' ? vb - va : va - vb;
+      });
+    }
+    secRows.forEach(r => {
       const origIdx = rows.indexOf(r);
       const val = r[heatMetric];
       const {bg, text} = heatColor(val);
