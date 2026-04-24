@@ -629,7 +629,7 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
       <button class="filter-btn" id="btn-cols" onclick="toggleColsDropdown(event)">⚙ Colonne</button>
       <div class="cols-dropdown" id="cols-dropdown" style="display:none"></div>
     </div>
-    <button class="filter-btn" id="btn-sidenews" onclick="toggleSideNews()">📰 News</button>
+    <button id="btn-sidenews" onclick="toggleSideNews()" style="background:rgba(33,150,243,.15);border:1px solid #2196f3;color:#64b5f6;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .14s" onmouseenter="this.style.background='rgba(33,150,243,.28)'" onmouseleave="if(!this.classList.contains('active'))this.style.background='rgba(33,150,243,.15)'">▶ Feed News</button>
     <div class="spacer"></div>
     <button class="btn-refresh" id="btn-refresh">↻ Aggiorna</button>
   </div>
@@ -5437,7 +5437,9 @@ function toggleSideNews() {
   const panel = document.getElementById('side-news-panel');
   const btn   = document.getElementById('btn-sidenews');
   panel.style.display = _sideNewsOpen ? 'flex' : 'none';
-  btn.classList.toggle('active', _sideNewsOpen);
+  btn.textContent = _sideNewsOpen ? '✕ Feed News' : '▶ Feed News';
+  btn.style.background = _sideNewsOpen ? 'rgba(33,150,243,.4)' : 'rgba(33,150,243,.15)';
+  btn.style.borderColor = _sideNewsOpen ? '#42a5f5' : '#2196f3';
   if (_sideNewsOpen) {
     if (!_nfAllItems.length) {
       loadNewsTab().then(() => renderSideNews(_snpActiveCat));
