@@ -447,6 +447,24 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
 .snp-meta-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .snp-source{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--accent);opacity:.8}
 .snp-time{font-size:13px;color:var(--text3)}
+/* ── NEWS ENHANCEMENTS ── */
+.nf-sentiment-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block;margin-right:2px}
+.nf-sentiment-dot.pos{background:#4caf50}
+.nf-sentiment-dot.neg{background:#ef5350}
+.nf-sentiment-dot.neu{background:var(--text3)}
+.nf-src-wrap{display:inline-flex;align-items:center;gap:3px;flex-wrap:wrap}
+.nf-src-badge{background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap}
+.nf-expand-btn{font-size:11px;color:var(--text3);cursor:pointer;background:none;border:none;padding:2px 6px;opacity:.7;transition:opacity .12s;border-radius:8px}
+.nf-expand-btn:hover{opacity:1;color:var(--accent);background:rgba(255,215,0,.06)}
+.nf-expand-body{display:none;font-size:14px;color:var(--text2);line-height:1.5;padding:8px 0 2px;border-top:1px solid var(--border);margin-top:4px}
+.nf-expand-body.open{display:block}
+.nf-new-badge{background:#ef5350;color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;margin-left:4px;vertical-align:middle;line-height:1.4;display:inline-block}
+.filter-btn.nf-spike{border-color:#ff9800!important;color:#ff9800!important;animation:spike-pulse 2s ease infinite}
+@keyframes spike-pulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 6px 1px rgba(255,152,0,.55)}}
+.nf-search{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:4px 12px;border-radius:20px;font-size:12px;width:160px;outline:none;transition:border-color .15s}
+.nf-search:focus{border-color:var(--accent)}
+.nf-search::placeholder{color:var(--text3)}
+.nf-sep{width:1px;background:var(--border);height:18px;flex-shrink:0;margin:0 3px}
 </style>
 </head>
 <body>
@@ -876,6 +894,14 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
     <button class="filter-btn" data-nfcat="fx">💱 Valute</button>
     <button class="filter-btn" data-nfcat="comm">🛢 Commodities</button>
     <button class="filter-btn" data-nfcat="crypto">₿ Cripto</button>
+    <div class="nf-sep"></div>
+    <span class="controls-label">⏱</span>
+    <button class="filter-btn active" data-nftf="all">Tutto</button>
+    <button class="filter-btn" data-nftf="today">Oggi</button>
+    <button class="filter-btn" data-nftf="6h">6h</button>
+    <button class="filter-btn" data-nftf="1h">1h</button>
+    <div class="nf-sep"></div>
+    <input class="nf-search" id="nf-search" placeholder="🔍 Cerca…" autocomplete="off">
     <div class="spacer"></div>
     <span id="nf-lastupdate" style="color:var(--text3);font-size:10px"></span>
     <button class="btn-refresh" id="nf-btn-refresh">↺ Aggiorna</button>
@@ -3162,7 +3188,7 @@ document.querySelectorAll('.tab').forEach(t => {
     if (t.dataset.tab === 'charts') renderCharts();
     if (t.dataset.tab === 'heatmap') renderHeatmap();
     if (t.dataset.tab === 'scatter') renderScatterBar();
-    if (t.dataset.tab === 'newsfeed') { loadNewsTab(); nfStartAutoRefresh(); buildNfTicker(); }
+    if (t.dataset.tab === 'newsfeed') { loadNewsTab(); nfStartAutoRefresh(); buildNfTicker(); nfClearBadge(); }
     if (t.dataset.tab !== 'newsfeed') nfStopAutoRefresh();
   });
 });
@@ -3630,6 +3656,7 @@ function drawModalChart(pairs, period) {
 
   // Candele se abbiamo dati OHLC reali (high ≠ close su almeno un punto)
   const hasOHLC = pairs.some(p => p.h !== p.c || p.l !== p.c);
+  let _mainSeries = null;
 
   if (hasOHLC) {
     const cs = chart.addCandlestickSeries({
@@ -3638,6 +3665,7 @@ function drawModalChart(pairs, period) {
       wickUpColor:'#81c784', wickDownColor:'#ef9a9a',
     });
     cs.setData(pairs.map(p => ({ time:p.t, open:p.o, high:p.h, low:p.l, close:p.c })));
+    _mainSeries = cs;
     // Margine per il volume in basso
     chart.priceScale('right').applyOptions({ scaleMargins:{top:0.05, bottom:0.22} });
   } else {
@@ -3647,6 +3675,7 @@ function drawModalChart(pairs, period) {
       crosshairMarkerVisible:true, crosshairMarkerRadius:4,
     });
     ls.setData(pairs.map(p => ({ time:p.t, value:p.c })));
+    _mainSeries = ls;
     chart.priceScale('right').applyOptions({ scaleMargins:{top:0.05, bottom:0.22} });
   }
 
@@ -3737,6 +3766,51 @@ function drawModalChart(pairs, period) {
     }
   } else {
     rsiContainer.style.display = 'none';
+  }
+
+  // ── Correlazione news-prezzo ──────────────────────────────
+  if (_mainSeries && _nfAllItems.length && modalRow) {
+    try {
+      const ticker = (modalRow.m || '').toLowerCase();
+      const iname  = (modalRow.i || '').toLowerCase().replace(/\s*\(.*?\)\s*/g,'').trim();
+      const sym    = (modalRow.s || '').toLowerCase().split('.')[0];
+      const startTs = pairs[0].t;
+      const endTs   = pairs[pairs.length-1].t;
+
+      // Snap timestamp to nearest bar time (LightweightCharts requires exact match)
+      const snapToBar = ts => {
+        let best = pairs[0].t, bestDiff = Math.abs(ts - pairs[0].t);
+        for (const p of pairs) {
+          const d = Math.abs(ts - p.t);
+          if (d < bestDiff) { bestDiff = d; best = p.t; }
+        }
+        return best;
+      };
+
+      const byBar = {}; // one marker per bar
+      _nfAllItems.forEach(it => {
+        if (!it.ts || it.ts < startTs - 86400 || it.ts > endTs + 86400) return;
+        const text = (it.title + ' ' + (it.summary||'')).toLowerCase();
+        const match = (ticker.length > 2 && text.includes(ticker)) ||
+                      (sym.length > 2    && text.includes(sym))    ||
+                      (iname.length > 4  && text.includes(iname));
+        if (!match) return;
+        const barTs = snapToBar(it.ts);
+        if (!byBar[barTs]) {
+          const sent = nfSentiment(it);
+          byBar[barTs] = {
+            time: barTs,
+            position: 'aboveBar',
+            color: sent === 'pos' ? '#26a69a' : sent === 'neg' ? '#ef5350' : '#ffd700',
+            shape: 'arrowDown',
+            text: '📰',
+            size: 0,
+          };
+        }
+      });
+      const newsMarkers = Object.values(byBar).sort((a,b) => a.time - b.time);
+      if (newsMarkers.length) _mainSeries.setMarkers(newsMarkers);
+    } catch(e) { /* silently ignore marker errors */ }
   }
 
   chart.timeScale().fitContent();
@@ -5132,6 +5206,107 @@ function nfCategorize(item) {
   return 'other';
 }
 
+// ── Sentiment visivo ──────────────────────────────────────────
+const NF_POS_KW = ['rialzo','crescita','positivo','aumento','record','guadagno','ottimismo',
+  'ripresa','forte','boom','accelera','supera','batte','sorprende','rally','massimo storico',
+  'upgrade','outlook positivo','crescono','utili record','acquista','recovery','surplus'];
+const NF_NEG_KW = ['ribasso','caduta','negativo','calo','minimo','perdita','paura','crisi',
+  'recessione','default','fallimento','crollo','vendita','debole','allarme','rischio','declino',
+  'downgrade','profit warning','tagli','layoff','licenziamenti','sanzioni','rifiuta','recessione'];
+
+function nfSentiment(item) {
+  const text = (item.title + ' ' + (item.summary||'')).toLowerCase();
+  const pos = NF_POS_KW.filter(w => text.includes(w)).length;
+  const neg = NF_NEG_KW.filter(w => text.includes(w)).length;
+  if (pos > neg) return 'pos';
+  if (neg > pos) return 'neg';
+  return 'neu';
+}
+
+// ── Deduplicazione ────────────────────────────────────────────
+function nfDeduplicate(items) {
+  const out = [];
+  const usedIdx = new Set();
+  const tokenize = t => new Set(t.toLowerCase().replace(/[^a-z0-9àèéìòùü\s]/g,' ').split(/\s+/).filter(w => w.length > 3));
+  for (let i = 0; i < items.length; i++) {
+    if (usedIdx.has(i)) continue;
+    const it = { ...items[i], _srcs: [items[i].src] };
+    const tw = tokenize(items[i].title);
+    for (let j = i + 1; j < items.length; j++) {
+      if (usedIdx.has(j)) continue;
+      const tw2 = [...tokenize(items[j].title)];
+      if (!tw2.length) continue;
+      const overlap = tw2.filter(w => tw.has(w)).length;
+      const sim = overlap / Math.max(tw.size, tw2.length);
+      if (sim >= 0.58) {
+        it._srcs.push(items[j].src);
+        usedIdx.add(j);
+      }
+    }
+    out.push(it);
+  }
+  return out;
+}
+
+// ── Filtro temporale ─────────────────────────────────────────
+function nfApplyTimeFilter(tf) {
+  _nfTimeFilter = tf;
+  document.querySelectorAll('[data-nftf]').forEach(b => b.classList.toggle('active', b.dataset.nftf === tf));
+  nfApplyFilter(_nfActiveCat);
+}
+
+function nfFilterByTime(items) {
+  if (_nfTimeFilter === 'all') return items;
+  const now = Date.now() / 1000;
+  if (_nfTimeFilter === 'today') {
+    const d = new Date(); d.setHours(0,0,0,0);
+    return items.filter(it => it.ts >= d.getTime()/1000);
+  }
+  const secs = { '6h': 21600, '1h': 3600 };
+  return items.filter(it => it.ts >= now - (secs[_nfTimeFilter] || 0));
+}
+
+// ── Badge "news nuove" ────────────────────────────────────────
+function nfUpdateBadge() {
+  const tab = document.querySelector('[data-tab="newsfeed"]');
+  if (!tab) return;
+  const newCount = _nfAllItems.length - _nfSeenCount;
+  let badge = tab.querySelector('.nf-new-badge');
+  if (newCount > 0 && _nfSeenCount > 0) {
+    if (!badge) { badge = document.createElement('span'); badge.className = 'nf-new-badge'; tab.appendChild(badge); }
+    badge.textContent = newCount > 99 ? '99+' : String(newCount);
+  } else if (badge) {
+    badge.remove();
+  }
+}
+
+function nfClearBadge() {
+  _nfSeenCount = _nfAllItems.length;
+  document.querySelector('[data-tab="newsfeed"] .nf-new-badge')?.remove();
+}
+
+// ── Spike alert ───────────────────────────────────────────────
+function nfCheckSpike() {
+  const cutoff = Date.now()/1000 - 1800; // 30 min
+  const catCounts = {};
+  _nfAllItems.filter(it => it.ts >= cutoff).forEach(it => {
+    const c = nfCategorize(it);
+    catCounts[c] = (catCounts[c]||0) + 1;
+  });
+  const totalRecent = Object.values(catCounts).reduce((a,b)=>a+b,0);
+  document.querySelectorAll('[data-nfcat]').forEach(btn => {
+    const cat = btn.dataset.nfcat;
+    const cnt = cat === 'all' ? totalRecent : (catCounts[cat]||0);
+    if (cnt >= 5) {
+      btn.classList.add('nf-spike');
+      btn.title = `⚡ ${cnt} notizie nelle ultime 30 min`;
+    } else {
+      btn.classList.remove('nf-spike');
+      btn.removeAttribute('title');
+    }
+  });
+}
+
 function nfFmtTime(ts) {
   if (!ts) return '';
   const d   = new Date(ts * 1000);
@@ -5151,24 +5326,53 @@ function nfFmtTime(ts) {
 
 function nfRenderItems(items) {
   if (!items.length) return '<div class="nf-empty">Nessuna notizia trovata per questo filtro.</div>';
-  return items.map(it => {
-    const titleHtml = it.link
-      ? `<a href="${it.link}" target="_blank" rel="noopener">${it.title}</a>`
-      : it.title;
+  return items.map((it, idx) => {
+    // Sentiment dot
+    const sent = nfSentiment(it);
+    const dot  = `<span class="nf-sentiment-dot ${sent}" title="${sent==='pos'?'Notizia positiva':sent==='neg'?'Notizia negativa':'Neutro'}"></span>`;
+
+    // Multi-source badges (when dedup merged several sources)
+    const srcs = it._srcs || [it.src];
+    const srcHtml = `<span class="nf-src-wrap">${srcs.map(s=>`<span class="nf-src-badge">${s}</span>`).join('')}</span>`;
+
+    // Summary / expand
+    const summary = it.summary || '';
+    const hasSum = summary.length > 0;
+    const eid = `nf-exp-${idx}`;
+    const expandBtn = hasSum ? `<button class="nf-expand-btn" onclick="nfToggleExpand('${eid}',this)">▸ Dettagli</button>` : '';
+    const expandBody = hasSum ? `<div class="nf-expand-body" id="${eid}">${summary}</div>` : '';
+
+    // Open link button (separate from title click)
+    const linkBtn = it.link ? `<a href="${it.link}" target="_blank" rel="noopener" class="nf-expand-btn" title="Apri articolo" style="font-size:12px">↗</a>` : '';
+
     return `<div class="nf-card">
       <div class="nf-meta">
-        <span class="nf-src">${it.src}</span>
+        ${dot}
+        ${srcHtml}
         <span class="nf-time">🕐 ${nfFmtTime(it.ts)}</span>
+        ${expandBtn}
+        ${linkBtn}
       </div>
-      <div class="nf-title">${titleHtml}</div>
-      ${it.summary ? `<div class="nf-summary">${it.summary}</div>` : ''}
+      <div class="nf-title">${it.title}</div>
+      ${expandBody}
     </div>`;
   }).join('');
+}
+
+function nfToggleExpand(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const open = el.classList.toggle('open');
+  btn.textContent = open ? '▾ Chiudi' : '▸ Dettagli';
 }
 
 let _nfAllItems  = [];
 let _nfActiveCat = 'all';
 let _nfTimer     = null;
+let _nfTimeFilter = 'all';  // 'all'|'today'|'6h'|'1h'
+let _nfSearch     = '';
+let _nfSeenCount  = 0;      // for badge: articles count seen so far
+let _snpAutoTimer = null;   // side panel auto-refresh
 
 function nfApplyFilter(cat) {
   _nfActiveCat = cat;
@@ -5176,9 +5380,20 @@ function nfApplyFilter(cat) {
     b.classList.toggle('active', b.dataset.nfcat === cat);
   });
   const el = document.getElementById('nf-content');
-  const filtered = cat === 'all'
+  let filtered = cat === 'all'
     ? _nfAllItems
     : _nfAllItems.filter(it => nfCategorize(it) === cat);
+  // Filtro temporale
+  filtered = nfFilterByTime(filtered);
+  // Ricerca full-text
+  if (_nfSearch) {
+    const q = _nfSearch.toLowerCase();
+    filtered = filtered.filter(it =>
+      it.title.toLowerCase().includes(q) ||
+      (it.summary||'').toLowerCase().includes(q) ||
+      (it.src||'').toLowerCase().includes(q)
+    );
+  }
   el.innerHTML = nfRenderItems(filtered);
 }
 
@@ -5190,10 +5405,15 @@ async function loadNewsTab(force = false) {
   document.getElementById('nf-btn-refresh').disabled = true;
   try {
     const data = await fetch('/news-feed').then(r => r.json());
-    _nfAllItems = Array.isArray(data) ? data : [];
+    const raw = Array.isArray(data) ? data : [];
+    _nfAllItems = nfDeduplicate(raw);
     const lastUpd = document.getElementById('nf-lastupdate');
     if (lastUpd) lastUpd.textContent = 'Agg. ' + new Date().toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit'});
     nfApplyFilter(_nfActiveCat);
+    nfCheckSpike();
+    nfUpdateBadge();
+    // Auto-refresh side panel if open
+    if (_sideNewsOpen) renderSideNews(_snpActiveCat);
   } catch(e) {
     el.innerHTML = `<div class="nf-empty">⚠ Errore caricamento: ${e.message}</div>`;
   } finally {
@@ -5264,6 +5484,13 @@ function nfStopAutoRefresh() {
 
 document.querySelectorAll('[data-nfcat]').forEach(b => {
   b.addEventListener('click', () => nfApplyFilter(b.dataset.nfcat));
+});
+document.querySelectorAll('[data-nftf]').forEach(b => {
+  b.addEventListener('click', () => nfApplyTimeFilter(b.dataset.nftf));
+});
+document.getElementById('nf-search')?.addEventListener('input', e => {
+  _nfSearch = e.target.value.trim();
+  nfApplyFilter(_nfActiveCat);
 });
 document.getElementById('nf-btn-refresh')?.addEventListener('click', () => loadNewsTab(true));
 
@@ -5489,6 +5716,13 @@ function toggleSideNews() {
     } else {
       renderSideNews(_snpActiveCat);
     }
+    // Auto-refresh side panel ogni 10 min
+    if (_snpAutoTimer) clearInterval(_snpAutoTimer);
+    _snpAutoTimer = setInterval(() => {
+      loadNewsTab(true).then(() => { if (_sideNewsOpen) renderSideNews(_snpActiveCat); });
+    }, 600_000);
+  } else {
+    if (_snpAutoTimer) { clearInterval(_snpAutoTimer); _snpAutoTimer = null; }
   }
 }
 
