@@ -5,6 +5,7 @@ Apri nel browser: http://localhost:8080/monitor-mercati.html
 """
 import http.server
 import urllib.parse
+import urllib.request
 import json
 import os
 import time
@@ -58,7 +59,8 @@ _ma_cache      = {}; _ma_lock      = threading.Lock(); MA_TTL      = 300
 _seasonal_cache= {}; _seasonal_lock= threading.Lock(); SEASONAL_TTL= 21600  # 6 ore
 _corr_cache  = {}; _corr_lock  = threading.Lock(); CORR_TTL  = 1800
 _rss_cache   = {}; _rss_lock   = threading.Lock(); RSS_TTL   = 600   # 10 min
-_macro_cache = {}; _macro_lock = threading.Lock(); MACRO_TTL = 900   # 15 min
+_macro_cache     = {}; _macro_lock     = threading.Lock(); MACRO_TTL     = 900   # 15 min
+_sovereign_cache = {}; _sovereign_lock = threading.Lock(); SOVEREIGN_TTL = 1800  # 30 min
 # ISIN cache — permanente (ISIN non cambia mai)
 
 
@@ -776,6 +778,108 @@ def _parse_rss_source(src):
         return []
 
 
+def _stooq_fetch(sym):
+    """Scarica CSV da Stooq e restituisce {'yield', 'prev', 'chg', 'date'} o None."""
+    try:
+        url = f'https://stooq.com/q/d/l/?s={sym}&i=d'
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            text = resp.read().decode('utf-8')
+        lines = [l for l in text.strip().split('\n') if l.strip() and not l.startswith('No data')]
+        if len(lines) < 2:
+            return None
+        def parse_row(row):
+            parts = row.split(',')
+            return parts[0], float(parts[4])  # date, close
+        date,  last = parse_row(lines[-1])
+        _,     prev = parse_row(lines[-2]) if len(lines) >= 3 else (date, last)
+        return {'yield': round(last, 3), 'prev': round(prev, 3),
+                'chg': round(last - prev, 3), 'date': date}
+    except Exception:
+        return None
+
+
+def fetch_sovereign_yields():
+    """
+    Rendimenti sovrani 10A per DE/IT/ES/FR/PT/PL + Bund curve (2A/5A/10A/30A).
+    Fonte: Stooq (dati giornalieri, cache 30 min).
+    """
+    with _sovereign_lock:
+        c = _sovereign_cache.get('sov')
+        if c and (time.time() - c['ts']) < SOVEREIGN_TTL:
+            return c['data']
+
+    # Simboli 10A per calcolo spread
+    SPREAD_BONDS = {
+        'DE': {'sym': '10de.b', 'name': 'Germania (Bund)',  'flag': '🇩🇪'},
+        'IT': {'sym': '10it.b', 'name': 'Italia (BTP)',     'flag': '🇮🇹'},
+        'ES': {'sym': '10es.b', 'name': 'Spagna (Bonos)',   'flag': '🇪🇸'},
+        'FR': {'sym': '10fr.b', 'name': 'Francia (OAT)',    'flag': '🇫🇷'},
+        'PT': {'sym': '10pt.b', 'name': 'Portogallo (OT)',  'flag': '🇵🇹'},
+        'PL': {'sym': '10pl.b', 'name': 'Polonia',          'flag': '🇵🇱'},
+    }
+    # Simboli Bund per la curva europea
+    BUND_CURVE = {
+        '2A':  '2de.b',
+        '5A':  '5de.b',
+        '10A': '10de.b',
+        '30A': '30de.b',
+    }
+
+    all_tasks = {}
+    for country, info in SPREAD_BONDS.items():
+        all_tasks[f'sov_{country}'] = info['sym']
+    for mat, sym in BUND_CURVE.items():
+        all_tasks[f'bund_{mat}'] = sym
+
+    raw = {}
+    def _fetch(key, sym):
+        return key, _stooq_fetch(sym)
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_fetch, k, v): k for k, v in all_tasks.items()}
+        for fut in as_completed(futures, timeout=20):
+            try:
+                k, v = fut.result()
+                if v:
+                    raw[k] = v
+            except Exception:
+                pass
+
+    # Spread vs Bund
+    de_data = raw.get('sov_DE')
+    de_yield = de_data['yield'] if de_data else None
+    spreads = {}
+    for country, info in SPREAD_BONDS.items():
+        d = raw.get(f'sov_{country}')
+        if not d:
+            continue
+        spread_bp = round((d['yield'] - de_yield) * 100, 1) if de_yield is not None and country != 'DE' else 0
+        spreads[country] = {
+            'yield': d['yield'], 'prev': d['prev'],
+            'chg': d['chg'], 'date': d['date'],
+            'spread_bp': spread_bp,
+            'name': info['name'], 'flag': info['flag'],
+        }
+
+    # Curva Bund
+    bund_curve = {}
+    for mat in BUND_CURVE:
+        d = raw.get(f'bund_{mat}')
+        if d:
+            bund_curve[mat] = d
+
+    result = {
+        'spreads':    spreads,
+        'bund_curve': bund_curve,
+        'de_yield':   de_yield,
+        'ts':         int(time.time()),
+    }
+    with _sovereign_lock:
+        _sovereign_cache['sov'] = {'data': result, 'ts': time.time()}
+    return result
+
+
 def fetch_macro_data():
     """Dati macro live: yield curve USA, VIX, DXY, spread — cache 15 min."""
     with _macro_lock:
@@ -1181,6 +1285,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json(fetch_aggregated_news())
         elif self.path.startswith('/macro-data'):
             self._json(fetch_macro_data())
+        elif self.path.startswith('/sovereign-yields'):
+            self._json(fetch_sovereign_yields())
         else:
             super().do_GET()
 

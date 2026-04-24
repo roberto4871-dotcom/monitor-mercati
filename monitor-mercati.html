@@ -549,6 +549,25 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
 .macro-refresh-bar span{font-size:10px;color:var(--text3)}
 body.light .macro-panel{background:var(--bg2);border-color:var(--border)}
 body.light .md-item,.body.light .cal-item,.body.light .strip-card{background:var(--bg3)}
+/* Spread sovrani */
+.sov-table{width:100%;border-collapse:collapse;font-size:12px}
+.sov-table th{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;padding:3px 8px;border-bottom:1px solid var(--border);text-align:left}
+.sov-table th.r{text-align:right}
+.sov-table td{padding:6px 8px;border-bottom:1px solid rgba(30,45,69,.35)}
+.sov-table tr:last-child td{border-bottom:none}
+.sov-table tr:hover td{background:rgba(255,215,0,.03)}
+.sov-flag{font-size:15px}
+.sov-name{font-size:12px;font-weight:600;color:var(--text)}
+.sov-yield{font-size:14px;font-weight:800;text-align:right}
+.sov-chg{font-size:11px;font-weight:700;text-align:right}
+.sov-spread{font-size:13px;font-weight:800;text-align:right;white-space:nowrap}
+.sov-bar-wrap{display:flex;align-items:center;gap:6px}
+.sov-bar{height:6px;border-radius:3px;min-width:2px;transition:width .4s}
+.sov-badge{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;white-space:nowrap}
+/* Dual yield curve */
+.yc-dual{display:grid;grid-template-columns:1fr 1fr;gap:10px;flex:1}
+.yc-section-title{font-size:9px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);margin-bottom:6px;text-align:center}
+.yc-section-loading{font-size:11px;color:var(--text3);text-align:center;padding:8px}
 </style>
 </head>
 <body>
@@ -1017,14 +1036,26 @@ body.light .md-item,.body.light .cal-item,.body.light .strip-card{background:var
         </div>
       </div>
 
-      <!-- Yield Curve USA -->
+      <!-- Yield Curve USA + EU -->
       <div class="macro-panel">
-        <div class="macro-panel-title"><span>📈</span>CURVA DEI RENDIMENTI USA (live)</div>
-        <div style="display:flex;flex-direction:column;flex:1;gap:8px">
-          <div class="yc-bars" id="macro-yc-bars">
-            <div class="nf-empty" style="padding:10px;font-size:12px">Caricamento…</div>
+        <div class="macro-panel-title"><span>📈</span>CURVA DEI RENDIMENTI (live)</div>
+        <div class="yc-dual">
+          <!-- US Treasury -->
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div class="yc-section-title">🇺🇸 US TREASURY</div>
+            <div class="yc-bars" id="macro-yc-bars" style="flex:1;min-height:70px">
+              <div class="yc-section-loading">Caricamento…</div>
+            </div>
+            <div id="macro-yc-info" style="font-size:10px"></div>
           </div>
-          <div id="macro-yc-info" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+          <!-- EU Bund -->
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div class="yc-section-title">🇩🇪 BUND GERMANIA</div>
+            <div class="yc-bars" id="macro-yc-eu" style="flex:1;min-height:70px">
+              <div class="yc-section-loading">Caricamento…</div>
+            </div>
+            <div id="macro-yc-eu-info" style="font-size:10px"></div>
+          </div>
         </div>
       </div>
 
@@ -1077,23 +1108,25 @@ body.light .md-item,.body.light .cal-item,.body.light .strip-card{background:var
       <div class="macro-strip" id="macro-strip"></div>
     </div>
 
-    <!-- Row 4: Spread Sovrani + note -->
-    <div class="macro-row macro-row-2">
-      <div class="macro-panel">
-        <div class="macro-panel-title"><span>📐</span>SPREAD SOVRANI & CREDITO</div>
-        <div id="macro-spread-body" style="flex:1;overflow-y:auto"></div>
+    <!-- Row 4: Spread Sovrani (full width) + note -->
+    <div class="macro-panel" style="min-height:auto">
+      <div class="macro-panel-title">
+        <span>📐</span>SPREAD SOVRANI vs BUND — Rendimenti 10 anni (live · fonte: Stooq)
+        <span id="sov-lastupd" style="font-size:9px;color:var(--text3);font-weight:400;margin-left:10px;text-transform:none;letter-spacing:0"></span>
       </div>
-      <div class="macro-panel">
-        <div class="macro-panel-title"><span>ℹ️</span>NOTE & LEGGENDA</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.7;flex:1">
-          <p>• <b style="color:var(--accent)">Curva Rendimenti</b>: dati live Yahoo Finance. 2Y stimato (interpolazione 3M-5Y).</p>
-          <p>• <b style="color:var(--accent)">Inversione</b>: 10Y&lt;3M segnala possibile recessione (indicatore classico).</p>
-          <p>• <b style="color:var(--accent)">Gauge Rischio</b>: composto da VIX, pendenza curva, forza dollaro, oro.</p>
-          <p>• <b style="color:var(--accent)">Tassi banche centrali</b>: aggiornati manualmente dopo le riunioni.</p>
-          <p>• <b style="color:var(--accent)">CPI/GDP/PMI</b>: ultime letture ufficiali, aggiornate mensilmente.</p>
-          <p>• <b style="color:var(--accent)">Spread BTP-Bund</b>: stima da differenziale ETF obbligazionari.</p>
-          <p style="margin-top:8px;color:var(--text3);font-size:10px">Dati a scopo informativo — non costituiscono consulenza finanziaria.</p>
-        </div>
+      <div id="macro-spread-body" style="overflow-x:auto"></div>
+    </div>
+    <div class="macro-panel" style="min-height:auto">
+      <div class="macro-panel-title"><span>ℹ️</span>NOTE & LEGGENDA</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.7;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px 24px">
+        <p>• <b style="color:var(--accent)">Curva Treasury USA</b>: live Yahoo Finance. 2A stimato (interp. 3M-5A).</p>
+        <p>• <b style="color:var(--accent)">Curva Bund EU</b>: live Stooq (2A/5A/10A/30A emissioni tedesche).</p>
+        <p>• <b style="color:var(--accent)">Inversione</b>: 10A &lt; 3M/2A = segnale storico di recessione imminente.</p>
+        <p>• <b style="color:var(--accent)">Spread Sovrani</b>: differenziale in basis points vs Bund 10A (fonte Stooq, cache 30 min).</p>
+        <p>• <b style="color:var(--accent)">Gauge Rischio</b>: score composito da VIX + curva + DXY + oro.</p>
+        <p>• <b style="color:var(--accent)">Tassi Banche Centrali</b>: aggiornati manualmente dopo le riunioni.</p>
+        <p>• <b style="color:var(--accent)">CPI/GDP/PMI</b>: ultime letture ufficiali, aggiornate mensilmente.</p>
+        <p style="color:var(--text3);font-size:10px">Dati a scopo informativo — non costituiscono consulenza finanziaria.</p>
       </div>
     </div>
 
@@ -6151,13 +6184,18 @@ const MACRO_STRIP_SYMS = [
 ];
 
 let _macroData   = null;
+let _sovData     = null;
 let _macroLoaded = false;
 
 async function loadMacroTab(force = false) {
   if (!force && _macroLoaded) { renderMacro(); return; }
   document.getElementById('macro-lastupd').textContent = '⏳ Caricamento…';
   try {
-    _macroData   = await fetch('/macro-data').then(r => r.json());
+    // Fetch in parallel: macro-data (yields USA + VIX) e sovereign-yields (Stooq)
+    [_macroData, _sovData] = await Promise.all([
+      fetch('/macro-data').then(r => r.json()),
+      fetch('/sovereign-yields').then(r => r.json()).catch(() => null),
+    ]);
     _macroLoaded = true;
     document.getElementById('macro-lastupd').textContent =
       'Aggiornato: ' + new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
@@ -6177,6 +6215,7 @@ function renderMacro() {
   renderMacroGauge();
   renderMacroStrip();
   renderMacroSpread();
+  renderMacroBundCurve();
 }
 
 // ── Banche Centrali ──────────────────────────────────────────
@@ -6435,41 +6474,128 @@ function renderMacroStrip() {
   el.innerHTML = cards.length ? cards.join('') : '<div class="nf-empty" style="padding:16px;font-size:12px">Caricamento dati live…</div>';
 }
 
-// ── Spread Sovrani ────────────────────────────────────────────
+// ── Spread Sovrani LIVE ───────────────────────────────────────
+function spreadColor(bp) {
+  if (bp === null || bp === undefined || bp === 0) return { fg:'var(--text3)', bg:'transparent', badge:'—' };
+  if (bp < 50)   return { fg:'#4caf50', bg:'rgba(76,175,80,.1)',   badge:'✅ Basso' };
+  if (bp < 120)  return { fg:'#8bc34a', bg:'rgba(139,195,74,.1)',  badge:'🟢 Normale' };
+  if (bp < 200)  return { fg:'#ffd700', bg:'rgba(255,215,0,.1)',   badge:'🟡 Attenzione' };
+  if (bp < 300)  return { fg:'#ff9800', bg:'rgba(255,152,0,.1)',   badge:'🟠 Elevato' };
+  return            { fg:'#ef5350', bg:'rgba(239,83,80,.1)',   badge:'🔴 Critico' };
+}
+
 function renderMacroSpread() {
-  // Stima spread dai dati disponibili: BTP-Bund proxy tramite ETF
-  // ITLT.MI (BTP 7-10Y) vs IBCD.MI / DBXG.DE (Bund)
-  // Usiamo i dati YTD degli ETF obbligazionari come proxy direzionale
-  const spreadData = [
-    { name:'BTP-Bund (10A)', value:'~120 bp', note:'Dati Reuters/Bloomberg (stimato)', cls:'neu' },
-    { name:'OAT-Bund (10A)', value:'~70 bp',  note:'Francia vs Germania',              cls:'neu' },
-    { name:'Bonos-Bund (10A)',value:'~65 bp', note:'Spagna vs Germania',               cls:'pos' },
-    { name:'Gilts-Bund (10A)',value:'~180 bp',note:'UK vs Germania',                   cls:'neg' },
-  ];
-
-  // Prova a stimare BTP-Bund dai dati live se disponibili
-  const btpIdx  = INSTRUMENTS.findIndex(i => i.s === 'ITLT.MI' || i.i?.includes('BTP'));
-  const bundIdx = INSTRUMENTS.findIndex(i => i.s === 'DBXG.DE' || i.i?.includes('Bund'));
-
-  document.getElementById('macro-spread-body').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:4px">
-      ${spreadData.map(s => `
-        <div class="md-item">
-          <div class="md-label">${s.name}</div>
-          <div class="md-value" style="font-size:18px">${s.value}</div>
-          <div class="md-sub">${s.note}</div>
-        </div>`).join('')}
-    </div>
-    <div style="margin-top:10px;padding:8px 10px;background:var(--bg3);border-radius:8px;font-size:11px;color:var(--text3);line-height:1.6">
-      <b style="color:var(--text2)">ℹ Spread Sovrani</b><br>
-      Il BTP-Bund spread misura il differenziale di rendimento tra BTP italiani e Bund tedeschi a 10 anni — indicatore chiave del rischio paese IT.<br>
-      <span style="color:#ff9800">Soglia attenzione: &gt;200 bp &nbsp;|&nbsp; Soglia critica: &gt;350 bp</span>
-    </div>
-    <div style="margin-top:8px;padding:8px 10px;background:var(--bg3);border-radius:8px;font-size:11px;color:var(--text3)">
-      <b style="color:var(--text2)">iTraxx Europe (credito IG)</b><br>
-      Indice di credit default swap su 125 società europee investment grade.<br>
-      Livelli &gt;80 bp = stress credito; &lt;50 bp = mercato sereno.
+  const el = document.getElementById('macro-spread-body');
+  if (!_sovData || !_sovData.spreads || Object.keys(_sovData.spreads).length === 0) {
+    el.innerHTML = `<div style="padding:16px;color:var(--text3);font-size:12px">
+      ⚠ Dati Stooq non disponibili — verifica la connessione del server.
+      <br><br>Riprova tra qualche minuto o premi Aggiorna.
     </div>`;
+    return;
+  }
+
+  const spreads = _sovData.spreads;
+  const ORDER   = ['DE','IT','ES','FR','PT','PL'];
+  const maxSpread = Math.max(...ORDER.map(c => spreads[c]?.spread_bp ?? 0).filter(x => x > 0));
+
+  // Timestamp
+  if (_sovData.ts) {
+    const d = new Date(_sovData.ts * 1000);
+    document.getElementById('sov-lastupd').textContent =
+      'Agg. ' + d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) +
+      ' · ' + d.toLocaleDateString('it-IT',{day:'numeric',month:'short'});
+  }
+
+  const rows = ORDER.map(cc => {
+    const s = spreads[cc];
+    if (!s) return '';
+    const isDE = cc === 'DE';
+    const spBp = isDE ? null : s.spread_bp;
+    const clr  = spreadColor(spBp);
+    const chgCls = s.chg > 0 ? 'neg' : s.chg < 0 ? 'pos' : 'neu'; // yield up = bond price down
+    const chgSign = s.chg > 0 ? '+' : '';
+    const barW = spBp && maxSpread > 0 ? Math.round((spBp / maxSpread) * 120) : 0;
+
+    return `<tr>
+      <td class="sov-flag">${s.flag}</td>
+      <td class="sov-name">${s.name}</td>
+      <td class="sov-yield" style="color:var(--text)">${s.yield.toFixed(2)}%</td>
+      <td class="sov-chg md-chg ${chgCls}">${chgSign}${s.chg.toFixed(3)}%</td>
+      <td class="sov-spread" style="color:${isDE ? 'var(--text3)' : clr.fg}">
+        ${isDE ? '— (benchmark)' : (spBp !== null ? spBp.toFixed(0) + ' bp' : 'N/A')}
+      </td>
+      <td>
+        ${isDE ? '' : `<div class="sov-bar-wrap">
+          <div class="sov-bar" style="width:${barW}px;background:${clr.fg}"></div>
+          <span class="sov-badge" style="color:${clr.fg};background:${clr.bg}">${clr.badge}</span>
+        </div>`}
+      </td>
+      <td style="font-size:10px;color:var(--text3)">${s.date || ''}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <table class="sov-table">
+      <thead><tr>
+        <th colspan="2">Paese</th>
+        <th class="r">Yield 10A</th>
+        <th class="r">Var. Giorn.</th>
+        <th class="r">Spread vs Bund</th>
+        <th>Livello</th>
+        <th>Data</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="margin-top:10px;display:flex;gap:20px;flex-wrap:wrap;padding:8px 4px;font-size:10px;color:var(--text3)">
+      <span>✅ Basso &lt;50bp</span>
+      <span>🟢 Normale 50-120bp</span>
+      <span>🟡 Attenzione 120-200bp</span>
+      <span>🟠 Elevato 200-300bp</span>
+      <span>🔴 Critico &gt;300bp</span>
+      <span style="margin-left:auto">Fonte: Stooq · Dati giornalieri</span>
+    </div>`;
+}
+
+// ── Curva Bund (EU) live ──────────────────────────────────────
+function renderMacroBundCurve() {
+  const el   = document.getElementById('macro-yc-eu');
+  const info = document.getElementById('macro-yc-eu-info');
+  if (!_sovData || !_sovData.bund_curve || Object.keys(_sovData.bund_curve).length === 0) {
+    el.innerHTML = '<div class="yc-section-loading">Dati non disponibili</div>';
+    return;
+  }
+
+  const curve = _sovData.bund_curve;
+  const MATS  = ['2A','5A','10A','30A'];
+  const vals  = MATS.map(m => curve[m]?.yield ?? null).filter(Boolean);
+  if (!vals.length) { el.innerHTML = '<div class="yc-section-loading">Dati non disponibili</div>'; return; }
+
+  const maxV  = Math.max(...vals);
+  const minV  = Math.min(...vals);
+  const range = (maxV - minV) || 0.5;
+
+  const barsHtml = MATS.map(m => {
+    const v = curve[m]?.yield;
+    if (!v) return '';
+    const hPct = 20 + ((v - minV) / range) * 78;
+    const v10  = curve['10A']?.yield;
+    const clr  = v10 && m !== '10A' && v > v10 ? '#4caf50' : v10 && v < v10 ? '#ef5350' : '#64b5f6';
+    return `<div class="yc-bar-wrap">
+      <div class="yc-val" style="font-size:10px">${v.toFixed(2)}%</div>
+      <div class="yc-bar" style="height:${hPct}%;background:${clr}"></div>
+      <div class="yc-label">${m}</div>
+    </div>`;
+  }).join('');
+  el.innerHTML = barsHtml;
+
+  // Spread 10A-2A
+  const y2 = curve['2A']?.yield, y10 = curve['10A']?.yield, y30 = curve['30A']?.yield;
+  if (y2 && y10) {
+    const sp = (y10 - y2).toFixed(2);
+    const cls = parseFloat(sp) < 0 ? 'inverted' : parseFloat(sp) < 0.2 ? 'flat' : 'normal';
+    const lbl = parseFloat(sp) < 0 ? '⚠ Invertita' : parseFloat(sp) < 0.2 ? '⚡ Piatta' : '✓ Normale';
+    info.innerHTML = `<div class="yc-inversion ${cls}" style="font-size:10px;padding:3px 8px">${lbl} · 10A-2A: ${sp > 0 ? '+' : ''}${sp}%</div>`;
+  }
 }
 
 // ── Trigger caricamento quando si apre il tab ─────────────────
