@@ -712,10 +712,13 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
     <div class="chart-ctrl-row">
       <span class="chart-ctrl-label">Categoria</span>
       <div class="chart-btn-group" id="chart-cat-btns">
+        <button class="chart-btn" data-cat="_sintesi">📊 Sintesi</button>
+        <button class="chart-btn" data-cat="_asset_globale">🌍 Asset Globale</button>
+        <button class="chart-btn" data-cat="_indici">📈 Indici</button>
         <button class="chart-btn active" data-cat="INDICE AZIONARIO">Indici Az.</button>
+        <button class="chart-btn" data-cat="INDICE OBBLIGAZIONARIO">Obbligaz.</button>
         <button class="chart-btn" data-cat="MATERIA PRIMA">Materie Prime</button>
         <button class="chart-btn" data-cat="VALUTA">Valute</button>
-        <button class="chart-btn" data-cat="INDICE OBBLIGAZIONARIO">Obbligaz.</button>
         <button class="chart-btn" data-cat="VOLATILITA">Volatilità</button>
         <button class="chart-btn" data-cat="TITOLI EUROPA">Europa</button>
         <button class="chart-btn" data-cat="TITOLI IT BIG CAP">Big Cap IT</button>
@@ -2736,7 +2739,14 @@ const METRIC_META = {
 function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
 
 function renderCharts() {
-  const loaded = rows.filter(r => !r._loading && !r._err && r.a === chartCat);
+  const loaded = rows.filter(r => {
+    if (r._loading || r._err) return false;
+    if (chartCat.startsWith('_')) {
+      const sg = SPECIAL_GROUPS[chartCat];
+      return sg ? sg.has(r.s) : false;
+    }
+    return r.a === chartCat;
+  });
   const metric = chartMetric;
   const data   = loaded
     .filter(r => r[metric] !== null && r[metric] !== undefined)
@@ -2783,8 +2793,9 @@ function renderCharts() {
 
   // ── Titolo ────────────────────────────────────────
   const meta = METRIC_META[metric] || { label: metric };
+  const catLabel = {'_sintesi':'Sintesi','_asset_globale':'Asset Globale','_indici':'Indici'}[chartCat] || chartCat;
   document.getElementById('chart-main-title').textContent =
-    `${meta.label} — ${chartCat}`;
+    `${meta.label} — ${catLabel}`;
 
   // ── Grafico principale ────────────────────────────
   destroyChart('c-main');
