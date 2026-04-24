@@ -639,9 +639,11 @@ RSS_SOURCES = [
     {'url':'https://www.investing.com/rss/news_14.rss',                                           'src':'Inv. Forex',       'lang':'en'},
     {'url':'https://www.investing.com/rss/news_301.rss',                                          'src':'Inv. Commodities', 'lang':'en'},
     {'url':'https://www.investing.com/rss/news_95.rss',                                           'src':'Inv. Bonds',       'lang':'en'},
-    # ── WSJ e Barron's (via Google News — RSS diretto bloccato) ──────────────
-    {'url':'https://news.google.com/rss/search?q=wall+street+journal+markets+stocks&hl=en&gl=US&ceid=US:en', 'src':'WSJ',     'lang':'en'},
-    {'url':'https://news.google.com/rss/search?q=barrons+markets+investing&hl=en&gl=US&ceid=US:en',          'src':"Barron's",'lang':'en'},
+    # ── WSJ, Barron's, Handelsblatt, Les Echos (via Google News — RSS diretto bloccato) ──
+    {'url':'https://news.google.com/rss/search?q=wall+street+journal+markets+stocks&hl=en&gl=US&ceid=US:en', 'src':'WSJ',          'lang':'en'},
+    {'url':'https://news.google.com/rss/search?q=barrons+markets+investing&hl=en&gl=US&ceid=US:en',          'src':"Barron's",     'lang':'en'},
+    {'url':'https://news.google.com/rss/search?q=handelsblatt+finanzen+maerkte&hl=de&gl=DE&ceid=DE:de',      'src':'Handelsblatt', 'lang':'de'},
+    {'url':'https://news.google.com/rss/search?q=les+echos+finance+marches&hl=fr&gl=FR&ceid=FR:fr',          'src':'Les Echos',    'lang':'fr'},
     # ── Banche Centrali ──────────────────────────────────────────────────────
     {'url':'https://www.ecb.europa.eu/rss/press.html',                                            'src':'BCE',              'lang':'en'},
     {'url':'https://www.federalreserve.gov/feeds/press_all.xml',                                  'src':'Federal Reserve',  'lang':'en'},
