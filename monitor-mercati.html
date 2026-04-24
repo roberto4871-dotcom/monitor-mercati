@@ -618,6 +618,7 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
     <button class="filter-btn" data-filter="ULTRABIG">Ultrabig</button>
     <button class="filter-btn" data-filter="SVIZZERA">Svizzera</button>
     <button class="filter-btn" data-filter="ETF INDICI">ETF Indici</button>
+    <button class="filter-btn" data-filter="ETF SETTORIALE">ETF Settoriali</button>
     <button class="filter-btn" data-filter="favorites">⭐ Preferiti</button>
     <input class="search-box" id="search-box" placeholder="Cerca…" autocomplete="off">
     <button class="font-btn" id="font-btn-s" onclick="setFontSize('S')">S</button>
@@ -731,6 +732,7 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
         <button class="chart-btn" data-cat="ETF MEGATREND">Megatrend</button>
         <button class="chart-btn" data-cat="ETF SINGLE COUNTRY">ETF Paese</button>
         <button class="chart-btn" data-cat="ETF INDICI">ETF Indici</button>
+        <button class="chart-btn" data-cat="ETF SETTORIALE">ETF Settoriali</button>
       </div>
     </div>
     <div class="chart-ctrl-row">
@@ -810,6 +812,7 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
     <button class="filter-btn" data-corrgroup="ETF COMM. MASTER">ETF Comm.</button>
     <button class="filter-btn" data-corrgroup="ETF MEGATREND">Megatrend</button>
     <button class="filter-btn" data-corrgroup="ETF INDICI">ETF Indici</button>
+    <button class="filter-btn" data-corrgroup="ETF SETTORIALE">ETF Settoriali</button>
     <button class="filter-btn" data-corrgroup="ETF SINGLE COUNTRY">Single Country</button>
     <button class="filter-btn" data-corrgroup="TITOLI IT BIG CAP">Titoli IT</button>
     <button class="filter-btn" data-corrgroup="TITOLI EUROPA">Europa</button>
@@ -843,6 +846,7 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
     <button class="filter-btn" data-scatter="ETF OBB. MASTER">ETF Obb.</button>
     <button class="filter-btn" data-scatter="ETF MEGATREND">Megatrend</button>
     <button class="filter-btn" data-scatter="ETF INDICI">ETF Indici</button>
+    <button class="filter-btn" data-scatter="ETF SETTORIALE">ETF Settoriali</button>
     <button class="filter-btn" data-scatter="ETF SINGLE COUNTRY">Single Country</button>
     <button class="filter-btn" data-scatter="TITOLI IT BIG CAP">Titoli IT</button>
     <button class="filter-btn" data-scatter="TITOLI EUROPA">Europa</button>
@@ -1327,7 +1331,35 @@ const INSTRUMENTS = [
   {s:'^STI',      a:'INDICE AZIONARIO',       m:'STI',    i:'Straits Times (Singap.)',  c:'SGD'},
   {s:'^GSPTSE',   a:'INDICE AZIONARIO',       m:'GSPTSE', i:'TSX Composite (Canada)',   c:'CAD'},
   {s:'PSEI.PS',   a:'INDICE AZIONARIO',       m:'PSEI',   i:'PSEi (Filippine)',         c:'PHP'},
-  {s:'^JKSE',     a:'INDICE AZIONARIO',       m:'JKSE',   i:'Jakarta Composite',        c:'IDR'}
+  {s:'^JKSE',     a:'INDICE AZIONARIO',       m:'JKSE',   i:'Jakarta Composite',        c:'IDR'},
+  // ── ETF SETTORIALI EUROPA (Amundi STOXX 600) ─────────────────
+  {s:'ENRG.PA',  a:'ETF SETTORIALE', m:'ENRG',  i:'AMU STOXX 600 Oil & Gas',        c:'EUR'},
+  {s:'UTI.PA',   a:'ETF SETTORIALE', m:'UTI',   i:'AMU STOXX 600 Utilities',         c:'EUR'},
+  {s:'TELE.PA',  a:'ETF SETTORIALE', m:'TELE',  i:'AMU STOXX 600 Telecom',           c:'EUR'},
+  {s:'BRES.PA',  a:'ETF SETTORIALE', m:'BRES',  i:'AMU STOXX 600 Basic Resources',   c:'EUR'},
+  {s:'CHM.PA',   a:'ETF SETTORIALE', m:'CHM',   i:'AMU STOXX 600 Chemicals',         c:'EUR'},
+  {s:'BNK.PA',   a:'ETF SETTORIALE', m:'BNK',   i:'AMU STOXX 600 Banks',             c:'EUR'},
+  {s:'INS.PA',   a:'ETF SETTORIALE', m:'INS',   i:'AMU STOXX 600 Insurance',         c:'EUR'},
+  {s:'MEUD.PA',  a:'ETF SETTORIALE', m:'MEUD',  i:'AMU Core STOXX 600',              c:'EUR'},
+  {s:'IND.PA',   a:'ETF SETTORIALE', m:'INDG',  i:'AMU STOXX 600 Ind. Goods & Serv.',c:'EUR'},
+  {s:'TNO.PA',   a:'ETF SETTORIALE', m:'TNO',   i:'AMU STOXX 600 Technology',        c:'EUR'},
+  {s:'FOO.PA',   a:'ETF SETTORIALE', m:'FOO',   i:'AMU STOXX 600 Food & Beverage',   c:'EUR'},
+  {s:'HLT.PA',   a:'ETF SETTORIALE', m:'HLT',   i:'AMU STOXX 600 Healthcare',        c:'EUR'},
+  {s:'REEU.MI',  a:'ETF SETTORIALE', m:'REEU',  i:'AMU STOXX 600 Real Estate',       c:'EUR'},
+  {s:'TRVL.MI',  a:'ETF SETTORIALE', m:'TRVL',  i:'AMU STOXX 600 Travel & Leisure',  c:'EUR'},
+  // ── ETF SETTORIALI USA (Invesco S&P 500 UCITS) ───────────────
+  {s:'XLUS.L',   a:'ETF SETTORIALE', m:'XLUS',  i:'Invesco US Utilities Sector',     c:'GBP'},
+  {s:'XRES.L',   a:'ETF SETTORIALE', m:'XRES',  i:'Invesco Real Estate S&P US',      c:'GBP'},
+  {s:'XLES.L',   a:'ETF SETTORIALE', m:'XLES',  i:'Invesco US Energy Sector',        c:'GBP'},
+  {s:'XLIS.L',   a:'ETF SETTORIALE', m:'XLIS',  i:'Invesco US Industrials Sector',   c:'GBP'},
+  {s:'XLBS.L',   a:'ETF SETTORIALE', m:'XLBS',  i:'Invesco US Materials Sector',     c:'GBP'},
+  {s:'XLPS.L',   a:'ETF SETTORIALE', m:'XLPS',  i:'Invesco US Cons. Staples Sector', c:'GBP'},
+  {s:'XLKS.L',   a:'ETF SETTORIALE', m:'XLKS',  i:'Invesco US Technology Sector',    c:'GBP'},
+  {s:'CSSPX.MI', a:'ETF SETTORIALE', m:'CSSPX', i:'iShares Core S&P500',             c:'EUR'},
+  {s:'XLCS.L',   a:'ETF SETTORIALE', m:'XLCS',  i:'Invesco Communic. S&P US Sector', c:'GBP'},
+  {s:'XLVS.L',   a:'ETF SETTORIALE', m:'XLVS',  i:'Invesco US Health Care Sector',   c:'GBP'},
+  {s:'XLYS.L',   a:'ETF SETTORIALE', m:'XLYS',  i:'Invesco US Cons. Disc. Sector',   c:'GBP'},
+  {s:'XLFS.L',   a:'ETF SETTORIALE', m:'XLFS',  i:'Invesco US Financials Sector',    c:'GBP'}
 ];
 
 // FX pairs to fetch for EUR conversion of non-EUR assets
