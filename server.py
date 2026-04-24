@@ -621,6 +621,9 @@ RSS_SOURCES = [
     # ── Italiane ─────────────────────────────────────────────────────────────
     {'url':'https://www.ilsole24ore.com/rss/economia-e-finanza.xml',                              'src':'Il Sole 24 Ore',   'lang':'it'},
     {'url':'https://www.milanofinanza.it/rss',                                                    'src':'Milano Finanza',   'lang':'it'},
+    # ── Reuters (feed RSS diretto dismesso 2020 — via Google News Search) ──────
+    {'url':'https://news.google.com/rss/search?q=reuters+finance+markets+stocks&hl=en&gl=US&ceid=US:en',       'src':'Reuters', 'lang':'en'},
+    {'url':'https://news.google.com/rss/search?q=reuters+economy+central+bank+bonds&hl=en&gl=US&ceid=US:en',  'src':'Reuters', 'lang':'en'},
     # ── Internazionali ───────────────────────────────────────────────────────
     {'url':'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114','src':'CNBC',             'lang':'en'},
     {'url':'https://feeds.content.dowjones.io/public/rss/mw_topstories',                         'src':'MarketWatch',      'lang':'en'},
@@ -695,8 +698,11 @@ def _parse_rss_source(src):
                         ts = int(time.time())
 
             if title:
+                # Rimuovi suffissi " - NomeFonte" / " | NomeFonte" aggiunti da Google News
+                src_name = src['src']
+                title = _re.sub(r'\s*[\-\|]\s*' + _re.escape(src_name) + r'\s*$', '', title).strip()
                 results.append({'title': title, 'link': link, 'summary': summary,
-                                'ts': ts or int(time.time()), 'src': src['src'], 'lang': src['lang']})
+                                'ts': ts or int(time.time()), 'src': src_name, 'lang': src['lang']})
         return results
     except Exception:
         return []
