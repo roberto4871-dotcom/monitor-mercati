@@ -618,29 +618,39 @@ def fetch_correlation(symbols, days=252):
 
 
 RSS_SOURCES = [
-    # ── Italiane ─────────────────────────────────────────────────────────────
+    # ── Italiane (dirette) ────────────────────────────────────────────────────
     {'url':'https://www.ilsole24ore.com/rss/economia-e-finanza.xml',                              'src':'Il Sole 24 Ore',   'lang':'it'},
     {'url':'https://www.milanofinanza.it/rss',                                                    'src':'Milano Finanza',   'lang':'it'},
+    {'url':'https://www.ansa.it/sito/notizie/economia/economia_rss.xml',                          'src':'ANSA',             'lang':'it'},
+    {'url':'https://www.corriere.it/rss/economia.xml',                                            'src':'Corriere Eco.',    'lang':'it'},
+    {'url':'https://www.repubblica.it/rss/economia/rss2.0.xml',                                   'src':'Repubblica Eco.',  'lang':'it'},
     # ── Reuters (feed RSS diretto dismesso 2020 — via Google News Search) ──────
     {'url':'https://news.google.com/rss/search?q=reuters+finance+markets+stocks&hl=en&gl=US&ceid=US:en',       'src':'Reuters', 'lang':'en'},
     {'url':'https://news.google.com/rss/search?q=reuters+economy+central+bank+bonds&hl=en&gl=US&ceid=US:en',  'src':'Reuters', 'lang':'en'},
-    # ── Internazionali ───────────────────────────────────────────────────────
+    # ── Internazionali (dirette) ──────────────────────────────────────────────
     {'url':'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114','src':'CNBC',             'lang':'en'},
     {'url':'https://feeds.content.dowjones.io/public/rss/mw_topstories',                         'src':'MarketWatch',      'lang':'en'},
     {'url':'https://feeds.content.dowjones.io/public/rss/mw_marketpulse',                        'src':'MarketWatch Mkt',  'lang':'en'},
-    {'url':'https://www.investing.com/rss/news_25.rss',                                          'src':'Inv. Azioni',      'lang':'en'},
-    {'url':'https://www.investing.com/rss/news_14.rss',                                          'src':'Inv. Forex',       'lang':'en'},
-    {'url':'https://www.investing.com/rss/news_301.rss',                                         'src':'Inv. Commodities', 'lang':'en'},
-    {'url':'https://www.investing.com/rss/news_95.rss',                                         'src':'Inv. Bonds',       'lang':'en'},
+    {'url':'https://feeds.bloomberg.com/markets/news.rss',                                        'src':'Bloomberg',        'lang':'en'},
+    {'url':'https://feeds.bbci.co.uk/news/business/rss.xml',                                     'src':'BBC Business',     'lang':'en'},
+    {'url':'https://www.ft.com/rss/home',                                                         'src':'Financial Times',  'lang':'en'},
+    {'url':'https://www.economist.com/finance-and-economics/rss.xml',                             'src':'The Economist',    'lang':'en'},
+    {'url':'https://www.investing.com/rss/news_25.rss',                                           'src':'Inv. Azioni',      'lang':'en'},
+    {'url':'https://www.investing.com/rss/news_14.rss',                                           'src':'Inv. Forex',       'lang':'en'},
+    {'url':'https://www.investing.com/rss/news_301.rss',                                          'src':'Inv. Commodities', 'lang':'en'},
+    {'url':'https://www.investing.com/rss/news_95.rss',                                           'src':'Inv. Bonds',       'lang':'en'},
+    # ── WSJ e Barron's (via Google News — RSS diretto bloccato) ──────────────
+    {'url':'https://news.google.com/rss/search?q=wall+street+journal+markets+stocks&hl=en&gl=US&ceid=US:en', 'src':'WSJ',     'lang':'en'},
+    {'url':'https://news.google.com/rss/search?q=barrons+markets+investing&hl=en&gl=US&ceid=US:en',          'src':"Barron's",'lang':'en'},
     # ── Banche Centrali ──────────────────────────────────────────────────────
-    {'url':'https://www.ecb.europa.eu/rss/press.html',                                           'src':'BCE',              'lang':'en'},
-    {'url':'https://www.federalreserve.gov/feeds/press_all.xml',                                 'src':'Federal Reserve',  'lang':'en'},
+    {'url':'https://www.ecb.europa.eu/rss/press.html',                                            'src':'BCE',              'lang':'en'},
+    {'url':'https://www.federalreserve.gov/feeds/press_all.xml',                                  'src':'Federal Reserve',  'lang':'en'},
     # ── Yahoo Finance (simboli chiave) ───────────────────────────────────────
-    {'url':'https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC&region=US&lang=en-US',   'src':'YF S&P 500',       'lang':'en'},
-    {'url':'https://feeds.finance.yahoo.com/rss/2.0/headline?s=GC%3DF&region=US&lang=en-US',    'src':'YF Gold',          'lang':'en'},
-    {'url':'https://feeds.finance.yahoo.com/rss/2.0/headline?s=CL%3DF&region=US&lang=en-US',    'src':'YF Oil',           'lang':'en'},
-    {'url':'https://feeds.finance.yahoo.com/rss/2.0/headline?s=EURUSD%3DX&region=US&lang=en-US','src':'YF EUR/USD',       'lang':'en'},
-    {'url':'https://feeds.finance.yahoo.com/rss/2.0/headline?s=BTC-USD&region=US&lang=en-US',   'src':'YF Bitcoin',       'lang':'en'},
+    {'url':'https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC&region=US&lang=en-US',    'src':'YF S&P 500',       'lang':'en'},
+    {'url':'https://feeds.finance.yahoo.com/rss/2.0/headline?s=GC%3DF&region=US&lang=en-US',     'src':'YF Gold',          'lang':'en'},
+    {'url':'https://feeds.finance.yahoo.com/rss/2.0/headline?s=CL%3DF&region=US&lang=en-US',     'src':'YF Oil',           'lang':'en'},
+    {'url':'https://feeds.finance.yahoo.com/rss/2.0/headline?s=EURUSD%3DX&region=US&lang=en-US', 'src':'YF EUR/USD',       'lang':'en'},
+    {'url':'https://feeds.finance.yahoo.com/rss/2.0/headline?s=BTC-USD&region=US&lang=en-US',    'src':'YF Bitcoin',       'lang':'en'},
 ]
 
 
