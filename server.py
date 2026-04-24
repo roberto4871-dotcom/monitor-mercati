@@ -171,7 +171,7 @@ def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
                               group_by='ticker', progress=False, threads=True)
     except Exception as e:
         print(f'  [batch] yf.download fallito ({e}), uso fetch individuale')
-        with ThreadPoolExecutor(max_workers=20) as ex:
+        with ThreadPoolExecutor(max_workers=8) as ex:
             futures = {ex.submit(fetch_symbol, sym, period, interval): sym for sym in to_fetch}
             for future in as_completed(futures):
                 sym = futures[future]
@@ -358,10 +358,27 @@ def fetch_fundamentals(symbol):
         c = _fund_cache.get(symbol)
         if c and (time.time() - c['ts']) < FUND_TTL:
             return c['data']
+    import math
+    # Retry con backoff esponenziale per rate limit Yahoo Finance (429)
+    last_exc = None
+    for attempt in range(4):
+        try:
+            t    = yf.Ticker(symbol)
+            info = t.info
+            if not info or info.get('trailingPegRatio') == 'Too Many Requests':
+                raise Exception('Too Many Requests')
+            break   # successo
+        except Exception as e:
+            last_exc = e
+            if '429' in str(e) or 'Too Many' in str(e) or 'rate' in str(e).lower():
+                wait = 2 ** attempt   # 1s, 2s, 4s, 8s
+                print(f'  [fundamentals] rate limit {symbol}, retry {attempt+1} fra {wait}s')
+                time.sleep(wait)
+                continue
+            break   # errore diverso, non riprovare
+    else:
+        return {'error': f'Rate limit Yahoo Finance per {symbol}, riprova tra qualche secondo'}
     try:
-        import math
-        t   = yf.Ticker(symbol)
-        info = t.info
         dy  = info.get('dividendYield')
         # yfinance a volte restituisce decimale (0.018) a volte già percentuale (1.8)
         data = {
