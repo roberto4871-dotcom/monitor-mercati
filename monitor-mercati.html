@@ -5278,63 +5278,109 @@ function printScatter() {
   const group = document.querySelector('[data-scatter].active')?.textContent?.trim() || 'Scatter';
   const now   = new Date().toLocaleDateString('it-IT', {day:'2-digit', month:'long', year:'numeric'});
 
-  // Costruisci sidebar con lista asset per quadrante
+  // Costruisci liste asset per quadrante
   const instruments = getScatterInstruments();
   const Q = { leader:[], recupero:[], misto:[], evitare:[] };
   instruments.forEach(r => {
-    const name = (r.i || r.m) + ` (${r.m})`;
-    const rs   = (r._rs > 0 ? '+' : '') + r._rs.toFixed(2) + '%';
-    const line = `${name} — Trend ${r._momentum.toFixed(0)}, RS ${rs}`;
-    if      (r._momentum >= 50 && r._rs >= 0) Q.leader.push({line, color:'#4caf50'});
-    else if (r._momentum <  50 && r._rs >= 0) Q.recupero.push({line, color:'#2196f3'});
-    else if (r._momentum >= 50 && r._rs <  0) Q.misto.push({line, color:'#ff9800'});
-    else                                        Q.evitare.push({line, color:'#ef5350'});
+    const name = (r.i || r.m);
+    const tick = r.m;
+    const mom  = r._momentum.toFixed(0);
+    const rs   = (r._rs >= 0 ? '+' : '') + r._rs.toFixed(2) + '%';
+    const obj  = { name, tick, mom, rs };
+    if      (r._momentum >= 50 && r._rs >= 0) Q.leader.push(obj);
+    else if (r._momentum <  50 && r._rs >= 0) Q.recupero.push(obj);
+    else if (r._momentum >= 50 && r._rs <  0) Q.misto.push(obj);
+    else                                        Q.evitare.push(obj);
   });
-  const makeQHtml = (items) => items.length
-    ? items.map(it => `<li style="color:${it.color}">${it.line}</li>`).join('')
-    : '<li style="color:#546e7a">—</li>';
 
-  // Screenshot del canvas a barre
-  let imgHtml = '';
+  const makeTable = (items, color) => {
+    if (!items.length) return `<tr><td colspan="4" style="color:#546e7a;font-style:italic">Nessun asset</td></tr>`;
+    return items.map(it =>
+      `<tr>
+        <td style="color:${color};font-weight:700;white-space:nowrap">${it.tick}</td>
+        <td style="color:#cdd9e8">${it.name}</td>
+        <td style="text-align:right;color:#8fa8c8;white-space:nowrap">${it.mom}</td>
+        <td style="text-align:right;color:${it.rs.startsWith('-') ? '#ef5350':'#4caf50'};white-space:nowrap">${it.rs}</td>
+      </tr>`
+    ).join('');
+  };
+
+  const makeBlock = (label, emoji, items, color) => `
+    <div class="q-block">
+      <div class="q-title" style="color:${color}">${emoji} ${label} <span class="q-count">(${items.length})</span></div>
+      <table><thead><tr>
+        <th>Ticker</th><th>Nome</th><th style="text-align:right">Trend</th><th style="text-align:right">RS%</th>
+      </tr></thead><tbody>${makeTable(items, color)}</tbody></table>
+    </div>`;
+
+  // Screenshot del canvas a barre (cattura tutto, anche fuori viewport)
+  let imgSrc = '';
   const bc = document.getElementById('scatter-bar-canvas');
-  if (bc) imgHtml = `<img src="${bc.toDataURL('image/png')}">`;
+  if (bc) imgSrc = bc.toDataURL('image/png');
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
   <title>Scatter — ${group}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-    @page{size:A4 landscape;margin:7mm}
-    html,body{height:100%;background:#07090f;color:#dce6f5;font-family:'Segoe UI',Arial,sans-serif;font-size:11px}
-    .page{display:grid;grid-template-rows:auto 1fr auto;height:100vh;gap:8px;padding:8px}
-    .hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #ffd700;padding-bottom:6px;flex-shrink:0}
-    .hdr-title{font-size:15px;font-weight:800;color:#ffd700;letter-spacing:1px;text-transform:uppercase}
-    .hdr-meta{font-size:9px;color:#546e7a}
-    .body{display:grid;grid-template-columns:1fr 230px;gap:12px;min-height:0;overflow:hidden}
-    .chart-wrap{background:#0d1220;border:1px solid #1e2d45;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:6px}
-    .chart-wrap img{max-width:100%;max-height:100%;object-fit:contain}
-    .sidebar{display:flex;flex-direction:column;gap:7px;overflow:hidden}
-    .q-block{background:#0d1220;border:1px solid #1e2d45;border-radius:6px;padding:7px 10px;flex:1;min-height:0;overflow:hidden}
-    .q-title{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-    .q-block ul{list-style:none;font-size:8px;line-height:1.55;color:#8fa8c8}
-    .footer{font-size:8px;color:#546e7a;text-align:right;flex-shrink:0}
+    @page{size:A4 landscape;margin:8mm}
+    html,body{background:#07090f;color:#dce6f5;font-family:'Segoe UI',Arial,sans-serif;font-size:10px}
+
+    /* ─── PAGINA 1: grafico a tutta pagina ─── */
+    .page1{height:100vh;display:flex;flex-direction:column;gap:8px;padding:4px 0}
+    .page1 .chart-wrap{flex:1;min-height:0;background:#0d1220;border:1px solid #1e2d45;border-radius:8px;
+      display:flex;align-items:center;justify-content:center;overflow:hidden;padding:6px}
+    .page1 .chart-wrap img{max-width:100%;max-height:100%;object-fit:contain}
+    .page-break{break-after:page;page-break-after:always}
+
+    /* ─── PAGINA 2: riepilogo quadranti ─── */
+    .page2{padding:4px 0}
+    .q-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+    .q-block{background:#0d1220;border:1px solid #1e2d45;border-radius:6px;padding:8px 10px}
+    .q-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+    .q-count{font-weight:400;font-size:9px;color:#546e7a}
+    table{width:100%;border-collapse:collapse}
+    thead tr{border-bottom:1px solid #1e2d45}
+    th{font-size:8px;color:#546e7a;text-transform:uppercase;font-weight:600;padding:2px 4px 3px}
+    td{font-size:8.5px;padding:2px 4px;border-bottom:1px solid rgba(30,45,69,.5);vertical-align:top}
+    tr:last-child td{border-bottom:none}
+
+    /* ─── Header comune ─── */
+    .hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #ffd700;padding-bottom:5px;flex-shrink:0}
+    .hdr-title{font-size:14px;font-weight:800;color:#ffd700;letter-spacing:1px;text-transform:uppercase}
+    .hdr-meta{font-size:8.5px;color:#546e7a}
+    .footer{font-size:7.5px;color:#546e7a;text-align:right;margin-top:6px}
   </style></head><body>
-  <div class="page">
+
+  <!-- PAGINA 1: grafico -->
+  <div class="page1">
     <div class="hdr">
       <span class="hdr-title">🎯 Scatter — ${group}</span>
       <span class="hdr-meta">Monitor Mercati · ${now}</span>
     </div>
-    <div class="body">
-      <div class="chart-wrap">${imgHtml}</div>
-      <div class="sidebar">
-        <div class="q-block"><div class="q-title" style="color:#4caf50">✅ LEADER</div><ul>${makeQHtml(Q.leader)}</ul></div>
-        <div class="q-block"><div class="q-title" style="color:#2196f3">🔄 RECUPERO</div><ul>${makeQHtml(Q.recupero)}</ul></div>
-        <div class="q-block"><div class="q-title" style="color:#ff9800">⚠️ MISTO</div><ul>${makeQHtml(Q.misto)}</ul></div>
-        <div class="q-block"><div class="q-title" style="color:#ef5350">❌ EVITARE</div><ul>${makeQHtml(Q.evitare)}</ul></div>
-      </div>
+    <div class="chart-wrap">
+      ${imgSrc ? `<img src="${imgSrc}">` : '<span style="color:#546e7a">Grafico non disponibile</span>'}
     </div>
     <div class="footer">Generato da Monitor Mercati — dati a scopo informativo</div>
   </div>
-  <script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script>
+
+  <div class="page-break"></div>
+
+  <!-- PAGINA 2: riepilogo quadranti -->
+  <div class="page2">
+    <div class="hdr">
+      <span class="hdr-title">🎯 Riepilogo Quadranti — ${group}</span>
+      <span class="hdr-meta">Monitor Mercati · ${now} · ${instruments.length} strumenti</span>
+    </div>
+    <div class="q-grid">
+      ${makeBlock('Leader', '✅', Q.leader,   '#4caf50')}
+      ${makeBlock('Recupero', '🔄', Q.recupero,'#2196f3')}
+      ${makeBlock('Misto', '⚠️', Q.misto,    '#ff9800')}
+      ${makeBlock('Evitare', '❌', Q.evitare,  '#ef5350')}
+    </div>
+    <div class="footer">Generato da Monitor Mercati — dati a scopo informativo</div>
+  </div>
+
+  <script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script>
   </body></html>`;
 
   const w = window.open('', '_blank');
