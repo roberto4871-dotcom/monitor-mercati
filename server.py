@@ -57,7 +57,8 @@ _weekly_cache  = {}; _weekly_lock  = threading.Lock(); WEEKLY_TTL  = 3600
 _ma_cache      = {}; _ma_lock      = threading.Lock(); MA_TTL      = 300
 _seasonal_cache= {}; _seasonal_lock= threading.Lock(); SEASONAL_TTL= 21600  # 6 ore
 _corr_cache  = {}; _corr_lock  = threading.Lock(); CORR_TTL  = 1800
-_rss_cache  = {}; _rss_lock  = threading.Lock(); RSS_TTL = 600  # 10 min
+_rss_cache   = {}; _rss_lock   = threading.Lock(); RSS_TTL   = 600   # 10 min
+_macro_cache = {}; _macro_lock = threading.Lock(); MACRO_TTL = 900   # 15 min
 # ISIN cache — permanente (ISIN non cambia mai)
 
 
@@ -775,6 +776,75 @@ def _parse_rss_source(src):
         return []
 
 
+def fetch_macro_data():
+    """Dati macro live: yield curve USA, VIX, DXY, spread — cache 15 min."""
+    with _macro_lock:
+        c = _macro_cache.get('macro')
+        if c and (time.time() - c['ts']) < MACRO_TTL:
+            return c['data']
+
+    # Simboli da fetchare
+    YIELD_SYMS = {
+        'y3m':  '^IRX',   # 13-week T-bill ≈ 3 mesi
+        'y2y':  '^IRX',   # placeholder — 2Y non disponibile direttamente
+        'y5y':  '^FVX',   # 5-year T-note
+        'y10y': '^TNX',   # 10-year T-note
+        'y30y': '^TYX',   # 30-year T-bond
+        'vix':  '^VIX',
+        'dxy':  'DX-Y.NYB',
+        'spx':  '^GSPC',
+        'gold': 'GC=F',
+        'oil':  'CL=F',
+        'gas':  'NG=F',
+        'cu':   'HG=F',   # Copper
+    }
+
+    out = {}
+    def _fetch_one(key, sym):
+        try:
+            _yf_wait_cooldown()
+            with _yf_semaphore:
+                t    = yf.Ticker(sym)
+                hist = t.history(period='5d', interval='1d')
+            if hist.empty:
+                return key, None
+            closes = hist['Close'].dropna()
+            if len(closes) == 0:
+                return key, None
+            last = float(closes.iloc[-1])
+            prev = float(closes.iloc[-2]) if len(closes) >= 2 else last
+            return key, {
+                'v': round(last, 4),
+                'p': round(prev, 4),
+                'chg': round(last - prev, 4),
+                'pct': round((last / prev - 1) * 100, 2) if prev else 0,
+            }
+        except Exception as e:
+            return key, None
+
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        futures = {ex.submit(_fetch_one, k, v): k for k, v in YIELD_SYMS.items()}
+        for fut in as_completed(futures, timeout=20):
+            try:
+                k, v = fut.result()
+                if v:
+                    out[k] = v
+            except Exception:
+                pass
+
+    # 2Y non disponibile direttamente su Yahoo — stima interpolata tra 3M e 5Y
+    if 'y3m' in out and 'y5y' in out:
+        y3m = out['y3m']['v']
+        y5y = out['y5y']['v']
+        est2y = round(y3m * 0.45 + y5y * 0.55, 4)
+        out['y2y'] = {'v': est2y, 'p': est2y, 'chg': 0, 'pct': 0, 'estimated': True}
+
+    result = {'yields': out, 'ts': int(time.time())}
+    with _macro_lock:
+        _macro_cache['macro'] = {'data': result, 'ts': time.time()}
+    return result
+
+
 def fetch_aggregated_news():
     """Flusso aggregato da più fonti RSS — cache 10 min."""
     with _rss_lock:
@@ -1109,6 +1179,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json(fetch_correlation(syms, days))
         elif self.path.startswith('/news-feed'):
             self._json(fetch_aggregated_news())
+        elif self.path.startswith('/macro-data'):
+            self._json(fetch_macro_data())
         else:
             super().do_GET()
 
