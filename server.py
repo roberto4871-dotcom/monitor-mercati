@@ -20,6 +20,28 @@ except ImportError:
 
 PORT = int(os.environ.get('PORT', 8080))
 
+# ── Semaforo globale: max 6 richieste Yahoo Finance in parallelo ──────────
+_yf_semaphore = threading.Semaphore(6)
+_yf_cooldown_until = 0.0   # timestamp: se > now, aspetta prima di fare richieste YF
+_yf_cooldown_lock  = threading.Lock()
+
+def _yf_wait_cooldown():
+    """Aspetta se siamo in cooldown da rate limit."""
+    with _yf_cooldown_lock:
+        wait = _yf_cooldown_until - time.time()
+    if wait > 0:
+        time.sleep(wait)
+
+def _yf_set_cooldown(seconds=15):
+    """Imposta un cooldown globale dopo un rate limit 429."""
+    with _yf_cooldown_lock:
+        global _yf_cooldown_until
+        _yf_cooldown_until = max(_yf_cooldown_until, time.time() + seconds)
+
+def is_rate_limit_error(e):
+    s = str(e).lower()
+    return '429' in s or 'too many' in s or 'rate limit' in s or 'rate-limit' in s
+
 # Cache: chiave = "symbol|period|interval"
 _cache = {}
 _cache_lock = threading.Lock()
@@ -170,15 +192,26 @@ def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
                               interval=interval, auto_adjust=False,
                               group_by='ticker', progress=False, threads=True)
     except Exception as e:
-        print(f'  [batch] yf.download fallito ({e}), uso fetch individuale')
-        with ThreadPoolExecutor(max_workers=8) as ex:
-            futures = {ex.submit(fetch_symbol, sym, period, interval): sym for sym in to_fetch}
-            for future in as_completed(futures):
-                sym = futures[future]
-                try:
-                    results[sym] = future.result()
-                except Exception as e2:
-                    results[sym] = {'error': str(e2)}
+        print(f'  [batch] yf.download fallito ({e}), uso fetch individuale a chunk')
+        if is_rate_limit_error(e):
+            _yf_set_cooldown(20)
+        # Suddividi in chunk da 15 con pausa tra chunk per evitare rate limit
+        CHUNK = 15
+        for i in range(0, len(to_fetch), CHUNK):
+            chunk = to_fetch[i:i + CHUNK]
+            _yf_wait_cooldown()
+            with ThreadPoolExecutor(max_workers=5) as ex:
+                futures = {ex.submit(fetch_symbol, sym, period, interval): sym for sym in chunk}
+                for future in as_completed(futures):
+                    sym = futures[future]
+                    try:
+                        results[sym] = future.result()
+                    except Exception as e2:
+                        if is_rate_limit_error(e2):
+                            _yf_set_cooldown(20)
+                        results[sym] = {'error': str(e2)}
+            if i + CHUNK < len(to_fetch):
+                time.sleep(1)   # pausa 1s tra chunk
         return results
 
     import pandas as pd
@@ -359,25 +392,30 @@ def fetch_fundamentals(symbol):
         if c and (time.time() - c['ts']) < FUND_TTL:
             return c['data']
     import math
-    # Retry con backoff esponenziale per rate limit Yahoo Finance (429)
-    last_exc = None
+    info = None
     for attempt in range(4):
+        _yf_wait_cooldown()
         try:
-            t    = yf.Ticker(symbol)
-            info = t.info
-            if not info or info.get('trailingPegRatio') == 'Too Many Requests':
+            with _yf_semaphore:
+                t    = yf.Ticker(symbol)
+                info = t.info
+            # yfinance a volte restituisce una stringa di errore come valore
+            if not info or isinstance(list(info.values())[0] if info else None, str) and 'Too Many' in str(list(info.values())[0]):
                 raise Exception('Too Many Requests')
             break   # successo
         except Exception as e:
-            last_exc = e
-            if '429' in str(e) or 'Too Many' in str(e) or 'rate' in str(e).lower():
-                wait = 2 ** attempt   # 1s, 2s, 4s, 8s
+            if is_rate_limit_error(e):
+                wait = 2 ** (attempt + 1)  # 2s, 4s, 8s, 16s
                 print(f'  [fundamentals] rate limit {symbol}, retry {attempt+1} fra {wait}s')
+                _yf_set_cooldown(wait)
                 time.sleep(wait)
                 continue
-            break   # errore diverso, non riprovare
+            # Errore non-rate-limit: esci subito
+            return {'error': str(e)}
     else:
-        return {'error': f'Rate limit Yahoo Finance per {symbol}, riprova tra qualche secondo'}
+        return {'error': 'Troppi tentativi, riprova tra qualche secondo.'}
+    if info is None:
+        return {'error': 'Nessun dato disponibile.'}
     try:
         dy  = info.get('dividendYield')
         # yfinance a volte restituisce decimale (0.018) a volte già percentuale (1.8)
