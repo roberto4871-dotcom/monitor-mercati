@@ -889,7 +889,6 @@ body.light .cal-item{background:var(--bg3)}
     <button id="hm-sort-desc" class="filter-btn" onclick="setHeatSort('desc')" title="Migliori per primi">↓ Migliori</button>
     <button id="hm-sort-asc"  class="filter-btn" onclick="setHeatSort('asc')"  title="Peggiori per primi">↑ Peggiori</button>
     <button id="hm-sort-none" class="filter-btn active" onclick="setHeatSort('none')" title="Ordine originale">↕ Default</button>
-    <button id="hm-flat-btn"  class="filter-btn" onclick="toggleHeatFlat()" title="Lista unica senza raggruppamento per categoria">📊 Globale</button>
     <span class="controls-label" id="hm-count"></span>
   </div>
   <div class="hm-legend" id="hm-legend" style="padding-left:16px;padding-right:16px"></div>
@@ -1593,7 +1592,6 @@ let favorites2 = new Set(JSON.parse(localStorage.getItem('mm_fav2') || '[]'));
 let favorites3 = new Set(JSON.parse(localStorage.getItem('mm_fav3') || '[]'));
 let heatMetric = 'varAtt';
 let heatSort   = 'none'; // 'none' | 'desc' | 'asc'
-let heatFlat   = false;  // true = vista globale senza raggruppamento per categoria
 
 function setHeatSort(val) {
   heatSort = val;
@@ -1602,15 +1600,6 @@ function setHeatSort(val) {
     if (b) b.classList.toggle('active', v === val);
   });
   renderHeatmap();
-}
-
-function toggleHeatFlat() {
-  heatFlat = !heatFlat;
-  const btn = document.getElementById('hm-flat-btn');
-  if (btn) btn.classList.toggle('active', heatFlat);
-  // In vista globale forza ordinamento desc se ancora su 'none'
-  if (heatFlat && heatSort === 'none') setHeatSort('desc');
-  else renderHeatmap();
 }
 
 function renderHeatLegend() {
@@ -3454,26 +3443,19 @@ function renderHeatmap() {
 
   let html = '';
 
-  if (heatFlat) {
-    // ── Vista Globale: tutti gli strumenti in una lista unica ordinata ──
-    const flat = loaded.slice().sort(_sortFn);
-    html += `<div class="hm-section-title">Tutti gli strumenti — ${heatSort === 'asc' ? 'dal peggiore al migliore' : 'dal migliore al peggiore'}</div>`;
-    html += `<div class="hm-grid">` + flat.map(_tile).join('') + `</div>`;
-  } else {
-    // ── Vista per categoria ──
-    const groups = {}, order = [];
-    loaded.forEach(r => {
-      const k = r.a || 'ALTRO';
-      if (!groups[k]) { groups[k] = []; order.push(k); }
-      groups[k].push(r);
-    });
-    order.forEach(sec => {
-      const secRows = groups[sec].slice();
-      if (heatSort !== 'none') secRows.sort(_sortFn);
-      html += `<div class="hm-section-title">${sec}</div>`;
-      html += `<div class="hm-grid">` + secRows.map(_tile).join('') + `</div>`;
-    });
-  }
+  // ── Vista per categoria con ordinamento interno ──
+  const groups = {}, order = [];
+  loaded.forEach(r => {
+    const k = r.a || 'ALTRO';
+    if (!groups[k]) { groups[k] = []; order.push(k); }
+    groups[k].push(r);
+  });
+  order.forEach(sec => {
+    const secRows = groups[sec].slice();
+    if (heatSort !== 'none') secRows.sort(_sortFn);
+    html += `<div class="hm-section-title">${sec}</div>`;
+    html += `<div class="hm-grid">` + secRows.map(_tile).join('') + `</div>`;
+  });
 
   if (!html) html = `<div style="color:var(--text3);padding:40px;text-align:center">Nessun dato disponibile.</div>`;
   document.getElementById('heatmap-grid').innerHTML = html;
