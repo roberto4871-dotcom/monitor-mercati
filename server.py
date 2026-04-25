@@ -910,7 +910,7 @@ def fetch_sovereign_yields():
             except Exception:
                 pass
 
-    # Fallback FRED per i paesi sovrani che Stooq non ha restituito
+    # Fallback 1: FRED per i paesi sovrani che Stooq non ha restituito
     missing_countries = [cc for cc in SPREAD_BONDS if f'sov_{cc}' not in raw]
     if missing_countries:
         print(f'  [sovereign] Stooq mancante per {missing_countries}, tentativo FRED…')
@@ -925,15 +925,65 @@ def fetch_sovereign_yields():
                     raw[f'sov_{cc}'] = d
                     print(f'  [sovereign] FRED OK per {cc}: {d["yield"]}%')
 
-    # Fallback statico se Stooq E FRED entrambi non disponibili (es. IP Railway bloccato)
-    # Valori approssimativi Aprile 2025 — etichettati chiaramente come statici
+    # Fallback 2: ECB Data API per paesi Eurozona (Stooq e FRED entrambi bloccati)
+    # ECB API: https://data-api.ecb.europa.eu — server BCE, diverso da FRED/Stooq
+    ECB_COUNTRIES = {'DE', 'IT', 'ES', 'FR', 'PT'}  # Paesi eurozona con dati ECB IRS
+    missing_ecb = [cc for cc in SPREAD_BONDS if f'sov_{cc}' not in raw and cc in ECB_COUNTRIES]
+    if missing_ecb:
+        print(f'  [sovereign] FRED mancante per {missing_ecb}, tentativo ECB API…')
+        def _ecb_fetch(cc):
+            try:
+                import requests as req
+                # ECB Interest Rate Statistics (IRS): rendimenti titoli di stato 10A
+                url = (f'https://data-api.ecb.europa.eu/service/data/IRS/'
+                       f'M.{cc}.L.L40.CI.0.EUR.N.Z'
+                       f'?lastNObservations=3&format=csvdata')
+                r = req.get(url, timeout=10,
+                            headers={'Accept': 'text/csv', 'User-Agent': 'Mozilla/5.0'})
+                if r.status_code != 200:
+                    return cc, None
+                lines = [l for l in r.text.strip().split('\n') if l.strip()]
+                # CSV: KEY,FREQ,...,TIME_PERIOD,OBS_VALUE,...
+                # Header nella prima riga, dati nelle successive
+                data_lines = [l for l in lines[1:] if l.strip()]
+                if len(data_lines) < 1:
+                    return cc, None
+                # Parse: TIME_PERIOD = col 10, OBS_VALUE = col 11 (0-indexed)
+                vals = []
+                for line in data_lines:
+                    parts = line.split(',')
+                    if len(parts) < 12:
+                        continue
+                    try:
+                        period = parts[10].strip()  # e.g. "2025-03"
+                        val    = float(parts[11].strip())
+                        vals.append((period, val))
+                    except (ValueError, IndexError):
+                        continue
+                if len(vals) < 1:
+                    return cc, None
+                date, last = vals[-1]
+                _, prev    = vals[-2] if len(vals) >= 2 else (date, last)
+                return cc, {'yield': round(last,3), 'prev': round(prev,3),
+                            'chg': round(last-prev,3), 'date': f'{date} (ECB)'}
+            except Exception as e:
+                print(f'  [sovereign] ECB {cc}: {e}')
+                return cc, None
+
+        with ThreadPoolExecutor(max_workers=5) as ex:
+            for cc, d in ex.map(_ecb_fetch, missing_ecb):
+                if d:
+                    raw[f'sov_{cc}'] = d
+                    print(f'  [sovereign] ECB OK per {cc}: {d["yield"]}%')
+
+    # Fallback finale: valori statici etichettati (quando tutte le fonti sono bloccate)
     STATIC_FALLBACK = {
         'DE': 2.50, 'IT': 3.58, 'ES': 3.38,
         'FR': 3.22, 'PT': 2.97, 'PL': 5.25,
     }
     still_missing = [cc for cc in SPREAD_BONDS if f'sov_{cc}' not in raw]
     if still_missing:
-        print(f'  [sovereign] FRED mancante per {still_missing}, uso fallback statico')
+        print(f'  [sovereign] tutte le fonti bloccate per {still_missing}, uso statico')
         for cc in still_missing:
             v = STATIC_FALLBACK.get(cc)
             if v:
@@ -977,98 +1027,53 @@ def fetch_sovereign_yields():
 
 
 def fetch_macro_data():
-    """Yield curve USA + VIX/DXY — cache 15 min.
-    Primario: Yahoo Finance yf.download() (provato funzionante su Railway).
-    Fallback: FRED via requests."""
+    """Yield curve USA + VIX/DXY tramite Yahoo Finance Ticker.history() sequenziale.
+    Confermato funzionante su Railway. Cache 15 min."""
     with _macro_lock:
         c = _macro_cache.get('macro')
         if c and (time.time() - c['ts']) < MACRO_TTL:
             return c['data']
 
+    # Fetch sequenziale: un Ticker.history() alla volta, protetto da semaforo + cooldown.
+    # ^TNX confermato funzionante da /debug-sources. FRED/Stooq timeout su Railway.
+    YF_YIELD_SYMS = [
+        ('y3m',  '^IRX'),     # 13-week T-bill ≈ 3 mesi
+        ('y5y',  '^FVX'),     # 5-year T-note
+        ('y10y', '^TNX'),     # 10-year T-note
+        ('y30y', '^TYX'),     # 30-year T-bond
+        ('vix',  '^VIX'),
+        ('dxy',  'DX-Y.NYB'),
+    ]
     out = {}
+    for key, sym in YF_YIELD_SYMS:
+        try:
+            _yf_wait_cooldown()
+            with _yf_semaphore:
+                hist = yf.Ticker(sym).history(period='5d', interval='1d')
+            if hist.empty:
+                continue
+            closes = hist['Close'].dropna()
+            if len(closes) < 1:
+                continue
+            last = float(closes.iloc[-1])
+            prev = float(closes.iloc[-2]) if len(closes) >= 2 else last
+            out[key] = {
+                'v':   round(last, 4),
+                'p':   round(prev, 4),
+                'chg': round(last - prev, 4),
+                'pct': round((last / prev - 1) * 100, 2) if prev else 0,
+            }
+        except Exception as e:
+            if is_rate_limit_error(e):
+                _yf_set_cooldown(10)
+            print(f'  [macro] YF {sym}: {e}')
 
-    # ── Tentativo 1: Yahoo Finance yf.download() ─────────────────────────────
-    # yf.download con threads=False per evitare rate limit su simboli indice
-    YF_SYMS = {
-        '^IRX':      'y3m',   # 13-week T-bill ≈ 3M
-        '^FVX':      'y5y',   # 5-year T-note
-        '^TNX':      'y10y',  # 10-year T-note
-        '^TYX':      'y30y',  # 30-year T-bond
-        '^VIX':      'vix',
-        'DX-Y.NYB':  'dxy',
-    }
-    try:
-        import pandas as pd
-        import warnings
-        _yf_wait_cooldown()
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore')
-            raw = yf.download(
-                list(YF_SYMS.keys()), period='5d', interval='1d',
-                auto_adjust=False, group_by='ticker',
-                progress=False, threads=False,  # threads=False = no parallel, meno rate limit
-            )
-        is_multi = isinstance(raw.columns, pd.MultiIndex)
-        for sym, key in YF_SYMS.items():
-            try:
-                col = raw[sym]['Close'] if is_multi else raw['Close']
-                col = col.dropna()
-                if len(col) >= 2:
-                    last = float(col.iloc[-1])
-                    prev = float(col.iloc[-2])
-                    out[key] = {
-                        'v':   round(last, 4),
-                        'p':   round(prev, 4),
-                        'chg': round(last - prev, 4),
-                        'pct': round((last / prev - 1) * 100, 2) if prev else 0,
-                    }
-            except Exception:
-                pass
-        print(f'  [macro] YF download: {list(out.keys())}')
-    except Exception as e:
-        if is_rate_limit_error(e):
-            _yf_set_cooldown(15)
-        print(f'  [macro] YF download fallito ({e}), provo FRED…')
-
-    # ── Tentativo 2: FRED per le yield mancanti ───────────────────────────────
-    FRED_MAP = {
-        'y3m':  'DGS3MO', 'y2y': 'DGS2',  'y5y':  'DGS5',
-        'y10y': 'DGS10',  'y30y': 'DGS30',
-    }
-    missing = [k for k in FRED_MAP if k not in out]
-    if missing:
-        def _fetch_fred(key):
-            try:
-                import requests as req
-                series = FRED_MAP[key]
-                url = f'https://fred.stlouisfed.org/graph/fredgraph.csv?id={series}&observation_start=2025-01-01'
-                r = req.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
-                if r.status_code != 200:
-                    return key, None
-                valid = _fred_parse_csv(r.text)
-                if len(valid) < 2:
-                    return key, None
-                date, last = valid[-1]
-                _, prev    = valid[-2]
-                return key, {'v': round(last,4), 'p': round(prev,4),
-                             'chg': round(last-prev,4),
-                             'pct': round((last/prev-1)*100,2) if prev else 0}
-            except Exception as e:
-                print(f'  [macro] FRED {key} errore: {e}')
-                return key, None
-        with ThreadPoolExecutor(max_workers=5) as ex:
-            for k, v in ex.map(_fetch_fred, missing):
-                if v:
-                    out[k] = v
-        print(f'  [macro] dopo FRED: {list(out.keys())}')
-
-    # 2Y: se non disponibile, interpola tra 3M e 5Y
+    # 2Y: interpola tra 3M e 5Y (Yahoo Finance non ha ^IRX2Y)
     if 'y2y' not in out and 'y3m' in out and 'y5y' in out:
-        y3m  = out['y3m']['v']
-        y5y  = out['y5y']['v']
-        est  = round(y3m * 0.45 + y5y * 0.55, 4)
+        est = round(out['y3m']['v'] * 0.45 + out['y5y']['v'] * 0.55, 4)
         out['y2y'] = {'v': est, 'p': est, 'chg': 0, 'pct': 0, 'estimated': True}
 
+    print(f'  [macro] yields ottenuti: {list(out.keys())}')
     result = {'yields': out, 'ts': int(time.time())}
     with _macro_lock:
         _macro_cache['macro'] = {'data': result, 'ts': time.time()}
@@ -1420,39 +1425,32 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def _debug_sources(self):
         """Endpoint di debug: testa le sorgenti dati e restituisce i risultati."""
+        import requests as req
         results = {}
-        # Test FRED
-        try:
-            import requests as req
-            r = req.get('https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10&observation_start=2025-01-01',
-                        timeout=8, headers={'User-Agent': 'Mozilla/5.0'})
-            results['fred_status'] = r.status_code
-            results['fred_ok'] = r.status_code == 200
-            if r.status_code == 200:
-                v = _fred_parse_csv(r.text)
-                results['fred_rows'] = len(v)
-                results['fred_last'] = v[-1] if v else None
-        except Exception as e:
-            results['fred_error'] = str(e)
-        # Test Stooq
-        try:
-            import requests as req
-            r = req.get('https://stooq.com/q/d/l/?s=10de.b&i=d',
-                        timeout=8, headers={'User-Agent': 'Mozilla/5.0', 'Referer': 'https://stooq.com/'})
-            results['stooq_status'] = r.status_code
-            results['stooq_ok'] = r.status_code == 200
-            results['stooq_preview'] = r.text[:200] if r.status_code == 200 else r.text[:100]
-        except Exception as e:
-            results['stooq_error'] = str(e)
-        # Test Yahoo Finance (TNX = 10Y Treasury)
-        try:
-            hist = yf.Ticker('^TNX').history(period='3d', interval='1d')
-            results['yf_tnx_ok'] = not hist.empty
-            results['yf_tnx_rows'] = len(hist)
-            if not hist.empty:
-                results['yf_tnx_last'] = float(hist['Close'].dropna().iloc[-1])
-        except Exception as e:
-            results['yf_tnx_error'] = str(e)
+        def _yf_test(sym, label):
+            try:
+                hist = yf.Ticker(sym).history(period='3d', interval='1d')
+                closes = hist['Close'].dropna() if not hist.empty else []
+                results[label] = {'ok': not hist.empty, 'rows': len(hist),
+                                  'last': float(closes.iloc[-1]) if len(closes) else None}
+            except Exception as e:
+                results[label] = {'ok': False, 'error': str(e)[:120]}
+        def _http_test(url, label, timeout=8):
+            try:
+                r = req.get(url, timeout=timeout, headers={'User-Agent': 'Mozilla/5.0'})
+                results[label] = {'ok': r.status_code == 200, 'status': r.status_code,
+                                  'preview': r.text[:150]}
+            except Exception as e:
+                results[label] = {'ok': False, 'error': str(e)[:120]}
+        # Yahoo Finance: simboli yield
+        for sym, label in [('^TNX','yf_10y'),('^IRX','yf_3m'),('^FVX','yf_5y'),('^TYX','yf_30y'),('^VIX','yf_vix')]:
+            _yf_test(sym, label)
+        # FRED
+        _http_test('https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10&observation_start=2025-03-01', 'fred')
+        # Stooq
+        _http_test('https://stooq.com/q/d/l/?s=10de.b&i=d', 'stooq')
+        # ECB API
+        _http_test('https://data-api.ecb.europa.eu/service/data/IRS/M.IT.L.L40.CI.0.EUR.N.Z?lastNObservations=2&format=csvdata', 'ecb')
         return results
 
     def handle_batch(self):
