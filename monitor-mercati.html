@@ -1118,7 +1118,7 @@ body.light .md-item,.body.light .cal-item,.body.light .strip-card{background:var
         <p>• <b style="color:var(--accent)">Curva Treasury USA</b>: live Yahoo Finance. 2A stimato (interp. 3M-5A).</p>
         <p>• <b style="color:var(--accent)">Curva Bund EU</b>: live Stooq (2A/5A/10A/30A emissioni tedesche).</p>
         <p>• <b style="color:var(--accent)">Inversione</b>: 10A &lt; 3M/2A = segnale storico di recessione imminente.</p>
-        <p>• <b style="color:var(--accent)">Spread Sovrani</b>: differenziale vs Bund 10A in bp — dati live Stooq; fallback FRED (dati mensili) se Stooq non disponibile.</p>
+        <p>• <b style="color:var(--accent)">Spread Sovrani</b>: differenziale vs Bund 10A in bp — live Stooq/FRED/ECB; fallback statico Apr 2025 se IP server bloccato da provider.</p>
         <p>• <b style="color:var(--accent)">Tassi Banche Centrali</b>: aggiornati manualmente dopo le riunioni.</p>
         <p>• <b style="color:var(--accent)">CPI/GDP/PMI/Fiducia</b>: ultime letture ufficiali, aggiornate mensilmente.</p>
         <p>• <b style="color:var(--accent)">Calendario</b>: clicca su ogni evento per approfondimenti e cosa monitorare.</p>
@@ -6602,12 +6602,22 @@ function renderMacroSpread() {
   const ORDER   = ['DE','IT','ES','FR','PT','PL'];
   const maxSpread = Math.max(...ORDER.map(c => spreads[c]?.spread_bp ?? 0).filter(x => x > 0));
 
-  // Timestamp
+  // Rilevamento se i dati sono statici (fallback) o live
+  const isStatic = Object.values(spreads).some(s => (s.date||'').includes('statico'));
+
+  // Timestamp + banner statico
   if (_sovData.ts) {
     const d = new Date(_sovData.ts * 1000);
     document.getElementById('sov-lastupd').textContent =
-      'Agg. ' + d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) +
-      ' · ' + d.toLocaleDateString('it-IT',{day:'numeric',month:'short'});
+      (isStatic ? '⚠ Dati statici Apr 2025 · ' : 'Live · ') +
+      d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) +
+      ' ' + d.toLocaleDateString('it-IT',{day:'numeric',month:'short'});
+  }
+  if (isStatic) {
+    el.innerHTML += `<div style="padding:6px 10px;margin-bottom:8px;font-size:11px;color:#ff9800;background:rgba(255,152,0,.08);border:1px solid rgba(255,152,0,.3);border-radius:6px">
+      ⚠ Fonte live (Stooq/FRED) non raggiungibile dall'IP del server Railway — valori di riferimento Aprile 2025.
+      Gli spread relativi tra paesi rimangono indicativi. <b>Premi Aggiorna</b> per ritentare.
+    </div>`;
   }
 
   const rows = ORDER.map(cc => {
