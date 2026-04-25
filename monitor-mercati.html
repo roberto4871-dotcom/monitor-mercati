@@ -1049,24 +1049,10 @@ body.light .md-item,.body.light .cal-item,.body.light .strip-card{background:var
       <!-- Yield Curve USA + EU -->
       <div class="macro-panel">
         <div class="macro-panel-title"><span>📈</span>CURVA DEI RENDIMENTI (live)</div>
-        <div class="yc-dual">
-          <!-- US Treasury -->
-          <div style="display:flex;flex-direction:column;gap:6px">
-            <div class="yc-section-title">🇺🇸 US TREASURY</div>
-            <div class="yc-bars" id="macro-yc-bars" style="flex:1;min-height:70px">
-              <div class="yc-section-loading">Caricamento…</div>
-            </div>
-            <div id="macro-yc-info" style="font-size:10px"></div>
-          </div>
-          <!-- EU Bund -->
-          <div style="display:flex;flex-direction:column;gap:6px">
-            <div class="yc-section-title">🇩🇪 BUND GERMANIA</div>
-            <div class="yc-bars" id="macro-yc-eu" style="flex:1;min-height:70px">
-              <div class="yc-section-loading">Caricamento…</div>
-            </div>
-            <div id="macro-yc-eu-info" style="font-size:10px"></div>
-          </div>
+        <div class="yc-bars" id="macro-yc-bars" style="min-height:70px">
+          <div class="yc-section-loading">Caricamento…</div>
         </div>
+        <div id="macro-yc-info" style="font-size:10px;margin-top:4px"></div>
       </div>
 
       <!-- Calendario Economico -->
@@ -1104,21 +1090,11 @@ body.light .md-item,.body.light .cal-item,.body.light .strip-card{background:var
 
     </div><!-- /row2 -->
 
-    <!-- Row 3: Spread Sovrani (full width) + note -->
-    <div class="macro-panel" style="min-height:auto">
-      <div class="macro-panel-title">
-        <span>📐</span>SPREAD SOVRANI vs BUND — Rendimenti 10 anni (live · Stooq / FRED fallback)
-        <span id="sov-lastupd" style="font-size:9px;color:var(--text3);font-weight:400;margin-left:10px;text-transform:none;letter-spacing:0"></span>
-      </div>
-      <div id="macro-spread-body" style="overflow-x:auto"></div>
-    </div>
     <div class="macro-panel" style="min-height:auto">
       <div class="macro-panel-title"><span>ℹ️</span>NOTE & LEGGENDA</div>
       <div style="font-size:12px;color:var(--text2);line-height:1.7;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px 24px">
         <p>• <b style="color:var(--accent)">Curva Treasury USA</b>: live Yahoo Finance. 2A stimato (interp. 3M-5A).</p>
-        <p>• <b style="color:var(--accent)">Curva Bund EU</b>: live Stooq (2A/5A/10A/30A emissioni tedesche).</p>
         <p>• <b style="color:var(--accent)">Inversione</b>: 10A &lt; 3M/2A = segnale storico di recessione imminente.</p>
-        <p>• <b style="color:var(--accent)">Spread Sovrani</b>: differenziale vs Bund 10A in bp — live Stooq/FRED/ECB; fallback statico Apr 2025 se IP server bloccato da provider.</p>
         <p>• <b style="color:var(--accent)">Tassi Banche Centrali</b>: aggiornati manualmente dopo le riunioni.</p>
         <p>• <b style="color:var(--accent)">CPI/GDP/PMI/Fiducia</b>: ultime letture ufficiali, aggiornate mensilmente.</p>
         <p>• <b style="color:var(--accent)">Calendario</b>: clicca su ogni evento per approfondimenti e cosa monitorare.</p>
@@ -6249,18 +6225,13 @@ const MACRO_STRIP_SYMS = [
 ];
 
 let _macroData   = null;
-let _sovData     = null;
 let _macroLoaded = false;
 
 async function loadMacroTab(force = false) {
   if (!force && _macroLoaded) { renderMacro(); return; }
   document.getElementById('macro-lastupd').textContent = '⏳ Caricamento…';
   try {
-    // Fetch in parallel: macro-data (yields USA + VIX) e sovereign-yields (Stooq)
-    [_macroData, _sovData] = await Promise.all([
-      fetch('/macro-data').then(r => r.json()),
-      fetch('/sovereign-yields').then(r => r.json()).catch(() => null),
-    ]);
+    _macroData = await fetch('/macro-data').then(r => r.json());
     _macroLoaded = true;
     document.getElementById('macro-lastupd').textContent =
       'Aggiornato: ' + new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
@@ -6277,8 +6248,6 @@ function renderMacro() {
   renderMacroCPI();
   renderMacroGDP();
   renderMacroPMI();
-  renderMacroSpread();
-  renderMacroBundCurve();
 }
 
 // ── Banche Centrali ──────────────────────────────────────────
@@ -6576,140 +6545,6 @@ function renderMacroStrip() {
     </div>`;
   }).filter(Boolean);
   el.innerHTML = cards.length ? cards.join('') : '<div class="nf-empty" style="padding:16px;font-size:12px">Caricamento dati live…</div>';
-}
-
-// ── Spread Sovrani LIVE ───────────────────────────────────────
-function spreadColor(bp) {
-  if (bp === null || bp === undefined || bp === 0) return { fg:'var(--text3)', bg:'transparent', badge:'—' };
-  if (bp < 50)   return { fg:'#4caf50', bg:'rgba(76,175,80,.1)',   badge:'✅ Basso' };
-  if (bp < 120)  return { fg:'#8bc34a', bg:'rgba(139,195,74,.1)',  badge:'🟢 Normale' };
-  if (bp < 200)  return { fg:'#ffd700', bg:'rgba(255,215,0,.1)',   badge:'🟡 Attenzione' };
-  if (bp < 300)  return { fg:'#ff9800', bg:'rgba(255,152,0,.1)',   badge:'🟠 Elevato' };
-  return            { fg:'#ef5350', bg:'rgba(239,83,80,.1)',   badge:'🔴 Critico' };
-}
-
-function renderMacroSpread() {
-  const el = document.getElementById('macro-spread-body');
-  if (!_sovData || !_sovData.spreads || Object.keys(_sovData.spreads).length === 0) {
-    el.innerHTML = `<div style="padding:16px;color:var(--text3);font-size:12px">
-      ⚠ Dati Stooq non disponibili — verifica la connessione del server.
-      <br><br>Riprova tra qualche minuto o premi Aggiorna.
-    </div>`;
-    return;
-  }
-
-  const spreads = _sovData.spreads;
-  const ORDER   = ['DE','IT','ES','FR','PT','PL'];
-  const maxSpread = Math.max(...ORDER.map(c => spreads[c]?.spread_bp ?? 0).filter(x => x > 0));
-
-  // Rilevamento se i dati sono statici (fallback) o live
-  const isStatic = Object.values(spreads).some(s => (s.date||'').includes('statico'));
-
-  // Timestamp + banner statico
-  if (_sovData.ts) {
-    const d = new Date(_sovData.ts * 1000);
-    document.getElementById('sov-lastupd').textContent =
-      (isStatic ? '⚠ Dati statici Apr 2025 · ' : 'Live · ') +
-      d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) +
-      ' ' + d.toLocaleDateString('it-IT',{day:'numeric',month:'short'});
-  }
-  if (isStatic) {
-    el.innerHTML += `<div style="padding:6px 10px;margin-bottom:8px;font-size:11px;color:#ff9800;background:rgba(255,152,0,.08);border:1px solid rgba(255,152,0,.3);border-radius:6px">
-      ⚠ Fonte live (Stooq/FRED) non raggiungibile dall'IP del server Railway — valori di riferimento Aprile 2025.
-      Gli spread relativi tra paesi rimangono indicativi. <b>Premi Aggiorna</b> per ritentare.
-    </div>`;
-  }
-
-  const rows = ORDER.map(cc => {
-    const s = spreads[cc];
-    if (!s) return '';
-    const isDE = cc === 'DE';
-    const spBp = isDE ? null : s.spread_bp;
-    const clr  = spreadColor(spBp);
-    const chgCls = s.chg > 0 ? 'neg' : s.chg < 0 ? 'pos' : 'neu'; // yield up = bond price down
-    const chgSign = s.chg > 0 ? '+' : '';
-    const barW = spBp && maxSpread > 0 ? Math.round((spBp / maxSpread) * 120) : 0;
-
-    return `<tr>
-      <td class="sov-flag">${s.flag}</td>
-      <td class="sov-name">${s.name}</td>
-      <td class="sov-yield" style="color:var(--text)">${s.yield.toFixed(2)}%</td>
-      <td class="sov-chg md-chg ${chgCls}">${chgSign}${s.chg.toFixed(3)}%</td>
-      <td class="sov-spread" style="color:${isDE ? 'var(--text3)' : clr.fg}">
-        ${isDE ? '— (benchmark)' : (spBp !== null ? spBp.toFixed(0) + ' bp' : 'N/A')}
-      </td>
-      <td>
-        ${isDE ? '' : `<div class="sov-bar-wrap">
-          <div class="sov-bar" style="width:${barW}px;background:${clr.fg}"></div>
-          <span class="sov-badge" style="color:${clr.fg};background:${clr.bg}">${clr.badge}</span>
-        </div>`}
-      </td>
-      <td style="font-size:10px;color:var(--text3)">${s.date || ''}</td>
-    </tr>`;
-  }).join('');
-
-  el.innerHTML = `
-    <table class="sov-table">
-      <thead><tr>
-        <th colspan="2">Paese</th>
-        <th class="r">Yield 10A</th>
-        <th class="r">Var. Giorn.</th>
-        <th class="r">Spread vs Bund</th>
-        <th>Livello</th>
-        <th>Data</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <div style="margin-top:10px;display:flex;gap:20px;flex-wrap:wrap;padding:8px 4px;font-size:10px;color:var(--text3)">
-      <span>✅ Basso &lt;50bp</span>
-      <span>🟢 Normale 50-120bp</span>
-      <span>🟡 Attenzione 120-200bp</span>
-      <span>🟠 Elevato 200-300bp</span>
-      <span>🔴 Critico &gt;300bp</span>
-      <span style="margin-left:auto">Fonte: Stooq · Dati giornalieri</span>
-    </div>`;
-}
-
-// ── Curva Bund (EU) live ──────────────────────────────────────
-function renderMacroBundCurve() {
-  const el   = document.getElementById('macro-yc-eu');
-  const info = document.getElementById('macro-yc-eu-info');
-  if (!_sovData || !_sovData.bund_curve || Object.keys(_sovData.bund_curve).length === 0) {
-    el.innerHTML = '<div class="yc-section-loading">Dati non disponibili</div>';
-    return;
-  }
-
-  const curve = _sovData.bund_curve;
-  const MATS  = ['2A','5A','10A','30A'];
-  const vals  = MATS.map(m => curve[m]?.yield ?? null).filter(Boolean);
-  if (!vals.length) { el.innerHTML = '<div class="yc-section-loading">Dati non disponibili</div>'; return; }
-
-  const maxV  = Math.max(...vals);
-  const minV  = Math.min(...vals);
-  const range = (maxV - minV) || 0.5;
-
-  const barsHtml = MATS.map(m => {
-    const v = curve[m]?.yield;
-    if (!v) return '';
-    const hPct = 20 + ((v - minV) / range) * 78;
-    const v10  = curve['10A']?.yield;
-    const clr  = v10 && m !== '10A' && v > v10 ? '#4caf50' : v10 && v < v10 ? '#ef5350' : '#64b5f6';
-    return `<div class="yc-bar-wrap">
-      <div class="yc-val" style="font-size:10px">${v.toFixed(2)}%</div>
-      <div class="yc-bar" style="height:${hPct}%;background:${clr}"></div>
-      <div class="yc-label">${m}</div>
-    </div>`;
-  }).join('');
-  el.innerHTML = barsHtml;
-
-  // Spread 10A-2A
-  const y2 = curve['2A']?.yield, y10 = curve['10A']?.yield, y30 = curve['30A']?.yield;
-  if (y2 && y10) {
-    const sp = (y10 - y2).toFixed(2);
-    const cls = parseFloat(sp) < 0 ? 'inverted' : parseFloat(sp) < 0.2 ? 'flat' : 'normal';
-    const lbl = parseFloat(sp) < 0 ? '⚠ Invertita' : parseFloat(sp) < 0.2 ? '⚡ Piatta' : '✓ Normale';
-    info.innerHTML = `<div class="yc-inversion ${cls}" style="font-size:10px;padding:3px 8px">${lbl} · 10A-2A: ${sp > 0 ? '+' : ''}${sp}%</div>`;
-  }
 }
 
 // ── Trigger caricamento quando si apre il tab ─────────────────
