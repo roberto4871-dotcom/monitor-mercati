@@ -1029,8 +1029,8 @@ body.light .cal-item{background:var(--bg3)}
     <div class="macro-panel" style="min-height:auto">
       <div class="macro-panel-title"><span>ℹ️</span>NOTE & LEGGENDA</div>
       <div style="font-size:12px;color:var(--text2);line-height:1.7;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px 24px">
-        <p>• <b style="color:var(--accent)">Rendimenti USA</b>: live Yahoo Finance (^IRX/^FVX/^TNX/^TYX). 2A = interp. 3M-5A.</p>
-        <p>• <b style="color:var(--accent)">Rendimenti EU</b>: Germania live via ECB AAA Yield Curve. IT/FR/ES = DE + spread medio.</p>
+        <p>• <b style="color:var(--accent)">USA</b>: live Yahoo Finance. <b style="color:var(--accent)">Canada</b>: live Bank of Canada (Valet API). <b style="color:var(--accent)">UK</b>: live BOE Gilt par yield. <b style="color:var(--accent)">Giappone</b>: live MOF Japan CSV.</p>
+        <p>• <b style="color:var(--accent)">DE</b>: live ECB AAA YC. <b style="color:var(--accent)">NL/AT/BE/FR/ES/PT/IT/GR</b>: DE live + spread medio storico su Bund (approssimazione, spread stabile nel breve periodo).</p>
         <p>• <b style="color:var(--accent)">Tassi Banche Centrali</b>: valori corretti al meeting più recente — cambiano 4-8×/anno.</p>
         <p>• <b style="color:var(--accent)">Calendario</b>: clicca su ogni evento per approfondimenti e cosa monitorare.</p>
         <p style="color:var(--text3);font-size:10px">Dati a scopo informativo — non costituiscono consulenza finanziaria.</p>
@@ -6183,15 +6183,19 @@ function renderGlobalYields() {
   }
 
   const MATS  = ['3M','2Y','5Y','10Y','30Y'];
-  const ORDER = ['US','DE','IT','FR','ES'];
+  // Ordine preferito; viene mostrato solo chi ha dati live nel response
+  const ORDER = ['US','CA','GB','JP','DE','NL','AT','BE','FR','ES','PT','IT','GR'];
   const C     = data.countries;
 
   const srcLabel = (src) => {
-    if (!src) return { cls:'static', txt:'—' };
-    if (src === 'Yahoo Finance') return { cls:'live',    txt:'● YF live' };
-    if (src === 'ECB YC')        return { cls:'live',    txt:'● ECB live' };
-    if (src === 'ECB+spread')    return { cls:'derived', txt:'≈ ECB+spread' };
-    return { cls:'static', txt:'⚠ statico Apr 2025' };
+    if (!src)                    return { cls:'static',  txt:'—' };
+    if (src === 'Yahoo Finance') return { cls:'live',    txt:'● YF' };
+    if (src === 'ECB YC')        return { cls:'live',    txt:'● ECB' };
+    if (src === 'BOE')           return { cls:'live',    txt:'● BOE' };
+    if (src === 'MOF')           return { cls:'live',    txt:'● MOF JP' };
+    if (src === 'BOC')           return { cls:'live',    txt:'● BOC' };
+    if (src === 'ECB+spread')    return { cls:'derived', txt:'≈ ECB+Δ' };
+    return { cls:'static', txt:'⚠ statico' };
   };
 
   const rows = ORDER.map(cc => {
@@ -6220,9 +6224,9 @@ function renderGlobalYields() {
       <tbody>${rows}</tbody>
     </table>
     <div style="margin-top:8px;display:flex;gap:16px;flex-wrap:wrap;font-size:10px;color:var(--text3);padding:0 2px">
-      <span style="color:#66bb6a">● live</span>
-      <span style="color:#64b5f6">≈ derivato da curva ECB AAA + spread medio</span>
-      <span style="margin-left:auto">2A USA = interpolato 3M/5A</span>
+      <span style="color:#66bb6a">● live (YF/ECB/BOE/MOF/BOC)</span>
+      <span style="color:#64b5f6">≈ ECB base live + spread medio su Bund</span>
+      <span style="margin-left:auto">2A USA = interp. 3M/5A · JP: no 3M da MOF</span>
     </div>`;
 }
 

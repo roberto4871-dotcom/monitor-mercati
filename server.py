@@ -899,8 +899,131 @@ def _ecb_yc_fetch(mat_key):
         return None
 
 
+def _boe_fetch():
+    """Fetch UK Gilt par yields from Bank of England Statistics DB."""
+    try:
+        import requests as req
+        # BOE UK Government Liability Nominal Par Yield Curve
+        # Series: IUDAMLPY2Y / 5Y / 10Y / 30Y  (daily)
+        today_str  = datetime.datetime.now().strftime('%d/%m/%Y')
+        start_str  = (datetime.datetime.now() - datetime.timedelta(days=14)).strftime('%d/%m/%Y')
+        codes = 'IUDAMLPY2Y,IUDAMLPY5Y,IUDAMLPY10Y,IUDAMLPY30Y'
+        url = (f'https://www.bankofengland.co.uk/boeapps/database/_iadb-FromShowColumns.asp'
+               f'?csv.x=yes&Datefrom={start_str}&Dateto={today_str}'
+               f'&SeriesCodes={codes}&CSVF=TT&UsingCodes=Y&VPD=Y&VFD=N')
+        r = req.get(url, timeout=12, headers={'User-Agent': 'Mozilla/5.0'})
+        if r.status_code != 200:
+            print(f'  [BOE] HTTP {r.status_code}')
+            return None
+        lines = [l.strip() for l in r.text.strip().split('\n') if l.strip()]
+        if len(lines) < 2:
+            return None
+        headers = [h.strip().strip('"') for h in lines[0].split(',')]
+        mat_map = {
+            'IUDAMLPY2Y':'2Y', 'IUDAMLPY5Y':'5Y',
+            'IUDAMLPY10Y':'10Y', 'IUDAMLPY30Y':'30Y'
+        }
+        for line in reversed(lines[1:]):
+            parts = [p.strip().strip('"') for p in line.split(',')]
+            yields = {}
+            for i, h in enumerate(headers):
+                if h in mat_map and i < len(parts):
+                    try:
+                        v = float(parts[i])
+                        yields[mat_map[h]] = round(v, 3)
+                    except (ValueError, IndexError):
+                        pass
+            if yields:
+                print(f'  [BOE] OK: {yields}')
+                return yields
+        return None
+    except Exception as e:
+        print(f'  [BOE] {e}')
+        return None
+
+
+def _mof_japan_fetch():
+    """Fetch Japan JGB benchmark yields from MOF (Ministry of Finance) CSV."""
+    try:
+        import requests as req
+        url = 'https://www.mof.go.jp/jgbs/reference/interest_rate/jgbcm.csv'
+        r = req.get(url, timeout=12, headers={'User-Agent': 'Mozilla/5.0'})
+        if r.status_code != 200:
+            print(f'  [MOF JP] HTTP {r.status_code}')
+            return None
+        # Prova UTF-8, poi Shift-JIS
+        for enc in ('utf-8', 'shift_jis', 'cp932'):
+            try:
+                text = r.content.decode(enc)
+                break
+            except UnicodeDecodeError:
+                continue
+        else:
+            return None
+        lines = [l.strip() for l in text.strip().split('\n') if l.strip()]
+        if len(lines) < 2:
+            return None
+        # MOF CSV columns: 基準日,1年,2年,3年,4年,5年,6年,7年,8年,9年,10年,15年,20年,25年,30年,40年
+        # Indices:          0    1   2   3   4   5   6   7   8   9   10   11   12   13   14   15
+        last = [p.strip() for p in lines[-1].split(',')]
+        mat_idx = {'2Y': 2, '5Y': 5, '10Y': 10, '30Y': 14}
+        yields = {}
+        for mat, idx in mat_idx.items():
+            if idx < len(last) and last[idx] not in ('', '-', 'ND'):
+                try:
+                    yields[mat] = round(float(last[idx]), 3)
+                except ValueError:
+                    pass
+        if yields:
+            print(f'  [MOF JP] OK: {yields}')
+        return yields if yields else None
+    except Exception as e:
+        print(f'  [MOF JP] {e}')
+        return None
+
+
+def _boc_fetch():
+    """Fetch Canada Government Bond yields from Bank of Canada Valet API."""
+    try:
+        import requests as req
+        # BOC Valet: Government of Canada benchmark bond yields
+        series = ('BD.CDN.2YR.DQ.YLD,BD.CDN.5YR.DQ.YLD,'
+                  'BD.CDN.10YR.DQ.YLD,BD.CDN.LONGBND.DQ.YLD')
+        url = f'https://www.bankofcanada.ca/valet/observations/{series}/json?recent=5'
+        r = req.get(url, timeout=12, headers={'User-Agent': 'Mozilla/5.0'})
+        if r.status_code != 200:
+            print(f'  [BOC] HTTP {r.status_code}')
+            return None
+        data = r.json()
+        obs  = data.get('observations', [])
+        if not obs:
+            return None
+        mat_keys = {
+            'BD.CDN.2YR.DQ.YLD':   '2Y',
+            'BD.CDN.5YR.DQ.YLD':   '5Y',
+            'BD.CDN.10YR.DQ.YLD':  '10Y',
+            'BD.CDN.LONGBND.DQ.YLD':'30Y',
+        }
+        for o in reversed(obs):
+            yields = {}
+            for sid, mat in mat_keys.items():
+                val = o.get(sid, {}).get('v')
+                if val and val not in ('', 'null', None):
+                    try:
+                        yields[mat] = round(float(val), 3)
+                    except ValueError:
+                        pass
+            if yields:
+                print(f'  [BOC] OK: {yields}')
+                return yields
+        return None
+    except Exception as e:
+        print(f'  [BOC] {e}')
+        return None
+
+
 def fetch_global_yields():
-    """Rendimenti governativi internazionali: USA (YF live), EU (ECB live), UK/JP (statico)."""
+    """Rendimenti governativi internazionali: USA/EU live, UK/JP/CA se API raggiungibili."""
     global _global_yields_cache, _global_yields_ts
     now = time.time()
     if _global_yields_cache and now - _global_yields_ts < GLOBAL_YIELDS_TTL:
@@ -923,16 +1046,23 @@ def fetch_global_yields():
         except Exception as e:
             if is_rate_limit_error(e): _yf_set_cooldown(10)
             print(f'  [global] US {sym}: {e}')
-    # 2Y interpolazione (Yahoo non ha ^TTO o ^UST2Y direttamente)
     if '2Y' not in us_yields and '3M' in us_yields and '5Y' in us_yields:
         us_yields['2Y'] = round(us_yields['3M'] * 0.45 + us_yields['5Y'] * 0.55, 3)
     if us_yields:
         out['US'] = {'name':'USA','flag':'🇺🇸','yields':us_yields,'source':'Yahoo Finance','live':True}
-    else:
-        fb = {**GLOBAL_YIELDS_STATIC['US'], 'source':'static','live':False}
-        out['US'] = fb
+    # Se YF fallisce US → non mostrare (nessun fallback statico)
 
-    # --- EU: ECB AAA Yield Curve (area euro aggregata = essenzialmente Germania) ---
+    # --- Canada: Bank of Canada Valet API ---
+    ca_yields = _boc_fetch()
+    if ca_yields:
+        out['CA'] = {'name':'Canada','flag':'🇨🇦','yields':ca_yields,'source':'BOC','live':True}
+
+    # --- UK: Bank of England Stats API ---
+    gb_yields = _boe_fetch()
+    if gb_yields:
+        out['GB'] = {'name':'UK (Gilt)','flag':'🇬🇧','yields':gb_yields,'source':'BOE','live':True}
+
+    # --- EU: ECB AAA Yield Curve → Germania + spread per altri paesi ---
     ECB_MATS = [('3M','3M'), ('2Y','2Y'), ('5Y','5Y'), ('10Y','10Y'), ('30Y','30Y')]
     ecb_yields = {}
     for mat, ecb_key in ECB_MATS:
@@ -942,26 +1072,32 @@ def fetch_global_yields():
 
     if ecb_yields:
         out['DE'] = {'name':'Germania','flag':'🇩🇪','yields':ecb_yields,'source':'ECB YC','live':True}
-        # IT, FR, ES: spread storico approssimativo sopra DE (spread relativi stabili)
+        # Paesi EU: spread medio storico su Bund (stabile nel medio periodo)
         EU_OFFSETS = {
-            'IT': {'name':'Italia', 'flag':'🇮🇹','off':{'3M':0.80,'2Y':0.75,'5Y':0.85,'10Y':1.12,'30Y':1.36}},
-            'FR': {'name':'Francia','flag':'🇫🇷','off':{'3M':0.40,'2Y':0.35,'5Y':0.38,'10Y':0.65,'30Y':0.85}},
-            'ES': {'name':'Spagna', 'flag':'🇪🇸','off':{'3M':0.52,'2Y':0.47,'5Y':0.52,'10Y':0.77,'30Y':1.08}},
+            'NL': {'name':'Olanda',     'flag':'🇳🇱','off':{'3M':0.05,'2Y':0.05,'5Y':0.07,'10Y':0.08,'30Y':0.10}},
+            'AT': {'name':'Austria',    'flag':'🇦🇹','off':{'3M':0.25,'2Y':0.22,'5Y':0.28,'10Y':0.37,'30Y':0.48}},
+            'BE': {'name':'Belgio',     'flag':'🇧🇪','off':{'3M':0.30,'2Y':0.30,'5Y':0.42,'10Y':0.47,'30Y':0.62}},
+            'FR': {'name':'Francia',    'flag':'🇫🇷','off':{'3M':0.40,'2Y':0.35,'5Y':0.38,'10Y':0.65,'30Y':0.85}},
+            'ES': {'name':'Spagna',     'flag':'🇪🇸','off':{'3M':0.52,'2Y':0.47,'5Y':0.52,'10Y':0.77,'30Y':1.08}},
+            'PT': {'name':'Portogallo', 'flag':'🇵🇹','off':{'3M':0.60,'2Y':0.55,'5Y':0.65,'10Y':0.72,'30Y':0.92}},
+            'IT': {'name':'Italia',     'flag':'🇮🇹','off':{'3M':0.80,'2Y':0.75,'5Y':0.85,'10Y':1.12,'30Y':1.36}},
+            'GR': {'name':'Grecia',     'flag':'🇬🇷','off':{'3M':0.70,'2Y':0.65,'5Y':0.80,'10Y':0.92,'30Y':1.12}},
         }
         for cc, info in EU_OFFSETS.items():
             yields = {m: round(ecb_yields[m] + info['off'].get(m, 0), 3) for m in ecb_yields}
-            out[cc] = {'name':info['name'],'flag':info['flag'],'yields':yields,'source':'ECB+spread','live':True}
-    else:
-        for cc in ['DE','IT','FR','ES']:
-            out[cc] = {**GLOBAL_YIELDS_STATIC[cc],'source':'static','live':False}
+            out[cc] = {'name':info['name'],'flag':info['flag'],'yields':yields,
+                       'source':'ECB+spread','live':True}
+    # Se ECB fallisce → nessun dato EU (nessun fallback statico)
 
-    # --- UK e JP: statici (API bloccate su Railway o complesse) ---
-    for cc in ['GB','JP']:
-        out[cc] = {**GLOBAL_YIELDS_STATIC[cc],'source':'static','live':False}
+    # --- Giappone: MOF Japan CSV ---
+    jp_yields = _mof_japan_fetch()
+    if jp_yields:
+        out['JP'] = {'name':'Giappone','flag':'🇯🇵','yields':jp_yields,'source':'MOF','live':True}
 
     result = {'countries': out, 'ts': int(now)}
     _global_yields_cache = result
     _global_yields_ts = now
+    print(f'  [global-yields] paesi disponibili: {list(out.keys())}')
     return result
 
 
