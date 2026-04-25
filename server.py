@@ -61,6 +61,7 @@ _corr_cache  = {}; _corr_lock  = threading.Lock(); CORR_TTL  = 1800
 _rss_cache   = {}; _rss_lock   = threading.Lock(); RSS_TTL   = 600   # 10 min
 _macro_cache     = {}; _macro_lock     = threading.Lock(); MACRO_TTL     = 900   # 15 min
 _sovereign_cache = {}; _sovereign_lock = threading.Lock(); SOVEREIGN_TTL = 1800  # 30 min
+_global_yields_cache = None; _global_yields_ts = 0.0; GLOBAL_YIELDS_TTL = 900  # 15 min
 # ISIN cache — permanente (ISIN non cambia mai)
 
 
@@ -853,6 +854,117 @@ def _fred_fetch_yield(series_id):
         return None
 
 
+# ─── Global Yields: rendimenti governativi internazionali ─────────────────────
+
+# Valori statici di riferimento (Aprile 2025)
+GLOBAL_YIELDS_STATIC = {
+    'US': {'name':'USA',      'flag':'🇺🇸','yields':{'3M':4.35,'2Y':3.88,'5Y':3.92,'10Y':4.31,'30Y':4.92}},
+    'DE': {'name':'Germania', 'flag':'🇩🇪','yields':{'3M':2.35,'2Y':2.10,'5Y':2.30,'10Y':2.53,'30Y':2.72}},
+    'IT': {'name':'Italia',   'flag':'🇮🇹','yields':{'3M':3.15,'2Y':2.85,'5Y':3.15,'10Y':3.65,'30Y':4.08}},
+    'FR': {'name':'Francia',  'flag':'🇫🇷','yields':{'3M':2.75,'2Y':2.45,'5Y':2.65,'10Y':3.18,'30Y':3.55}},
+    'ES': {'name':'Spagna',   'flag':'🇪🇸','yields':{'3M':2.88,'2Y':2.55,'5Y':2.80,'10Y':3.30,'30Y':3.78}},
+    'GB': {'name':'UK',       'flag':'🇬🇧','yields':{'3M':4.55,'2Y':4.10,'5Y':4.22,'10Y':4.62,'30Y':5.20}},
+    'JP': {'name':'Giappone', 'flag':'🇯🇵','yields':{'3M':0.47,'2Y':0.68,'5Y':1.02,'10Y':1.50,'30Y':2.38}},
+}
+
+def _ecb_yc_fetch(mat_key):
+    """Scarica la curva AAA dell'area euro da ECB per una scadenza (3M,2Y,5Y,10Y,30Y)."""
+    try:
+        import requests as req
+        url = (f'https://data-api.ecb.europa.eu/service/data/YC/'
+               f'B.U2.EUR.4F.G_N_A.SV_C_YM.SR_{mat_key}'
+               f'?lastNObservations=2&format=csvdata')
+        r = req.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
+        if r.status_code != 200:
+            return None
+        lines = r.text.strip().split('\n')
+        if len(lines) < 2:
+            return None
+        headers = [h.strip().strip('"') for h in lines[0].split(',')]
+        obs_idx = next((i for i, h in enumerate(headers) if 'OBS_VALUE' in h.upper()), -1)
+        if obs_idx < 0:
+            return None
+        for line in reversed(lines[1:]):
+            parts = line.split(',')
+            if len(parts) > obs_idx:
+                val_str = parts[obs_idx].strip().strip('"')
+                if val_str not in ('', '.', 'NaN', 'NA'):
+                    try:
+                        return round(float(val_str), 3)
+                    except ValueError:
+                        continue
+        return None
+    except Exception as e:
+        print(f'  [ECB YC] {mat_key}: {e}')
+        return None
+
+
+def fetch_global_yields():
+    """Rendimenti governativi internazionali: USA (YF live), EU (ECB live), UK/JP (statico)."""
+    global _global_yields_cache, _global_yields_ts
+    now = time.time()
+    if _global_yields_cache and now - _global_yields_ts < GLOBAL_YIELDS_TTL:
+        return _global_yields_cache
+
+    out = {}
+
+    # --- USA: Yahoo Finance (confermato funzionante su Railway) ---
+    YF_US = [('3M', '^IRX'), ('5Y', '^FVX'), ('10Y', '^TNX'), ('30Y', '^TYX')]
+    us_yields = {}
+    for mat, sym in YF_US:
+        try:
+            _yf_wait_cooldown()
+            with _yf_semaphore:
+                hist = yf.Ticker(sym).history(period='5d', interval='1d')
+            if not hist.empty:
+                closes = hist['Close'].dropna()
+                if len(closes) >= 1:
+                    us_yields[mat] = round(float(closes.iloc[-1]), 3)
+        except Exception as e:
+            if is_rate_limit_error(e): _yf_set_cooldown(10)
+            print(f'  [global] US {sym}: {e}')
+    # 2Y interpolazione (Yahoo non ha ^TTO o ^UST2Y direttamente)
+    if '2Y' not in us_yields and '3M' in us_yields and '5Y' in us_yields:
+        us_yields['2Y'] = round(us_yields['3M'] * 0.45 + us_yields['5Y'] * 0.55, 3)
+    if us_yields:
+        out['US'] = {'name':'USA','flag':'🇺🇸','yields':us_yields,'source':'Yahoo Finance','live':True}
+    else:
+        fb = {**GLOBAL_YIELDS_STATIC['US'], 'source':'static','live':False}
+        out['US'] = fb
+
+    # --- EU: ECB AAA Yield Curve (area euro aggregata = essenzialmente Germania) ---
+    ECB_MATS = [('3M','3M'), ('2Y','2Y'), ('5Y','5Y'), ('10Y','10Y'), ('30Y','30Y')]
+    ecb_yields = {}
+    for mat, ecb_key in ECB_MATS:
+        v = _ecb_yc_fetch(ecb_key)
+        if v is not None:
+            ecb_yields[mat] = v
+
+    if ecb_yields:
+        out['DE'] = {'name':'Germania','flag':'🇩🇪','yields':ecb_yields,'source':'ECB YC','live':True}
+        # IT, FR, ES: spread storico approssimativo sopra DE (spread relativi stabili)
+        EU_OFFSETS = {
+            'IT': {'name':'Italia', 'flag':'🇮🇹','off':{'3M':0.80,'2Y':0.75,'5Y':0.85,'10Y':1.12,'30Y':1.36}},
+            'FR': {'name':'Francia','flag':'🇫🇷','off':{'3M':0.40,'2Y':0.35,'5Y':0.38,'10Y':0.65,'30Y':0.85}},
+            'ES': {'name':'Spagna', 'flag':'🇪🇸','off':{'3M':0.52,'2Y':0.47,'5Y':0.52,'10Y':0.77,'30Y':1.08}},
+        }
+        for cc, info in EU_OFFSETS.items():
+            yields = {m: round(ecb_yields[m] + info['off'].get(m, 0), 3) for m in ecb_yields}
+            out[cc] = {'name':info['name'],'flag':info['flag'],'yields':yields,'source':'ECB+spread','live':True}
+    else:
+        for cc in ['DE','IT','FR','ES']:
+            out[cc] = {**GLOBAL_YIELDS_STATIC[cc],'source':'static','live':False}
+
+    # --- UK e JP: statici (API bloccate su Railway o complesse) ---
+    for cc in ['GB','JP']:
+        out[cc] = {**GLOBAL_YIELDS_STATIC[cc],'source':'static','live':False}
+
+    result = {'countries': out, 'ts': int(now)}
+    _global_yields_cache = result
+    _global_yields_ts = now
+    return result
+
+
 def fetch_sovereign_yields():
     """
     Rendimenti sovrani 10A per DE/IT/ES/FR/PT/PL + Bund curve (2A/5A/10A/30A).
@@ -1405,6 +1517,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         # perché '/macro-data'.startswith('/ma') == True!
         elif self.path.startswith('/macro-data'):
             self._json(fetch_macro_data())
+        elif self.path.startswith('/global-yields'):
+            self._json(fetch_global_yields())
         elif self.path.startswith('/sovereign-yields'):
             self._json(fetch_sovereign_yields())
         elif self.path.startswith('/debug-sources'):

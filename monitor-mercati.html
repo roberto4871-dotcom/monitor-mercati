@@ -487,16 +487,22 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
 .cb-trend.cut{background:rgba(76,175,80,.14);color:#66bb6a}
 .cb-trend.hike{background:rgba(239,83,80,.14);color:#ef9a9a}
 .cb-next{font-size:10px;color:var(--text3);margin-top:1px}
-/* Yield curve */
-.yc-bars{display:flex;align-items:flex-end;gap:6px;flex:1;min-height:80px}
-.yc-bar-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
-.yc-bar{width:100%;border-radius:3px 3px 0 0;min-height:4px;transition:height .4s}
-.yc-label{font-size:9px;color:var(--text3);font-weight:700}
-.yc-val{font-size:11px;font-weight:700;color:var(--text)}
-.yc-inversion{font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;text-align:center;margin-top:4px}
-.yc-inversion.inverted{background:rgba(239,83,80,.12);color:#ef5350;border:1px solid rgba(239,83,80,.3)}
-.yc-inversion.normal{background:rgba(76,175,80,.1);color:#66bb6a;border:1px solid rgba(76,175,80,.25)}
-.yc-inversion.flat{background:rgba(255,152,0,.1);color:#ffa726;border:1px solid rgba(255,152,0,.25)}
+/* Yield curve (legacy, kept for .yc-section-loading) */
+.yc-section-loading{font-size:11px;color:var(--text3);text-align:center;padding:8px}
+/* Global Yields table */
+.gy-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:2px}
+.gy-table th{font-size:9px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);text-align:right;padding:5px 10px;border-bottom:1px solid var(--border)}
+.gy-table th:first-child,.gy-table th:last-child{text-align:left}
+.gy-table td{padding:5px 10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.035);transition:background .12s}
+.gy-table td:first-child{text-align:left;font-weight:600;white-space:nowrap}
+.gy-table td:last-child{text-align:left}
+.gy-table tr:last-child td{border-bottom:none}
+.gy-table tr:hover td{filter:brightness(1.12)}
+.gy-yield{font-weight:700;font-size:12px;padding:2px 5px;border-radius:3px;display:inline-block;min-width:44px;text-align:right}
+.gy-src{font-size:9px;white-space:nowrap}
+.gy-src.live{color:#66bb6a}
+.gy-src.derived{color:#64b5f6}
+.gy-src.static{color:var(--text3)}
 /* Calendar */
 .cal-list{display:flex;flex-direction:column;gap:4px;overflow-y:auto;flex:1}
 .cal-item{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;background:var(--bg3);transition:background .12s}
@@ -575,9 +581,6 @@ body.light .md-item,.body.light .cal-item,.body.light .strip-card{background:var
 .sov-bar{height:6px;border-radius:3px;min-width:2px;transition:width .4s}
 .sov-badge{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;white-space:nowrap}
 /* Dual yield curve */
-.yc-dual{display:grid;grid-template-columns:1fr 1fr;gap:10px;flex:1}
-.yc-section-title{font-size:9px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text3);margin-bottom:6px;text-align:center}
-.yc-section-loading{font-size:11px;color:var(--text3);text-align:center;padding:8px}
 </style>
 </head>
 <body>
@@ -1046,13 +1049,15 @@ body.light .md-item,.body.light .cal-item,.body.light .strip-card{background:var
         </div>
       </div>
 
-      <!-- Yield Curve USA + EU -->
+      <!-- Rendimenti Governativi Internazionali -->
       <div class="macro-panel">
-        <div class="macro-panel-title"><span>📈</span>CURVA DEI RENDIMENTI (live)</div>
-        <div class="yc-bars" id="macro-yc-bars" style="min-height:70px">
+        <div class="macro-panel-title">
+          <span>🌍</span>RENDIMENTI GOVERNATIVI — CONFRONTO INTERNAZIONALE
+          <span id="gy-lastupd" style="font-size:9px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0"></span>
+        </div>
+        <div id="macro-global-yields" style="overflow-x:auto;flex:1">
           <div class="yc-section-loading">Caricamento…</div>
         </div>
-        <div id="macro-yc-info" style="font-size:10px;margin-top:4px"></div>
       </div>
 
       <!-- Calendario Economico -->
@@ -1093,10 +1098,12 @@ body.light .md-item,.body.light .cal-item,.body.light .strip-card{background:var
     <div class="macro-panel" style="min-height:auto">
       <div class="macro-panel-title"><span>ℹ️</span>NOTE & LEGGENDA</div>
       <div style="font-size:12px;color:var(--text2);line-height:1.7;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px 24px">
-        <p>• <b style="color:var(--accent)">Curva Treasury USA</b>: live Yahoo Finance. 2A stimato (interp. 3M-5A).</p>
-        <p>• <b style="color:var(--accent)">Inversione</b>: 10A &lt; 3M/2A = segnale storico di recessione imminente.</p>
+        <p>• <b style="color:var(--accent)">Rendimenti USA</b>: live Yahoo Finance (^IRX/^FVX/^TNX/^TYX). 2A = interp. 3M-5A.</p>
+        <p>• <b style="color:var(--accent)">Rendimenti EU</b>: Germania live via ECB YC (curva AAA). IT/FR/ES = DE + spread storico.</p>
+        <p>• <b style="color:var(--accent)">Rendimenti UK/Giappone</b>: riferimento statico Apr 2025 (API non raggiungibili da Railway).</p>
         <p>• <b style="color:var(--accent)">Tassi Banche Centrali</b>: aggiornati manualmente dopo le riunioni.</p>
-        <p>• <b style="color:var(--accent)">CPI/GDP/PMI/Fiducia</b>: ultime letture ufficiali, aggiornate mensilmente.</p>
+        <p>• <b style="color:var(--accent)">ISM USA</b>: ¹ pubblica inizio mese — Apr 2025 disponibile da maggio.</p>
+        <p>• <b style="color:var(--accent)">Conf. Board USA</b>: ² Apr 2025 pubblicato il 29 aprile. PMI flash = S&P Global (22 apr).</p>
         <p>• <b style="color:var(--accent)">Calendario</b>: clicca su ogni evento per approfondimenti e cosa monitorare.</p>
         <p style="color:var(--text3);font-size:10px">Dati a scopo informativo — non costituiscono consulenza finanziaria.</p>
       </div>
@@ -6190,16 +6197,16 @@ const MACRO_STATIC = {
     { flag:'🇮🇹', name:'Disoccup. IT',  value:5.9, period:'Feb 2025', unit:'%' },
   ],
   pmi: [
-    { name:'ISM Manifatt. USA',   value:49.0, period:'Mar 2025', expand: 50 },
-    { name:'ISM Servizi USA',     value:50.8, period:'Mar 2025', expand: 50 },
-    { name:'PMI Manifatt. EUR',   value:47.6, period:'Mar 2025', expand: 50 },
-    { name:'PMI Servizi EUR',     value:51.0, period:'Mar 2025', expand: 50 },
-    { name:'PMI Manifatt. IT',    value:48.1, period:'Mar 2025', expand: 50 },
-    { name:'PMI Servizi IT',      value:53.2, period:'Mar 2025', expand: 50 },
+    { name:'ISM Manifatt. USA',   value:49.0, period:'Mar 2025 ¹', expand: 50 },
+    { name:'ISM Servizi USA',     value:50.8, period:'Mar 2025 ¹', expand: 50 },
+    { name:'PMI Manifatt. EUR',   value:48.7, period:'Apr 2025 flash', expand: 50 },
+    { name:'PMI Servizi EUR',     value:49.5, period:'Apr 2025 flash', expand: 50 },
+    { name:'PMI Manifatt. IT',    value:49.3, period:'Apr 2025 flash', expand: 50 },
+    { name:'PMI Servizi IT',      value:52.0, period:'Apr 2025 flash', expand: 50 },
   ],
   confidence: [
-    { flag:'🇺🇸', name:'Conf. Board USA',    value: 92.9, neutral:100, period:'Mar 2025', note:'100=neutro' },
-    { flag:'🇺🇸', name:'Univ. Michigan USA', value: 57.0, neutral: 70, period:'Mar 2025', note:'100=max' },
+    { flag:'🇺🇸', name:'Conf. Board USA',    value: 92.9, neutral:100, period:'Mar 2025 ²', note:'100=neutro' },
+    { flag:'🇺🇸', name:'Univ. Michigan USA', value: 50.8, neutral: 70, period:'Apr 2025 prel.', note:'100=max' },
     { flag:'🇩🇪', name:'GfK Germania',       value:-24.5, neutral:  0, period:'Apr 2025', note:'0=neutro' },
     { flag:'🇮🇹', name:'ISTAT Italia',       value: 96.0, neutral:100, period:'Mar 2025', note:'100=neutro' },
     { flag:'🇪🇺', name:'ESI Eurozona',       value: 95.6, neutral:100, period:'Mar 2025', note:'100=neutro' },
@@ -6224,14 +6231,14 @@ const MACRO_STRIP_SYMS = [
   { s:'FTSEMIB.MI',label:'FTSE MIB', unit:'' },
 ];
 
-let _macroData   = null;
-let _macroLoaded = false;
+let _globalYields = null;
+let _macroLoaded  = false;
 
 async function loadMacroTab(force = false) {
   if (!force && _macroLoaded) { renderMacro(); return; }
   document.getElementById('macro-lastupd').textContent = '⏳ Caricamento…';
   try {
-    _macroData = await fetch('/macro-data').then(r => r.json());
+    _globalYields = await fetch('/global-yields').then(r => r.json());
     _macroLoaded = true;
     document.getElementById('macro-lastupd').textContent =
       'Aggiornato: ' + new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
@@ -6243,7 +6250,7 @@ async function loadMacroTab(force = false) {
 
 function renderMacro() {
   renderMacroCB();
-  renderMacroYieldCurve();
+  renderGlobalYields();
   renderMacroCalendar();
   renderMacroCPI();
   renderMacroGDP();
@@ -6278,58 +6285,77 @@ function renderMacroCB() {
   }).join('');
 }
 
-// ── Yield Curve ──────────────────────────────────────────────
-function renderMacroYieldCurve() {
-  const y = _macroData?.yields || {};
-  const bars = [
-    { key:'y3m',  label:'3M' },
-    { key:'y2y',  label:'2A', est:true },
-    { key:'y5y',  label:'5A' },
-    { key:'y10y', label:'10A' },
-    { key:'y30y', label:'30A' },
-  ];
-  const vals = bars.map(b => y[b.key]?.v ?? null);
-  const maxV  = Math.max(...vals.filter(Boolean));
-  const minV  = Math.min(...vals.filter(Boolean));
-  const range = (maxV - minV) || 1;
+// ── Rendimenti Governativi Internazionali ─────────────────────
+function yieldHeat(v) {
+  if (v === null || v === undefined) return 'transparent';
+  if (v < 0.75) return 'rgba(100,181,246,0.18)';
+  if (v < 1.50) return 'rgba(79,195,247,0.14)';
+  if (v < 2.25) return 'rgba(102,187,106,0.14)';
+  if (v < 3.00) return 'rgba(156,204,101,0.13)';
+  if (v < 3.75) return 'rgba(255,238,88,0.12)';
+  if (v < 4.50) return 'rgba(255,167,38,0.14)';
+  return 'rgba(239,83,80,0.15)';
+}
 
-  const y3m  = y.y3m?.v  ?? null;
-  const y10y = y.y10y?.v ?? null;
-  const y5y  = y.y5y?.v  ?? null;
-  const y30y = y.y30y?.v ?? null;
+function renderGlobalYields() {
+  const el = document.getElementById('macro-global-yields');
+  const data = _globalYields;
+  if (!data || !data.countries) {
+    el.innerHTML = '<div class="yc-section-loading">Dati non disponibili</div>';
+    return;
+  }
 
-  const barsHtml = bars.map((b, i) => {
-    const v = vals[i];
-    if (!v) return '';
-    const hPct = 20 + ((v - minV) / range) * 80;
-    const pct10 = y10y && v ? ((v / y10y) - 1) * 100 : 0;
-    const clr = pct10 > 0 ? '#ef5350' : '#4caf50';
-    return `<div class="yc-bar-wrap">
-      <div class="yc-val">${v.toFixed(2)}%</div>
-      <div class="yc-bar" style="height:${hPct}%;background:${clr}"></div>
-      <div class="yc-label">${b.label}${b.est ? '*' : ''}</div>
-    </div>`;
+  // Aggiorna timestamp
+  if (data.ts) {
+    const d = new Date(data.ts * 1000);
+    document.getElementById('gy-lastupd').textContent =
+      d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) + ' ' +
+      d.toLocaleDateString('it-IT',{day:'numeric',month:'short'});
+  }
+
+  const MATS  = ['3M','2Y','5Y','10Y','30Y'];
+  const ORDER = ['US','DE','IT','FR','ES','GB','JP'];
+  const C     = data.countries;
+
+  const srcLabel = (src) => {
+    if (!src) return { cls:'static', txt:'—' };
+    if (src === 'Yahoo Finance') return { cls:'live',    txt:'● YF live' };
+    if (src === 'ECB YC')        return { cls:'live',    txt:'● ECB live' };
+    if (src === 'ECB+spread')    return { cls:'derived', txt:'≈ ECB+spread' };
+    return { cls:'static', txt:'⚠ statico Apr 2025' };
+  };
+
+  const rows = ORDER.map(cc => {
+    const c = C[cc];
+    if (!c) return '';
+    const { cls, txt } = srcLabel(c.source);
+    const cells = MATS.map(m => {
+      const v = c.yields?.[m];
+      const fmt = v != null ? v.toFixed(2) + '%' : '—';
+      return `<td><span class="gy-yield" style="background:${yieldHeat(v)}">${fmt}</span></td>`;
+    }).join('');
+    return `<tr>
+      <td>${c.flag} ${c.name}</td>
+      ${cells}
+      <td><span class="gy-src ${cls}">${txt}</span></td>
+    </tr>`;
   }).join('');
-  document.getElementById('macro-yc-bars').innerHTML = barsHtml || '<div class="nf-empty" style="font-size:12px">Dati non disponibili</div>';
 
-  // Info spread
-  const spread = y10y && y3m ? (y10y - y3m).toFixed(2) : null;
-  let invHtml = '';
-  if (spread !== null) {
-    const sp = parseFloat(spread);
-    const cls = sp < 0 ? 'inverted' : sp < 0.3 ? 'flat' : 'normal';
-    const lbl = sp < 0 ? '⚠ Curva INVERTITA — 10A &lt; 3M' : sp < 0.3 ? '⚡ Curva PIATTA' : '✓ Curva normale';
-    invHtml += `<div class="yc-inversion ${cls}">${lbl} (spread: ${spread > 0 ? '+' : ''}${spread}%)</div>`;
-  }
-  if (y5y && y10y) {
-    const s = (y10y - y5y).toFixed(2);
-    invHtml += `<div style="font-size:10px;color:var(--text3)">Spread 10A-5A: ${s > 0 ? '+' : ''}${s}% &nbsp;|&nbsp; `;
-  }
-  if (y30y && y10y) {
-    const s = (y30y - y10y).toFixed(2);
-    invHtml += `Spread 30A-10A: ${s > 0 ? '+' : ''}${s}%</div>`;
-  }
-  document.getElementById('macro-yc-info').innerHTML = invHtml;
+  el.innerHTML = `
+    <table class="gy-table">
+      <thead><tr>
+        <th>Paese</th>
+        <th>3M</th><th>2A</th><th>5A</th><th>10A</th><th>30A</th>
+        <th>Fonte</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="margin-top:8px;display:flex;gap:16px;flex-wrap:wrap;font-size:10px;color:var(--text3);padding:0 2px">
+      <span style="color:#66bb6a">● live</span>
+      <span style="color:#64b5f6">≈ derivato da curva ECB AAA + spread storico</span>
+      <span>⚠ riferimento statico Apr 2025</span>
+      <span style="margin-left:auto">2A USA = interpolato 3M/5A</span>
+    </div>`;
 }
 
 // ── Calendario ───────────────────────────────────────────────
@@ -6449,79 +6475,6 @@ function renderMacroPMI() {
     confHtml;
 }
 
-// ── Risk Gauge ────────────────────────────────────────────────
-function renderMacroGauge() {
-  const y = _macroData?.yields || {};
-  const vix   = y.vix?.v  ?? null;
-  const dxy   = y.dxy?.v  ?? null;
-  const y10y  = y.y10y?.v ?? null;
-  const y3m   = y.y3m?.v  ?? null;
-  const gold  = y.gold?.v ?? null;
-  const oil   = y.oil?.v  ?? null;
-
-  // Scoring 0-100 (0=massima calma, 100=massima paura)
-  let score = 50, components = [];
-
-  if (vix !== null) {
-    const vScore = Math.min(100, Math.max(0, (vix - 10) / 40 * 100));
-    score += (vScore - 50) * 0.35;
-    const vCls = vix < 15 ? 'pos' : vix < 25 ? 'neu' : 'neg';
-    components.push({ label:'VIX', val:`${vix.toFixed(1)}`, cls:vCls });
-  }
-  if (y10y !== null && y3m !== null) {
-    const spread = y10y - y3m;
-    const sScore = spread < 0 ? 80 : spread < 0.5 ? 60 : 30;
-    score += (sScore - 50) * 0.25;
-    const sCls = spread > 0.5 ? 'pos' : spread > 0 ? 'neu' : 'neg';
-    components.push({ label:'Curva 10A-3M', val:`${spread >= 0 ? '+' : ''}${spread.toFixed(2)}%`, cls: sCls });
-  }
-  if (dxy !== null) {
-    const dScore = dxy > 108 ? 70 : dxy > 103 ? 50 : 35;
-    score += (dScore - 50) * 0.2;
-    const dCls = dxy < 100 ? 'pos' : dxy < 106 ? 'neu' : 'neg';
-    components.push({ label:'DXY (Dollaro)', val:dxy.toFixed(1), cls:dCls });
-  }
-  if (gold !== null) {
-    const gCls = y.gold?.pct > 1 ? 'neg' : y.gold?.pct < -1 ? 'pos' : 'neu';
-    const gSign = (y.gold?.pct||0) >= 0 ? '+' : '';
-    components.push({ label:'Oro', val:`${gSign}${(y.gold?.pct||0).toFixed(1)}%`, cls: gCls });
-  }
-
-  score = Math.round(Math.max(0, Math.min(100, score)));
-
-  const riskLevels = [
-    { max:25, label:'CALMA',      color:'#4caf50', bg:'rgba(76,175,80,.12)' },
-    { max:45, label:'MODERATO',   color:'#8bc34a', bg:'rgba(139,195,74,.12)' },
-    { max:60, label:'NEUTRO',     color:'#ffd700', bg:'rgba(255,215,0,.12)'  },
-    { max:75, label:'TENSIONE',   color:'#ff9800', bg:'rgba(255,152,0,.12)'  },
-    { max:100,'label':'PAURA',    color:'#ef5350', bg:'rgba(239,83,80,.12)'  },
-  ];
-  const lvl = riskLevels.find(l => score <= l.max) || riskLevels[riskLevels.length-1];
-
-  // SVG arco semicircolare
-  const angle = (score / 100) * 180;
-  const rad = angle * Math.PI / 180;
-  const cx = 70, cy = 70, r = 58;
-  const x1 = cx - r, y1 = cy;
-  const x2 = cx + r * Math.cos(Math.PI - rad), y2 = cy - r * Math.sin(Math.PI - rad);
-  const lf = angle > 90 ? 1 : 0;
-
-  const svgArc = `<svg viewBox="0 0 140 75" xmlns="http://www.w3.org/2000/svg">
-    <path d="M ${cx-r} ${cy} A ${r} ${r} 0 0 1 ${cx+r} ${cy}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="10" stroke-linecap="round"/>
-    <path d="M ${cx-r} ${cy} A ${r} ${r} 0 ${lf} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="${lvl.color}" stroke-width="10" stroke-linecap="round"/>
-  </svg>`;
-
-  document.getElementById('macro-gauge-body').innerHTML = `
-    <div class="gauge-arc">${svgArc}</div>
-    <div class="gauge-score" style="color:${lvl.color}">${score}</div>
-    <div class="gauge-label" style="color:${lvl.color};background:${lvl.bg};border:1px solid ${lvl.color}40">${lvl.label}</div>
-    <div class="gauge-items">${components.map(c =>
-      `<div class="gauge-item">
-        <span class="gauge-item-label">${c.label}</span>
-        <span class="gauge-item-val md-chg ${c.cls}">${c.val}</span>
-      </div>`
-    ).join('')}</div>`;
-}
 
 // ── Commodities & FX Strip ────────────────────────────────────
 function renderMacroStrip() {
