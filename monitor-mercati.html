@@ -213,9 +213,11 @@ td.ora{color:#64b5f6;font-size:10px}
 .statusbar{background:var(--bg2);border-top:1px solid var(--border);padding:5px 16px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--text3);flex-shrink:0}
 .dot-ok{color:var(--green)}.dot-err{color:var(--red)}.dot-loading{color:var(--accent)}
 
-/* Watchlist star */
-.fav-star{background:none;border:none;cursor:pointer;font-size:14px;padding:0 2px;color:#546e7a;transition:color .15s}
+/* Watchlist stars (3 lists) */
+.fav-star,.fav-star2,.fav-star3{background:none;border:none;cursor:pointer;font-size:13px;padding:0 1px;color:#546e7a;transition:color .15s;line-height:1}
 .fav-star.on{color:#ffd700}
+.fav-star2.on{color:#64b5f6}
+.fav-star3.on{color:#ef9a9a}
 
 /* Heatmap */
 #tab-heatmap{padding:16px;overflow-y:auto;flex-direction:column;gap:12px}
@@ -711,6 +713,8 @@ body.light .cal-item{background:var(--bg3)}
     <button class="filter-btn" data-filter="ETF INDICI">ETF Indici</button>
     <button class="filter-btn" data-filter="ETF SETTORIALE">ETF Settoriali</button>
     <button class="filter-btn" data-filter="favorites">⭐ Preferiti</button>
+    <button class="filter-btn" data-filter="favorites2" style="color:#64b5f6;border-color:rgba(100,181,246,.35)">★ Lista 2</button>
+    <button class="filter-btn" data-filter="favorites3" style="color:#ef9a9a;border-color:rgba(239,154,154,.35)">★ Lista 3</button>
     <input class="search-box" id="search-box" placeholder="Cerca…" autocomplete="off">
     <button class="font-btn" id="font-btn-s" onclick="setFontSize('S')">S</button>
     <button class="font-btn active" id="font-btn-m" onclick="setFontSize('M')">M</button>
@@ -1575,7 +1579,9 @@ let rsConfig = JSON.parse(localStorage.getItem('mm_rs_config') || 'null') ||
 let refreshTimer, cdTimer;
 let charts = {};
 let loading = false;
-let favorites = new Set(JSON.parse(localStorage.getItem('mm_fav') || '[]'));
+let favorites  = new Set(JSON.parse(localStorage.getItem('mm_fav')  || '[]'));
+let favorites2 = new Set(JSON.parse(localStorage.getItem('mm_fav2') || '[]'));
+let favorites3 = new Set(JSON.parse(localStorage.getItem('mm_fav3') || '[]'));
 let heatMetric = 'varAtt';
 let heatSort   = 'none'; // 'none' | 'desc' | 'asc'
 
@@ -2443,7 +2449,7 @@ function updateBreadthPanel() {
 
   // Etichetta filtro corrente
   const filterLabels = {
-    'all':'Tutti gli strumenti', 'favorites':'Preferiti',
+    'all':'Tutti gli strumenti', 'favorites':'Preferiti', 'favorites2':'Lista 2', 'favorites3':'Lista 3',
     'INDICE AZIONARIO':'Indici Azionari', 'INDICE OBBLIGAZIONARIO':'Indici Obbligazionari',
     'MATERIA PRIMA':'Materie Prime', 'VALUTA':'Valute', 'VOLATILITA':'Volatilità',
     'TITOLI EUROPA':'Titoli Europa', 'TITOLI IT BIG CAP':'Big Cap IT', 'TITOLI USA':'Titoli USA',
@@ -2709,15 +2715,30 @@ function showMomentumSortMenu(btn) {
 // ═══════════════════════════════════════════════════
 //  RENDER TABLE
 // ═══════════════════════════════════════════════════
-function toggleFavorite(sym) {
-  if (favorites.has(sym)) favorites.delete(sym); else favorites.add(sym);
-  localStorage.setItem('mm_fav', JSON.stringify([...favorites]));
+function _starTd(sym) {
+  const s1 = favorites.has(sym)  ? 'on' : '';
+  const s2 = favorites2.has(sym) ? 'on' : '';
+  const s3 = favorites3.has(sym) ? 'on' : '';
+  return `<td style="padding:0 2px;white-space:nowrap;text-align:center">` +
+    `<button class="fav-star ${s1}"  onclick="event.stopPropagation();toggleFavorite('${sym}',1)">★</button>` +
+    `<button class="fav-star2 ${s2}" onclick="event.stopPropagation();toggleFavorite('${sym}',2)">★</button>` +
+    `<button class="fav-star3 ${s3}" onclick="event.stopPropagation();toggleFavorite('${sym}',3)">★</button>` +
+    `</td>`;
+}
+
+function toggleFavorite(sym, n) {
+  const _sets = [null, favorites, favorites2, favorites3];
+  const _keys = [null, 'mm_fav', 'mm_fav2', 'mm_fav3'];
+  const fav = _sets[n] || favorites;
+  const key = _keys[n] || 'mm_fav';
+  if (fav.has(sym)) fav.delete(sym); else fav.add(sym);
+  localStorage.setItem(key, JSON.stringify([...fav]));
   renderTable();
 }
 
 function buildThead() {
   const tr = document.getElementById('thead-row');
-  const starTh = `<th style="width:30px">★</th>`;
+  const starTh = `<th style="width:52px;text-align:center;padding:0 2px"><span style="color:#ffd700">★</span><span style="color:#64b5f6">★</span><span style="color:#ef9a9a">★</span></th>`;
   tr.innerHTML = starTh + COLS.map(c => {
     const cls = sortCol === c.key ? (sortDir===1 ? 'sorted-asc':'sorted-desc') : '';
     return `<th class="${cls}" onclick="doSort('${c.key}')">${c.label.replace('\n','<br>')}</th>`;
@@ -2738,8 +2759,7 @@ function updateRow(idx) {
   const row = rows[idx];
   // Usa solo le colonne visibili (coerente con buildRows override)
   const visCols = (typeof hiddenCols !== 'undefined') ? COLS.filter(c => !hiddenCols.has(c.key)) : COLS;
-  const starOn = favorites.has(row.s) ? 'on' : '';
-  const starTd = `<td style="padding:0 4px"><button class="fav-star ${starOn}" onclick="event.stopPropagation();toggleFavorite('${row.s}')">★</button></td>`;
+  const starTd = _starTd(row.s);
   tr.innerHTML = starTd + visCols.map(c => `<td class="${c.cls||''}">${fmtCell(c, row)}</td>`).join('');
   if (!row._loading && !row._err) {
     tr.setAttribute('onclick', `openModal(${idx})`);
@@ -2847,7 +2867,9 @@ function applyFilters(data) {
   }
   return data.filter(r => {
     const fMatch = activeFilter === 'all' ? true :
-                   activeFilter === 'favorites' ? favorites.has(r.s) :
+                   activeFilter === 'favorites'  ? favorites.has(r.s)  :
+                   activeFilter === 'favorites2' ? favorites2.has(r.s) :
+                   activeFilter === 'favorites3' ? favorites3.has(r.s) :
                    r.a === activeFilter;
     const sMatch = !q || (r.m||'').toLowerCase().includes(q) ||
                          (r.i||'').toLowerCase().includes(q) ||
@@ -2890,8 +2912,7 @@ function buildRows(data) {
       // Find original index for id
       const origIdx = rows.indexOf(r);
       const bg = getSectionBg(sec);
-      const starOn = favorites.has(r.s) ? 'on' : '';
-      const starTd = `<td style="padding:0 4px"><button class="fav-star ${starOn}" onclick="event.stopPropagation();toggleFavorite('${r.s}')">★</button></td>`;
+      const starTd = _starTd(r.s);
       const tds = COLS.map(c => `<td class="${c.cls||''}">${fmtCell(c,r)}</td>`).join('');
       const clickable = !r._loading && !r._err ? `onclick="openModal(${origIdx})" style="background:${bg};cursor:pointer"` : `style="background:${bg}"`;
       html += `<tr id="row-${origIdx}" ${clickable}>${starTd}${tds}</tr>`;
@@ -4083,7 +4104,7 @@ const _origBuildThead = buildThead;
 buildThead = function() {
   const tr = document.getElementById('thead-row');
   const visibleCols = COLS.filter(c => !hiddenCols.has(c.key));
-  const starTh = `<th style="width:30px">★</th>`;
+  const starTh = `<th style="width:52px;text-align:center;padding:0 2px"><span style="color:#ffd700">★</span><span style="color:#64b5f6">★</span><span style="color:#ef9a9a">★</span></th>`;
   tr.innerHTML = starTh + visibleCols.map(c => {
     const cls = sortCol === c.key ? (sortDir===1 ? 'sorted-asc':'sorted-desc') : '';
     const lbl = c.key === 'ma'
@@ -4113,10 +4134,9 @@ buildRows = function(data) {
     groups[sec].forEach(r => {
       const origIdx = rows.indexOf(r);
       const bg = getSectionBg(sec);
-      const starOn = favorites.has(r.s) ? 'on' : '';
       const hasNote = localStorage.getItem('mm_note_' + r.s);
       const noteIcon = hasNote ? ' <span class="note-icon">📝</span>' : '';
-      const starTd = `<td style="padding:0 4px"><button class="fav-star ${starOn}" onclick="event.stopPropagation();toggleFavorite('${r.s}')">★</button></td>`;
+      const starTd = _starTd(r.s);
       const tds = visibleCols.map(c => {
         if (c.key === 'm') {
           return `<td class="${c.cls||''}">${fmtCell(c,r)}${noteIcon}</td>`;
@@ -4137,10 +4157,9 @@ updateRow = function(idx) {
   if (!tr) { renderTable(); return; }
   const row = rows[idx];
   const visibleCols = COLS.filter(c => !hiddenCols.has(c.key));
-  const starOn = favorites.has(row.s) ? 'on' : '';
   const hasNote = localStorage.getItem('mm_note_' + row.s);
   const noteIcon = hasNote ? ' <span class="note-icon">📝</span>' : '';
-  const starTd = `<td style="padding:0 4px"><button class="fav-star ${starOn}" onclick="event.stopPropagation();toggleFavorite('${row.s}')">★</button></td>`;
+  const starTd = _starTd(row.s);
   tr.innerHTML = starTd + visibleCols.map(c => {
     if (c.key === 'm') return `<td class="${c.cls||''}">${fmtCell(c, row)}${noteIcon}</td>`;
     return `<td class="${c.cls||''}">${fmtCell(c, row)}</td>`;
