@@ -4940,7 +4940,7 @@ function renderFundamentals(d) {
     {l:'P/E Trailing',     v: N(d.trailingPE)},
     {l:'P/E Forward',      v: N(d.forwardPE)},
     {l:'Price / Book',     v: N(d.priceToBook)},
-    {l:'Dividendo',        v: d.dividendYield ? d.dividendYield+'%' : '—'},
+    {l:'Dividendo',        v: (d.dividendYield && d.dividendYield <= 25) ? d.dividendYield+'%' : '—'},
     {l:'Market Cap',       v: MC(d.marketCap)},
     {l:'Beta',             v: N(d.beta)},
     {l:'52W High',         v: N(d.fiftyTwoWeekHigh)},

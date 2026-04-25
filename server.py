@@ -422,12 +422,21 @@ def fetch_fundamentals(symbol):
         return {'error': 'Nessun dato disponibile.'}
     try:
         dy  = info.get('dividendYield')
-        # yfinance a volte restituisce decimale (0.018) a volte già percentuale (1.8)
+        # yfinance restituisce solitamente decimale (0.018 = 1.8%)
+        # Valori > 0.50 come decimale = > 50% → quasi certamente errati (es. BABA 0.77)
+        # Normalizzazione: decimale < 0.50 → *100; già-percentuale ≤ 25 → as-is; > 25 → scarta
+        dy_norm = None
+        if dy:
+            if dy < 0.50:        # formato decimale, es. 0.018 → 1.8%
+                dy_norm = round(dy * 100, 2)
+            elif dy <= 25.0:     # già in percentuale, es. 1.8 → 1.8%
+                dy_norm = round(dy, 2)
+            # else > 25% → implausibile, dy_norm resta None
         data = {
             'trailingPE':        info.get('trailingPE'),
             'forwardPE':         info.get('forwardPE'),
             'priceToBook':       info.get('priceToBook'),
-            'dividendYield':     round(dy * 100, 2) if (dy and dy < 1) else (round(dy, 2) if dy else None),
+            'dividendYield':     dy_norm,
             'marketCap':         info.get('marketCap'),
             'beta':              info.get('beta'),
             'fiftyTwoWeekHigh':  info.get('fiftyTwoWeekHigh'),
