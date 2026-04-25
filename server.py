@@ -1370,10 +1370,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def end_headers(self):
         # Impedisce la cache del browser per HTML e JS
-        if not self.path.startswith('/yf') and not self.path.startswith('/ma') \
-                and not self.path.startswith('/fundamentals') and not self.path.startswith('/news') \
-                and not self.path.startswith('/weekly') and not self.path.startswith('/monthly') \
-                and not self.path.startswith('/calendar'):
+        # Consenti cache solo per route con dati frequenti; /macro-data e /sovereign-yields
+        # devono avere no-cache (NON escluderli con /ma che fa startswith match errato!)
+        _p = self.path
+        _allow_cache = (_p.startswith('/yf') or _p.startswith('/fundamentals')
+                        or _p.startswith('/news') or _p.startswith('/weekly')
+                        or _p.startswith('/monthly') or _p.startswith('/calendar')
+                        or (_p.startswith('/ma') and not _p.startswith('/macro')))
+        if not _allow_cache:
             self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate')
             self.send_header('Pragma', 'no-cache')
         super().end_headers()
@@ -1397,6 +1401,14 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json(fetch_news(sym))
         elif self.path.startswith('/calendar'):
             self._json(fetch_calendar())
+        # ATTENZIONE: /macro-data e /macro- DEVONO stare PRIMA di /ma
+        # perché '/macro-data'.startswith('/ma') == True!
+        elif self.path.startswith('/macro-data'):
+            self._json(fetch_macro_data())
+        elif self.path.startswith('/sovereign-yields'):
+            self._json(fetch_sovereign_yields())
+        elif self.path.startswith('/debug-sources'):
+            self._json(self._debug_sources())
         elif self.path.startswith('/ma'):
             parsed   = urllib.parse.urlparse(self.path)
             params   = urllib.parse.parse_qs(parsed.query)
@@ -1414,12 +1426,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json(fetch_correlation(syms, days))
         elif self.path.startswith('/news-feed'):
             self._json(fetch_aggregated_news())
-        elif self.path.startswith('/macro-data'):
-            self._json(fetch_macro_data())
-        elif self.path.startswith('/sovereign-yields'):
-            self._json(fetch_sovereign_yields())
-        elif self.path.startswith('/debug-sources'):
-            self._json(self._debug_sources())
         else:
             super().do_GET()
 
