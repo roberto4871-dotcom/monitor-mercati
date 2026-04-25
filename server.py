@@ -1830,7 +1830,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json(fetch_sovereign_yields())
         elif self.path.startswith('/debug-sources'):
             self._json(self._debug_sources())
-        elif self.path.startswith('/ma'):
+        elif self.path == '/ma' or self.path.startswith('/ma?'):
             parsed   = urllib.parse.urlparse(self.path)
             params   = urllib.parse.parse_qs(parsed.query)
             syms_raw = params.get('syms', [''])[0]
