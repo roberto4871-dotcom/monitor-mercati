@@ -779,22 +779,55 @@ def _parse_rss_source(src):
 
 
 def _stooq_fetch(sym):
-    """Scarica CSV da Stooq e restituisce {'yield', 'prev', 'chg', 'date'} o None."""
+    """Scarica CSV da Stooq — prova .com poi .pl, header auto-skip."""
+    HDRS = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+    }
+    def parse_row(row):
+        parts = row.split(',')
+        return parts[0], float(parts[4])
+
+    for domain in ['stooq.com', 'stooq.pl']:
+        try:
+            url = f'https://{domain}/q/d/l/?s={sym}&i=d'
+            req = urllib.request.Request(url, headers=HDRS)
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                text = resp.read().decode('utf-8')
+            # Salta riga header e righe senza dati
+            lines = [l for l in text.strip().split('\n')
+                     if l.strip() and not l.lower().startswith('date')
+                     and not l.startswith('No data') and ',' in l]
+            if len(lines) < 1:
+                continue
+            date, last = parse_row(lines[-1])
+            _, prev    = parse_row(lines[-2]) if len(lines) >= 2 else (date, last)
+            return {'yield': round(last, 3), 'prev': round(prev, 3),
+                    'chg': round(last - prev, 3), 'date': date}
+        except Exception:
+            continue
+    return None
+
+
+def _fred_fetch_yield(series_id):
+    """Fetch ultimo valore da FRED — dati mensili, nessun API key richiesto."""
     try:
-        url = f'https://stooq.com/q/d/l/?s={sym}&i=d'
+        url = f'https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}'
         req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=12) as resp:
             text = resp.read().decode('utf-8')
-        lines = [l for l in text.strip().split('\n') if l.strip() and not l.startswith('No data')]
+        lines = [l for l in text.strip().split('\n')
+                 if l and not l.startswith('DATE') and not l.endswith(',')]
         if len(lines) < 2:
             return None
-        def parse_row(row):
-            parts = row.split(',')
-            return parts[0], float(parts[4])  # date, close
-        date,  last = parse_row(lines[-1])
-        _,     prev = parse_row(lines[-2]) if len(lines) >= 3 else (date, last)
+        def parse(row):
+            p = row.split(',')
+            return p[0], float(p[1])
+        date, last = parse(lines[-1])
+        _, prev    = parse(lines[-2])
         return {'yield': round(last, 3), 'prev': round(prev, 3),
-                'chg': round(last - prev, 3), 'date': date}
+                'chg': round(last - prev, 3), 'date': f'{date} (FRED)'}
     except Exception:
         return None
 
@@ -826,6 +859,16 @@ def fetch_sovereign_yields():
         '30A': '30de.b',
     }
 
+    # FRED series IDs per fallback (dati mensili, nessun API key)
+    FRED_SERIES = {
+        'DE': 'IRLTLT01DEM156N',
+        'IT': 'IRLTLT01ITM156N',
+        'ES': 'IRLTLT01ESM156N',
+        'FR': 'IRLTLT01FRM156N',
+        'PT': 'IRLTLT01PTM156N',
+        'PL': 'IRLTLT01PLM156N',
+    }
+
     all_tasks = {}
     for country, info in SPREAD_BONDS.items():
         all_tasks[f'sov_{country}'] = info['sym']
@@ -845,6 +888,21 @@ def fetch_sovereign_yields():
                     raw[k] = v
             except Exception:
                 pass
+
+    # Fallback FRED per i paesi sovrani che Stooq non ha restituito
+    missing_countries = [cc for cc in SPREAD_BONDS if f'sov_{cc}' not in raw]
+    if missing_countries:
+        print(f'  [sovereign] Stooq mancante per {missing_countries}, tentativo FRED…')
+        def _fred_fallback(cc):
+            series = FRED_SERIES.get(cc)
+            if not series:
+                return cc, None
+            return cc, _fred_fetch_yield(series)
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            for cc, d in ex.map(_fred_fallback, missing_countries):
+                if d:
+                    raw[f'sov_{cc}'] = d
+                    print(f'  [sovereign] FRED OK per {cc}: {d["yield"]}%')
 
     # Spread vs Bund
     de_data = raw.get('sov_DE')
@@ -881,65 +939,58 @@ def fetch_sovereign_yields():
 
 
 def fetch_macro_data():
-    """Dati macro live: yield curve USA, VIX, DXY, spread — cache 15 min."""
+    """Dati macro live: yield curve USA, VIX, DXY — cache 15 min.
+    Fetch sequenziale (non parallelo) per evitare rate-limit Yahoo Finance."""
     with _macro_lock:
         c = _macro_cache.get('macro')
         if c and (time.time() - c['ts']) < MACRO_TTL:
             return c['data']
 
-    # Simboli da fetchare
-    YIELD_SYMS = {
-        'y3m':  '^IRX',   # 13-week T-bill ≈ 3 mesi
-        'y2y':  '^IRX',   # placeholder — 2Y non disponibile direttamente
-        'y5y':  '^FVX',   # 5-year T-note
-        'y10y': '^TNX',   # 10-year T-note
-        'y30y': '^TYX',   # 30-year T-bond
-        'vix':  '^VIX',
-        'dxy':  'DX-Y.NYB',
-        'spx':  '^GSPC',
-        'gold': 'GC=F',
-        'oil':  'CL=F',
-        'gas':  'NG=F',
-        'cu':   'HG=F',   # Copper
-    }
+    # Solo 6 simboli chiave, fetchati uno alla volta con retry
+    YIELD_SYMS = [
+        ('y3m',  '^IRX'),    # 13-week T-bill ≈ 3 mesi
+        ('y5y',  '^FVX'),    # 5-year T-note
+        ('y10y', '^TNX'),    # 10-year T-note
+        ('y30y', '^TYX'),    # 30-year T-bond
+        ('vix',  '^VIX'),
+        ('dxy',  'DX-Y.NYB'),
+    ]
 
     out = {}
-    def _fetch_one(key, sym):
-        try:
-            _yf_wait_cooldown()
-            with _yf_semaphore:
-                t    = yf.Ticker(sym)
-                hist = t.history(period='5d', interval='1d')
-            if hist.empty:
-                return key, None
-            closes = hist['Close'].dropna()
-            if len(closes) == 0:
-                return key, None
-            last = float(closes.iloc[-1])
-            prev = float(closes.iloc[-2]) if len(closes) >= 2 else last
-            return key, {
-                'v': round(last, 4),
-                'p': round(prev, 4),
-                'chg': round(last - prev, 4),
-                'pct': round((last / prev - 1) * 100, 2) if prev else 0,
-            }
-        except Exception as e:
-            return key, None
-
-    with ThreadPoolExecutor(max_workers=6) as ex:
-        futures = {ex.submit(_fetch_one, k, v): k for k, v in YIELD_SYMS.items()}
-        for fut in as_completed(futures, timeout=20):
+    for key, sym in YIELD_SYMS:
+        for attempt in range(3):
             try:
-                k, v = fut.result()
-                if v:
-                    out[k] = v
-            except Exception:
-                pass
+                _yf_wait_cooldown()
+                with _yf_semaphore:
+                    t    = yf.Ticker(sym)
+                    hist = t.history(period='5d', interval='1d')
+                if hist.empty:
+                    break
+                closes = hist['Close'].dropna()
+                if len(closes) == 0:
+                    break
+                last = float(closes.iloc[-1])
+                prev = float(closes.iloc[-2]) if len(closes) >= 2 else last
+                out[key] = {
+                    'v':   round(last, 4),
+                    'p':   round(prev, 4),
+                    'chg': round(last - prev, 4),
+                    'pct': round((last / prev - 1) * 100, 2) if prev else 0,
+                }
+                break
+            except Exception as e:
+                if is_rate_limit_error(e):
+                    wait = 2 ** attempt   # 1s, 2s, 4s
+                    print(f'  [macro] rate limit {sym}, retry {attempt+1} fra {wait}s')
+                    _yf_set_cooldown(wait + 5)
+                    time.sleep(wait)
+                else:
+                    break   # Errore non-rate-limit: salta al prossimo simbolo
 
     # 2Y non disponibile direttamente su Yahoo — stima interpolata tra 3M e 5Y
     if 'y3m' in out and 'y5y' in out:
-        y3m = out['y3m']['v']
-        y5y = out['y5y']['v']
+        y3m  = out['y3m']['v']
+        y5y  = out['y5y']['v']
         est2y = round(y3m * 0.45 + y5y * 0.55, 4)
         out['y2y'] = {'v': est2y, 'p': est2y, 'chg': 0, 'pct': 0, 'estimated': True}
 

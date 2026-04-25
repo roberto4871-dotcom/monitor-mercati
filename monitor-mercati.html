@@ -513,6 +513,16 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
 .cal-countdown.soon{color:#ef5350}
 .cal-countdown.near{color:#ff9800}
 .cal-countdown.far{color:var(--text3)}
+.cal-item{cursor:pointer;flex-wrap:wrap}
+.cal-expand-btn{font-size:10px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0 3px;flex-shrink:0;transition:transform .2s;line-height:1}
+.cal-expand-btn.open{transform:rotate(90deg)}
+.cal-detail{display:none;width:100%;padding:8px 10px;margin-top:6px;background:var(--bg2);border-radius:6px;border:1px solid var(--border);animation:fadeIn .15s ease}
+.cal-detail.open{display:block}
+.cal-detail-title{font-size:11px;font-weight:700;color:var(--accent);margin-bottom:5px}
+.cal-detail-desc{font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:6px}
+.cal-detail-watch{font-size:10px;color:var(--text3);padding-left:14px;margin:0 0 5px}
+.cal-detail-watch li{padding:1px 0}
+.cal-detail-time{font-size:10px;color:var(--text3);font-style:italic;padding-top:3px;border-top:1px solid var(--border)}
 /* Macro data panels */
 .md-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .md-item{display:flex;flex-direction:column;gap:2px;padding:6px 8px;background:var(--bg3);border-radius:6px}
@@ -1069,8 +1079,8 @@ body.light .md-item,.body.light .cal-item,.body.light .strip-card{background:var
 
     </div><!-- /row1 -->
 
-    <!-- Row 2: Inflazione | Crescita & Lavoro | PMI | Risk Gauge -->
-    <div class="macro-row macro-row-4">
+    <!-- Row 2: Inflazione | Crescita & Lavoro | PMI & Fiducia (3 colonne) -->
+    <div class="macro-row macro-row-3">
 
       <!-- Inflazione -->
       <div class="macro-panel">
@@ -1086,32 +1096,18 @@ body.light .md-item,.body.light .cal-item,.body.light .strip-card{background:var
         <div class="md-grid" id="macro-gdp-body"></div>
       </div>
 
-      <!-- PMI / ISM -->
+      <!-- PMI / ISM + Fiducia Consumatori -->
       <div class="macro-panel">
-        <div class="macro-panel-title"><span>🏭</span>PMI & ISM</div>
+        <div class="macro-panel-title"><span>🏭</span>PMI, ISM & FIDUCIA CONSUMATORI</div>
         <div class="md-grid" id="macro-pmi-body"></div>
-      </div>
-
-      <!-- Risk Gauge -->
-      <div class="macro-panel">
-        <div class="macro-panel-title"><span>⚡</span>GAUGE DI RISCHIO</div>
-        <div class="gauge-wrap" id="macro-gauge-body">
-          <div class="nf-empty" style="padding:10px;font-size:12px">Caricamento…</div>
-        </div>
       </div>
 
     </div><!-- /row2 -->
 
-    <!-- Row 3: Commodities & FX live strip -->
-    <div class="macro-panel" style="min-height:auto">
-      <div class="macro-panel-title"><span>🛢</span>COMMODITIES & FX — Dati Live</div>
-      <div class="macro-strip" id="macro-strip"></div>
-    </div>
-
-    <!-- Row 4: Spread Sovrani (full width) + note -->
+    <!-- Row 3: Spread Sovrani (full width) + note -->
     <div class="macro-panel" style="min-height:auto">
       <div class="macro-panel-title">
-        <span>📐</span>SPREAD SOVRANI vs BUND — Rendimenti 10 anni (live · fonte: Stooq)
+        <span>📐</span>SPREAD SOVRANI vs BUND — Rendimenti 10 anni (live · Stooq / FRED fallback)
         <span id="sov-lastupd" style="font-size:9px;color:var(--text3);font-weight:400;margin-left:10px;text-transform:none;letter-spacing:0"></span>
       </div>
       <div id="macro-spread-body" style="overflow-x:auto"></div>
@@ -1122,10 +1118,10 @@ body.light .md-item,.body.light .cal-item,.body.light .strip-card{background:var
         <p>• <b style="color:var(--accent)">Curva Treasury USA</b>: live Yahoo Finance. 2A stimato (interp. 3M-5A).</p>
         <p>• <b style="color:var(--accent)">Curva Bund EU</b>: live Stooq (2A/5A/10A/30A emissioni tedesche).</p>
         <p>• <b style="color:var(--accent)">Inversione</b>: 10A &lt; 3M/2A = segnale storico di recessione imminente.</p>
-        <p>• <b style="color:var(--accent)">Spread Sovrani</b>: differenziale in basis points vs Bund 10A (fonte Stooq, cache 30 min).</p>
-        <p>• <b style="color:var(--accent)">Gauge Rischio</b>: score composito da VIX + curva + DXY + oro.</p>
+        <p>• <b style="color:var(--accent)">Spread Sovrani</b>: differenziale vs Bund 10A in bp — dati live Stooq; fallback FRED (dati mensili) se Stooq non disponibile.</p>
         <p>• <b style="color:var(--accent)">Tassi Banche Centrali</b>: aggiornati manualmente dopo le riunioni.</p>
-        <p>• <b style="color:var(--accent)">CPI/GDP/PMI</b>: ultime letture ufficiali, aggiornate mensilmente.</p>
+        <p>• <b style="color:var(--accent)">CPI/GDP/PMI/Fiducia</b>: ultime letture ufficiali, aggiornate mensilmente.</p>
+        <p>• <b style="color:var(--accent)">Calendario</b>: clicca su ogni evento per approfondimenti e cosa monitorare.</p>
         <p style="color:var(--text3);font-size:10px">Dati a scopo informativo — non costituiscono consulenza finanziaria.</p>
       </div>
     </div>
@@ -6098,6 +6094,67 @@ function pmiDate(year, month) {
   return d.toISOString().slice(0, 10);
 }
 
+// ── Dettagli approfondimento eventi calendario ────────────────
+const CAL_DETAIL_MAP = {
+  fed: {
+    title: 'Riunione FOMC — Federal Reserve (USA)',
+    desc:  'Il Federal Open Market Committee (12 membri) decide il tasso sui Fed Funds, il tasso di riferimento USA. Evento ad altissimo impatto su dollaro, Treasury, mercati azionari e oro.',
+    watch: ['Decisione tassi (hold / +25 / −25 bps)', 'Dot plot — proiezioni tassi future dei membri', 'Comunicato FOMC: tone hawkish vs dovish', 'Conferenza stampa del Presidente Powell', 'Revisioni proiezioni GDP, inflazione, disoccupazione'],
+    timing: 'Due giorni (martedì–mercoledì). Comunicato ore 20:00 CET, conferenza stampa 20:30 CET.',
+  },
+  ecb: {
+    title: 'Riunione BCE — Banca Centrale Europea',
+    desc:  'Il Consiglio Direttivo BCE (26 membri) decide i tassi per l\'area euro: tasso sui depositi, tasso refi e marginal lending. Impatto diretto su EUR/USD, BTP, Bund e spread sovrani.',
+    watch: ['Decisione tassi di deposito', 'Comunicato e nuove proiezioni macro BCE', 'Conferenza stampa Presidente Lagarde', 'Forward guidance su prossimi movimenti', 'Aggiornamenti APP/PEPP (acquisto titoli)'],
+    timing: 'Comunicato ore 14:15 CET, conferenza stampa ore 14:45 CET.',
+  },
+  boj: {
+    title: 'Riunione Bank of Japan (BoJ)',
+    desc:  'Il Policy Board della BoJ (9 membri) decide tassi e politica monetaria per il Giappone, incluso il Yield Curve Control (YCC) sui JGB. Impatto forte su JPY e carry trade globale.',
+    watch: ['Decisione tassi (attualmente ~0.5%)', 'Modifiche YCC (target sui JGB 10 anni)', 'Proiezioni inflazione e crescita', 'Dichiarazioni Governatore Ueda', 'Segnali su prossime normalizzazioni'],
+    timing: 'Comunicato in orario asiatico (ore 03:00–06:00 CET circa).',
+  },
+  boe: {
+    title: 'Riunione MPC — Bank of England',
+    desc:  'Il Monetary Policy Committee (9 membri) della BoE decide il Bank Rate UK. Pubblica anche il Monetary Policy Report (MPR) trimestrale con proiezioni dettagliate. Impatto su GBP e Gilt.',
+    watch: ['Decisione tassi e voti (quanti favorevoli vs contrari)', 'Inflation Report / MPR trimestrale', 'Proiezioni GDP e inflazione a 2 anni', 'Forward guidance su traiettoria tassi', 'QT (quantitative tightening) aggiornamenti'],
+    timing: 'Comunicato e verbale ore 13:00 CET.',
+  },
+  NFP: {
+    title: 'Non-Farm Payrolls — Occupazione USA',
+    desc:  'Il dato più seguito al mondo: variazione mensile dei lavoratori non agricoli USA. Riflette la salute del mercato del lavoro e condiziona le decisioni Fed. Un mercato del lavoro forte = meno tagli.',
+    watch: ['Variazione netta posti di lavoro (vs stima)', 'Tasso di disoccupazione (U3)', 'Salario orario medio MoM e YoY (proxy inflazione)', 'Partecipazione alla forza lavoro', 'Revisioni mesi precedenti (spesso significative)'],
+    timing: 'Primo venerdì di ogni mese, ore 14:30 CET.',
+  },
+  CPI: {
+    title: 'CPI USA — Consumer Price Index (Inflazione)',
+    desc:  'L\'indice dei prezzi al consumo USA è il dato di inflazione più seguito dalla Fed (insieme al PCE). Misura la variazione dei prezzi di un paniere di beni e servizi. Impatto enorme su aspettative tassi.',
+    watch: ['CPI Headline YoY e MoM', 'CPI Core (escl. energia e cibo) — target Fed implicito', 'Componente shelter/affitti (peso ~36%)', 'Energia e cibo (volatili)', 'Differenza vs stima consenso'],
+    timing: '~10° giorno del mese, ore 14:30 CET.',
+  },
+  PMI: {
+    title: 'PMI Flash S&P Global — Indice Direttori Acquisti',
+    desc:  'Sondaggio mensile di oltre 400 direttori acquisti. Anticipa la direzione dell\'economia con 1-2 mesi di anticipo sul PIL. PMI > 50 = espansione, PMI < 50 = contrazione.',
+    watch: ['PMI Manifatturiero USA e Eurozona (vs 50)', 'PMI Servizi (peso maggiore nell\'economia moderna)', 'PMI Composito (media ponderata)', 'Sottoindici: ordini nuovi, prezzi pagati, occupazione', 'Confronto dati flash vs mese precedente'],
+    timing: '3° giovedì del mese (flash). Dati definitivi nei primi giorni del mese successivo.',
+  },
+};
+
+function calDetailKey(ev) {
+  if (ev.type !== 'data') return ev.type;
+  if (ev.label.includes('NFP')) return 'NFP';
+  if (ev.label.includes('CPI')) return 'CPI';
+  if (ev.label.includes('PMI')) return 'PMI';
+  return null;
+}
+
+function calToggleDetail(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle('open');
+  btn.classList.toggle('open');
+}
+
 function buildCalendar() {
   const now   = new Date();
   const today = now.toISOString().slice(0, 10);
@@ -6157,12 +6214,19 @@ const MACRO_STATIC = {
     { flag:'🇮🇹', name:'Disoccup. IT',  value:5.9, period:'Feb 2025', unit:'%' },
   ],
   pmi: [
-    { name:'ISM Manifatt. USA',   value:50.2, period:'Mar 2025', expand: 50 },
-    { name:'ISM Servizi USA',     value:54.4, period:'Mar 2025', expand: 50 },
+    { name:'ISM Manifatt. USA',   value:49.0, period:'Mar 2025', expand: 50 },
+    { name:'ISM Servizi USA',     value:50.8, period:'Mar 2025', expand: 50 },
     { name:'PMI Manifatt. EUR',   value:47.6, period:'Mar 2025', expand: 50 },
     { name:'PMI Servizi EUR',     value:51.0, period:'Mar 2025', expand: 50 },
     { name:'PMI Manifatt. IT',    value:48.1, period:'Mar 2025', expand: 50 },
     { name:'PMI Servizi IT',      value:53.2, period:'Mar 2025', expand: 50 },
+  ],
+  confidence: [
+    { flag:'🇺🇸', name:'Conf. Board USA',    value: 92.9, neutral:100, period:'Mar 2025', note:'100=neutro' },
+    { flag:'🇺🇸', name:'Univ. Michigan USA', value: 57.0, neutral: 70, period:'Mar 2025', note:'100=max' },
+    { flag:'🇩🇪', name:'GfK Germania',       value:-24.5, neutral:  0, period:'Apr 2025', note:'0=neutro' },
+    { flag:'🇮🇹', name:'ISTAT Italia',       value: 96.0, neutral:100, period:'Mar 2025', note:'100=neutro' },
+    { flag:'🇪🇺', name:'ESI Eurozona',       value: 95.6, neutral:100, period:'Mar 2025', note:'100=neutro' },
   ],
 };
 
@@ -6213,8 +6277,6 @@ function renderMacro() {
   renderMacroCPI();
   renderMacroGDP();
   renderMacroPMI();
-  renderMacroGauge();
-  renderMacroStrip();
   renderMacroSpread();
   renderMacroBundCurve();
 }
@@ -6304,14 +6366,33 @@ function renderMacroYieldCurve() {
 // ── Calendario ───────────────────────────────────────────────
 function renderMacroCalendar() {
   const events = buildCalendar();
-  document.getElementById('macro-cal-list').innerHTML = events.map(ev => {
-    const cd    = calCountdown(ev.date);
-    const dStr  = new Date(ev.date + 'T12:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'});
-    return `<div class="cal-item">
+  document.getElementById('macro-cal-list').innerHTML = events.map((ev, idx) => {
+    const cd      = calCountdown(ev.date);
+    const dStr    = new Date(ev.date + 'T12:00:00').toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'});
+    const detKey  = calDetailKey(ev);
+    const detail  = detKey ? CAL_DETAIL_MAP[detKey] : null;
+    const did     = `cal-det-${idx}`;
+
+    const expandBtn = detail
+      ? `<button class="cal-expand-btn" onclick="event.stopPropagation();calToggleDetail('${did}',this)" title="Approfondimento">▸</button>`
+      : '';
+
+    const detailHtml = detail ? `
+      <div class="cal-detail" id="${did}">
+        <div class="cal-detail-title">ℹ️ ${detail.title}</div>
+        <div class="cal-detail-desc">${detail.desc}</div>
+        <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Cosa monitorare</div>
+        <ul class="cal-detail-watch">${detail.watch.map(w => `<li>${w}</li>`).join('')}</ul>
+        <div class="cal-detail-time">⏰ ${detail.timing}</div>
+      </div>` : '';
+
+    return `<div class="cal-item" onclick="${detail ? `calToggleDetail('${did}',this.querySelector('.cal-expand-btn'))` : ''}">
       <div class="cal-dot ${ev.type}"></div>
       <div class="cal-event">${ev.label}</div>
       <div class="cal-date">${dStr}</div>
       <div class="cal-countdown ${cd.cls}">${cd.text}</div>
+      ${expandBtn}
+      ${detailHtml}
     </div>`;
   }).join('') || '<div class="nf-empty" style="padding:20px">Nessun evento imminente</div>';
 }
@@ -6363,9 +6444,9 @@ function renderMacroGDP() {
   }).join('');
 }
 
-// ── PMI ───────────────────────────────────────────────────────
+// ── PMI & Fiducia Consumatori ─────────────────────────────────
 function renderMacroPMI() {
-  document.getElementById('macro-pmi-body').innerHTML = MACRO_STATIC.pmi.map(r => {
+  const pmiHtml = MACRO_STATIC.pmi.map(r => {
     const exp   = r.value > r.expand;
     const cls   = exp ? 'pos' : 'neg';
     const clrBg = exp ? 'rgba(76,175,80,.08)' : 'rgba(239,83,80,.08)';
@@ -6375,6 +6456,28 @@ function renderMacroPMI() {
       <div class="md-sub">${r.period} · ${exp?'Espansione':'Contrazione'}</div>
     </div>`;
   }).join('');
+
+  const confHtml = MACRO_STATIC.confidence.map(r => {
+    const aboveNeutral = r.value > r.neutral;
+    // For GfK (neutral=0) negative values are bad, positive good
+    const isGood = r.neutral === 0 ? r.value > r.neutral : r.value >= r.neutral * 0.97;
+    const clr    = isGood ? '#4caf50' : r.value < r.neutral * 0.90 ? '#ef5350' : '#ff9800';
+    const clrBg  = isGood ? 'rgba(76,175,80,.08)' : 'rgba(239,83,80,.06)';
+    const valFmt = r.neutral === 0
+      ? (r.value >= 0 ? '+' : '') + r.value.toFixed(1)
+      : r.value.toFixed(1);
+    return `<div class="md-item" style="background:${clrBg}">
+      <div class="md-label" style="font-size:9px">${r.flag} ${r.name}</div>
+      <div class="md-value" style="color:${clr}">${valFmt}</div>
+      <div class="md-sub">${r.period} · ${r.note}</div>
+    </div>`;
+  }).join('');
+
+  // Separatore tra PMI e Fiducia
+  document.getElementById('macro-pmi-body').innerHTML =
+    pmiHtml +
+    `<div style="grid-column:1/-1;font-size:9px;font-weight:800;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;padding:4px 0 2px;border-top:1px solid var(--border)">📊 Fiducia Consumatori</div>` +
+    confHtml;
 }
 
 // ── Risk Gauge ────────────────────────────────────────────────
