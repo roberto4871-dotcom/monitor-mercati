@@ -530,56 +530,12 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
 .cal-detail-watch li{padding:1px 0}
 .cal-detail-time{font-size:10px;color:var(--text3);font-style:italic;padding-top:3px;border-top:1px solid var(--border)}
 /* Macro data panels */
-.md-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.md-item{display:flex;flex-direction:column;gap:2px;padding:6px 8px;background:var(--bg3);border-radius:6px}
-.md-label{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
-.md-value{font-size:17px;font-weight:800;color:var(--text)}
-.md-sub{font-size:10px;color:var(--text3)}
 .md-chg{font-size:11px;font-weight:700}
 .md-chg.pos{color:#4caf50}.md-chg.neg{color:#ef5350}.md-chg.neu{color:var(--text3)}
-/* Risk gauge */
-.gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;justify-content:center}
-.gauge-arc{position:relative;width:140px;height:75px;overflow:hidden}
-.gauge-arc svg{width:140px;height:75px}
-.gauge-score{font-size:32px;font-weight:900;text-align:center;line-height:1}
-.gauge-label{font-size:12px;font-weight:700;text-align:center;padding:3px 14px;border-radius:8px}
-.gauge-items{display:grid;grid-template-columns:1fr 1fr;gap:5px;width:100%;margin-top:4px}
-.gauge-item{display:flex;align-items:center;justify-content:space-between;padding:3px 6px;background:var(--bg3);border-radius:5px;font-size:10px}
-.gauge-item-label{color:var(--text3)}
-.gauge-item-val{font-weight:700}
-/* Commodities & FX strip */
-.macro-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
-.strip-card{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:2px}
-.strip-name{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
-.strip-val{font-size:16px;font-weight:800;color:var(--text)}
-.strip-chg{font-size:12px;font-weight:700}
-.strip-chg.pos{color:#4caf50}.strip-chg.neg{color:#ef5350}.strip-chg.neu{color:var(--text3)}
-/* Inflation table */
-.infl-table{width:100%;border-collapse:collapse;font-size:12px}
-.infl-table th{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;padding:3px 6px;text-align:left;border-bottom:1px solid var(--border)}
-.infl-table td{padding:5px 6px;border-bottom:1px solid rgba(30,45,69,.4)}
-.infl-table tr:last-child td{border-bottom:none}
-.infl-table .flag{font-size:14px}
-.infl-bar{height:5px;border-radius:3px;margin-top:2px}
 .macro-refresh-bar{display:flex;align-items:center;gap:10px;padding:6px 0 2px;flex-shrink:0}
 .macro-refresh-bar span{font-size:10px;color:var(--text3)}
 body.light .macro-panel{background:var(--bg2);border-color:var(--border)}
-body.light .md-item,.body.light .cal-item,.body.light .strip-card{background:var(--bg3)}
-/* Spread sovrani */
-.sov-table{width:100%;border-collapse:collapse;font-size:12px}
-.sov-table th{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;padding:3px 8px;border-bottom:1px solid var(--border);text-align:left}
-.sov-table th.r{text-align:right}
-.sov-table td{padding:6px 8px;border-bottom:1px solid rgba(30,45,69,.35)}
-.sov-table tr:last-child td{border-bottom:none}
-.sov-table tr:hover td{background:rgba(255,215,0,.03)}
-.sov-flag{font-size:15px}
-.sov-name{font-size:12px;font-weight:600;color:var(--text)}
-.sov-yield{font-size:14px;font-weight:800;text-align:right}
-.sov-chg{font-size:11px;font-weight:700;text-align:right}
-.sov-spread{font-size:13px;font-weight:800;text-align:right;white-space:nowrap}
-.sov-bar-wrap{display:flex;align-items:center;gap:6px}
-.sov-bar{height:6px;border-radius:3px;min-width:2px;transition:width .4s}
-.sov-badge{font-size:9px;font-weight:800;padding:1px 5px;border-radius:5px;white-space:nowrap}
+body.light .cal-item{background:var(--bg3)}
 /* Dual yield curve */
 </style>
 </head>
@@ -1070,40 +1026,12 @@ body.light .md-item,.body.light .cal-item,.body.light .strip-card{background:var
 
     </div><!-- /row1 -->
 
-    <!-- Row 2: Inflazione | Crescita & Lavoro | PMI & Fiducia (3 colonne) -->
-    <div class="macro-row macro-row-3">
-
-      <!-- Inflazione -->
-      <div class="macro-panel">
-        <div class="macro-panel-title"><span>🌡</span>INFLAZIONE (CPI YoY)</div>
-        <div style="flex:1;overflow-y:auto">
-          <table class="infl-table" id="macro-cpi-table"></table>
-        </div>
-      </div>
-
-      <!-- Crescita & Occupazione -->
-      <div class="macro-panel">
-        <div class="macro-panel-title"><span>📊</span>CRESCITA & OCCUPAZIONE</div>
-        <div class="md-grid" id="macro-gdp-body"></div>
-      </div>
-
-      <!-- PMI / ISM + Fiducia Consumatori -->
-      <div class="macro-panel">
-        <div class="macro-panel-title"><span>🏭</span>PMI, ISM & FIDUCIA CONSUMATORI</div>
-        <div class="md-grid" id="macro-pmi-body"></div>
-      </div>
-
-    </div><!-- /row2 -->
-
     <div class="macro-panel" style="min-height:auto">
       <div class="macro-panel-title"><span>ℹ️</span>NOTE & LEGGENDA</div>
       <div style="font-size:12px;color:var(--text2);line-height:1.7;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px 24px">
         <p>• <b style="color:var(--accent)">Rendimenti USA</b>: live Yahoo Finance (^IRX/^FVX/^TNX/^TYX). 2A = interp. 3M-5A.</p>
-        <p>• <b style="color:var(--accent)">Rendimenti EU</b>: Germania live via ECB YC (curva AAA). IT/FR/ES = DE + spread storico.</p>
-        <p>• <b style="color:var(--accent)">Rendimenti UK/Giappone</b>: riferimento statico Apr 2025 (API non raggiungibili da Railway).</p>
-        <p>• <b style="color:var(--accent)">Tassi Banche Centrali</b>: aggiornati manualmente dopo le riunioni.</p>
-        <p>• <b style="color:var(--accent)">ISM USA</b>: ¹ pubblica inizio mese — Apr 2025 disponibile da maggio.</p>
-        <p>• <b style="color:var(--accent)">Conf. Board USA</b>: ² Apr 2025 pubblicato il 29 aprile. PMI flash = S&P Global (22 apr).</p>
+        <p>• <b style="color:var(--accent)">Rendimenti EU</b>: Germania live via ECB AAA Yield Curve. IT/FR/ES = DE + spread medio.</p>
+        <p>• <b style="color:var(--accent)">Tassi Banche Centrali</b>: valori corretti al meeting più recente — cambiano 4-8×/anno.</p>
         <p>• <b style="color:var(--accent)">Calendario</b>: clicca su ogni evento per approfondimenti e cosa monitorare.</p>
         <p style="color:var(--text3);font-size:10px">Dati a scopo informativo — non costituiscono consulenza finanziaria.</p>
       </div>
@@ -6174,62 +6102,6 @@ function calCountdown(dateStr) {
 }
 
 // ── Dati macro fondamentali (aggiornati alle ultime letture) ─
-const MACRO_STATIC = {
-  cpi: [
-    { flag:'🇺🇸', name:'USA',      value:2.4, prev:2.8, period:'Mar 2025', target:2.0 },
-    { flag:'🇪🇺', name:'Eurozona', value:2.2, prev:2.3, period:'Mar 2025', target:2.0 },
-    { flag:'🇮🇹', name:'Italia',   value:2.1, prev:1.8, period:'Mar 2025', target:2.0 },
-    { flag:'🇬🇧', name:'UK',       value:2.6, prev:2.8, period:'Mar 2025', target:2.0 },
-    { flag:'🇯🇵', name:'Giappone', value:3.6, prev:3.7, period:'Mar 2025', target:2.0 },
-    { flag:'🇨🇳', name:'Cina',     value:0.1, prev:0.5, period:'Mar 2025', target:3.0 },
-  ],
-  gdp: [
-    { flag:'🇺🇸', name:'PIL USA',      value:2.4, period:'Q4 2024', unit:'%' },
-    { flag:'🇪🇺', name:'PIL Eurozona', value:1.2, period:'Q4 2024', unit:'%' },
-    { flag:'🇮🇹', name:'PIL Italia',   value:0.7, period:'Q4 2024', unit:'%' },
-    { flag:'🇨🇳', name:'PIL Cina',     value:5.0, period:'Q4 2024', unit:'%' },
-    { flag:'🇬🇧', name:'PIL UK',       value:1.4, period:'Q4 2024', unit:'%' },
-    { flag:'🇯🇵', name:'PIL Giappone', value:1.1, period:'Q4 2024', unit:'%' },
-  ],
-  unemployment: [
-    { flag:'🇺🇸', name:'Disoccup. USA', value:4.2, period:'Mar 2025', unit:'%' },
-    { flag:'🇪🇺', name:'Disoccup. EUR', value:6.1, period:'Feb 2025', unit:'%' },
-    { flag:'🇮🇹', name:'Disoccup. IT',  value:5.9, period:'Feb 2025', unit:'%' },
-  ],
-  pmi: [
-    { name:'ISM Manifatt. USA',   value:49.0, period:'Mar 2025 ¹', expand: 50 },
-    { name:'ISM Servizi USA',     value:50.8, period:'Mar 2025 ¹', expand: 50 },
-    { name:'PMI Manifatt. EUR',   value:48.7, period:'Apr 2025 flash', expand: 50 },
-    { name:'PMI Servizi EUR',     value:49.5, period:'Apr 2025 flash', expand: 50 },
-    { name:'PMI Manifatt. IT',    value:49.3, period:'Apr 2025 flash', expand: 50 },
-    { name:'PMI Servizi IT',      value:52.0, period:'Apr 2025 flash', expand: 50 },
-  ],
-  confidence: [
-    { flag:'🇺🇸', name:'Conf. Board USA',    value: 92.9, neutral:100, period:'Mar 2025 ²', note:'100=neutro' },
-    { flag:'🇺🇸', name:'Univ. Michigan USA', value: 50.8, neutral: 70, period:'Apr 2025 prel.', note:'100=max' },
-    { flag:'🇩🇪', name:'GfK Germania',       value:-24.5, neutral:  0, period:'Apr 2025', note:'0=neutro' },
-    { flag:'🇮🇹', name:'ISTAT Italia',       value: 96.0, neutral:100, period:'Mar 2025', note:'100=neutro' },
-    { flag:'🇪🇺', name:'ESI Eurozona',       value: 95.6, neutral:100, period:'Mar 2025', note:'100=neutro' },
-  ],
-};
-
-// Simboli live da rows[] per la strip in fondo
-const MACRO_STRIP_SYMS = [
-  { s:'GC=F',     label:'Gold',      unit:'$/oz' },
-  { s:'CL=F',     label:'Oil WTI',   unit:'$/bbl' },
-  { s:'NG=F',     label:'Gas Nat.',   unit:'$/MMBtu' },
-  { s:'HG=F',     label:'Rame',      unit:'$/lb' },
-  { s:'ZW=F',     label:'Grano',     unit:'$/bu' },
-  { s:'BTC-USD',  label:'Bitcoin',   unit:'USD' },
-  { s:'EURUSD=X', label:'EUR/USD',   unit:'' },
-  { s:'GBPUSD=X', label:'GBP/USD',   unit:'' },
-  { s:'USDJPY=X', label:'USD/JPY',   unit:'' },
-  { s:'USDCHF=X', label:'USD/CHF',   unit:'' },
-  { s:'^VIX',     label:'VIX',       unit:'' },
-  { s:'^GSPC',    label:'S&P 500',   unit:'' },
-  { s:'^STOXX50E',label:'Euro Stoxx',unit:'' },
-  { s:'FTSEMIB.MI',label:'FTSE MIB', unit:'' },
-];
 
 let _globalYields = null;
 let _macroLoaded  = false;
@@ -6252,9 +6124,6 @@ function renderMacro() {
   renderMacroCB();
   renderGlobalYields();
   renderMacroCalendar();
-  renderMacroCPI();
-  renderMacroGDP();
-  renderMacroPMI();
 }
 
 // ── Banche Centrali ──────────────────────────────────────────
@@ -6314,7 +6183,7 @@ function renderGlobalYields() {
   }
 
   const MATS  = ['3M','2Y','5Y','10Y','30Y'];
-  const ORDER = ['US','DE','IT','FR','ES','GB','JP'];
+  const ORDER = ['US','DE','IT','FR','ES'];
   const C     = data.countries;
 
   const srcLabel = (src) => {
@@ -6352,8 +6221,7 @@ function renderGlobalYields() {
     </table>
     <div style="margin-top:8px;display:flex;gap:16px;flex-wrap:wrap;font-size:10px;color:var(--text3);padding:0 2px">
       <span style="color:#66bb6a">● live</span>
-      <span style="color:#64b5f6">≈ derivato da curva ECB AAA + spread storico</span>
-      <span>⚠ riferimento statico Apr 2025</span>
+      <span style="color:#64b5f6">≈ derivato da curva ECB AAA + spread medio</span>
       <span style="margin-left:auto">2A USA = interpolato 3M/5A</span>
     </div>`;
 }
@@ -6393,112 +6261,6 @@ function renderMacroCalendar() {
 }
 
 // ── CPI ───────────────────────────────────────────────────────
-function renderMacroCPI() {
-  const rows = MACRO_STATIC.cpi;
-  const maxV = Math.max(...rows.map(r => r.value));
-  document.getElementById('macro-cpi-table').innerHTML = `
-    <thead><tr>
-      <th></th><th>Paese</th><th style="text-align:right">CPI</th>
-      <th style="text-align:right">Prec.</th><th style="text-align:right">Target</th>
-      <th style="min-width:80px">Trend</th>
-    </tr></thead>
-    <tbody>${rows.map(r => {
-      const diff  = r.value - r.prev;
-      const cls   = diff > 0 ? 'neg' : diff < 0 ? 'pos' : 'neu'; // inversione: più inflazione = male
-      const sign  = diff > 0 ? '+' : '';
-      const barW  = Math.round((r.value / maxV) * 100);
-      const aboveTarget = r.value > r.target;
-      const barClr = aboveTarget ? '#ef5350' : '#4caf50';
-      return `<tr>
-        <td class="flag">${r.flag}</td>
-        <td style="font-weight:600;color:var(--text)">${r.name}</td>
-        <td style="text-align:right;font-size:14px;font-weight:800;color:${aboveTarget?'#ef5350':'#4caf50'}">${r.value.toFixed(1)}%</td>
-        <td style="text-align:right;font-size:11px;color:var(--text3)">${r.prev.toFixed(1)}%</td>
-        <td style="text-align:right;font-size:10px;color:var(--text3)">${r.target.toFixed(1)}%</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:5px">
-            <div class="infl-bar" style="width:${barW}%;background:${barClr}"></div>
-            <span class="md-chg ${cls}" style="font-size:10px">${sign}${diff.toFixed(1)}</span>
-          </div>
-        </td>
-      </tr>`;
-    }).join('')}</tbody>`;
-}
-
-// ── GDP & Occupazione ─────────────────────────────────────────
-function renderMacroGDP() {
-  const all = [...MACRO_STATIC.gdp, ...MACRO_STATIC.unemployment];
-  document.getElementById('macro-gdp-body').innerHTML = all.map(r => {
-    const cls = r.value > 0 ? 'pos' : r.value < 0 ? 'neg' : 'neu';
-    const sign = r.value > 0 ? '+' : '';
-    return `<div class="md-item">
-      <div class="md-label">${r.flag} ${r.name}</div>
-      <div class="md-value" style="font-size:16px">${sign}${r.value.toFixed(1)}${r.unit||'%'}</div>
-      <div class="md-sub">${r.period}</div>
-    </div>`;
-  }).join('');
-}
-
-// ── PMI & Fiducia Consumatori ─────────────────────────────────
-function renderMacroPMI() {
-  const pmiHtml = MACRO_STATIC.pmi.map(r => {
-    const exp   = r.value > r.expand;
-    const cls   = exp ? 'pos' : 'neg';
-    const clrBg = exp ? 'rgba(76,175,80,.08)' : 'rgba(239,83,80,.08)';
-    return `<div class="md-item" style="background:${clrBg}">
-      <div class="md-label" style="font-size:9px">${r.name}</div>
-      <div class="md-value" style="color:${exp?'#4caf50':'#ef5350'}">${r.value.toFixed(1)}</div>
-      <div class="md-sub">${r.period} · ${exp?'Espansione':'Contrazione'}</div>
-    </div>`;
-  }).join('');
-
-  const confHtml = MACRO_STATIC.confidence.map(r => {
-    const aboveNeutral = r.value > r.neutral;
-    // For GfK (neutral=0) negative values are bad, positive good
-    const isGood = r.neutral === 0 ? r.value > r.neutral : r.value >= r.neutral * 0.97;
-    const clr    = isGood ? '#4caf50' : r.value < r.neutral * 0.90 ? '#ef5350' : '#ff9800';
-    const clrBg  = isGood ? 'rgba(76,175,80,.08)' : 'rgba(239,83,80,.06)';
-    const valFmt = r.neutral === 0
-      ? (r.value >= 0 ? '+' : '') + r.value.toFixed(1)
-      : r.value.toFixed(1);
-    return `<div class="md-item" style="background:${clrBg}">
-      <div class="md-label" style="font-size:9px">${r.flag} ${r.name}</div>
-      <div class="md-value" style="color:${clr}">${valFmt}</div>
-      <div class="md-sub">${r.period} · ${r.note}</div>
-    </div>`;
-  }).join('');
-
-  // Separatore tra PMI e Fiducia
-  document.getElementById('macro-pmi-body').innerHTML =
-    pmiHtml +
-    `<div style="grid-column:1/-1;font-size:9px;font-weight:800;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;padding:4px 0 2px;border-top:1px solid var(--border)">📊 Fiducia Consumatori</div>` +
-    confHtml;
-}
-
-
-// ── Commodities & FX Strip ────────────────────────────────────
-function renderMacroStrip() {
-  const el = document.getElementById('macro-strip');
-  const cards = MACRO_STRIP_SYMS.map(item => {
-    const idx = INSTRUMENTS.findIndex(i => i.s === item.s);
-    if (idx < 0) return null;
-    const r = rows[idx];
-    if (!r || r._loading || !r.valore) return null;
-    const v    = r.valore;
-    const chg  = r.varAtt ?? 0;
-    const cls  = chg > 0 ? 'pos' : chg < 0 ? 'neg' : 'neu';
-    const sign = chg > 0 ? '+' : '';
-    const fmt  = v >= 10000 ? v.toLocaleString('it-IT',{maximumFractionDigits:0})
-               : v >= 100   ? v.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2})
-               : v.toFixed(4);
-    return `<div class="strip-card">
-      <div class="strip-name">${item.label}</div>
-      <div class="strip-val">${fmt}${item.unit ? ' <span style="font-size:9px;color:var(--text3)">${item.unit}</span>' : ''}</div>
-      <div class="strip-chg ${cls}">${sign}${chg.toFixed(2)}%</div>
-    </div>`;
-  }).filter(Boolean);
-  el.innerHTML = cards.length ? cards.join('') : '<div class="nf-empty" style="padding:16px;font-size:12px">Caricamento dati live…</div>';
-}
 
 // ── Trigger caricamento quando si apre il tab ─────────────────
 // (aggiunto nel tab-click handler già esistente)
