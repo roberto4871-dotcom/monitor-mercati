@@ -482,6 +482,20 @@ body.light .nf-src{background:#e8edf5;border-color:var(--border)}
 .macro-panel{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-height:160px}
 .macro-panel-title{font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--text3);padding-bottom:6px;border-bottom:1px solid var(--border);flex-shrink:0}
 .macro-panel-title span{margin-right:6px}
+/* Macro live: inflazione & tassi */
+.ml-table{width:100%;border-collapse:collapse;font-size:12px}
+.ml-table tr{border-bottom:1px solid rgba(255,255,255,.04)}
+.ml-table tr:last-child{border-bottom:none}
+.ml-table td{padding:5px 6px;vertical-align:middle}
+.ml-flag{font-size:14px;line-height:1}
+.ml-name{font-size:11px;color:var(--text2);white-space:nowrap}
+.ml-label{font-size:9px;color:var(--text3);margin-top:1px}
+.ml-val{font-size:15px;font-weight:800;text-align:right;white-space:nowrap}
+.ml-val.pos{color:#ef9a9a}
+.ml-val.neg{color:#66bb6a}
+.ml-val.neu{color:var(--text)}
+.ml-date{font-size:9px;color:var(--text3);text-align:right;white-space:nowrap}
+.ml-src{font-size:9px;color:#66bb6a;text-align:right;white-space:nowrap}
 /* CB panel */
 .cb-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)}
 .cb-row:last-child{border-bottom:none}
@@ -1038,12 +1052,39 @@ body.light .cal-item{background:var(--bg3)}
 
     </div><!-- /row1 -->
 
+    <!-- Row 2: Inflazione live | Tassi ufficiali live -->
+    <div class="macro-row macro-row-2">
+
+      <div class="macro-panel">
+        <div class="macro-panel-title">
+          <span>📈</span>INFLAZIONE — DATI LIVE
+          <span id="ml-infl-upd" style="font-size:9px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0"></span>
+        </div>
+        <div id="macro-infl-body" style="flex:1">
+          <div class="yc-section-loading">Caricamento…</div>
+        </div>
+      </div>
+
+      <div class="macro-panel">
+        <div class="macro-panel-title">
+          <span>🏦</span>TASSI UFFICIALI — BCE &amp; BOE LIVE
+          <span id="ml-rates-upd" style="font-size:9px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0"></span>
+        </div>
+        <div id="macro-rates-body" style="flex:1">
+          <div class="yc-section-loading">Caricamento…</div>
+        </div>
+      </div>
+
+    </div><!-- /row2 -->
+
     <div class="macro-panel" style="min-height:auto">
       <div class="macro-panel-title"><span>ℹ️</span>NOTE & LEGGENDA</div>
       <div style="font-size:12px;color:var(--text2);line-height:1.7;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px 24px">
         <p>• <b style="color:var(--accent)">USA</b>: live Yahoo Finance. <b style="color:var(--accent)">Canada</b>: live Bank of Canada (Valet API). <b style="color:var(--accent)">UK</b>: live BOE Gilt par yield. <b style="color:var(--accent)">Giappone</b>: live MOF Japan CSV.</p>
         <p>• <b style="color:var(--accent)">DE</b>: live ECB AAA YC. <b style="color:var(--accent)">NL/AT/BE/FR/ES/PT/IT/GR</b>: DE live + spread medio storico su Bund (approssimazione, spread stabile nel breve periodo).</p>
-        <p>• <b style="color:var(--accent)">Tassi Banche Centrali</b>: valori corretti al meeting più recente — cambiano 4-8×/anno.</p>
+        <p>• <b style="color:var(--accent)">Inflazione</b>: 🇺🇸 CPI/Core via BLS API (mensile). 🇪🇺 HICP via ECB API (mensile). Cache 30 min.</p>
+        <p>• <b style="color:var(--accent)">Tassi BCE live</b>: DFR (depositi) e MRR (rif. principale) via ECB API. <b style="color:var(--accent)">BOE</b> via BOE CSV API. Aggiornati a ogni cambio.</p>
+        <p>• <b style="color:var(--accent)">Tassi Banche Centrali (pannello sopra)</b>: Fed e BOJ — valori corretti all'ultimo meeting, aggiornati manualmente.</p>
         <p>• <b style="color:var(--accent)">Calendario</b>: clicca su ogni evento per approfondimenti e cosa monitorare.</p>
         <p style="color:var(--text3);font-size:10px">Dati a scopo informativo — non costituiscono consulenza finanziaria.</p>
       </div>
@@ -6120,13 +6161,18 @@ function calCountdown(dateStr) {
 // ── Dati macro fondamentali (aggiornati alle ultime letture) ─
 
 let _globalYields = null;
+let _macroLive    = null;
 let _macroLoaded  = false;
 
 async function loadMacroTab(force = false) {
   if (!force && _macroLoaded) { renderMacro(); return; }
   document.getElementById('macro-lastupd').textContent = '⏳ Caricamento…';
   try {
-    _globalYields = await fetch('/global-yields').then(r => r.json());
+    // Fetch in parallelo: rendimenti globali + macro live (inflazione/tassi)
+    [_globalYields, _macroLive] = await Promise.all([
+      fetch('/global-yields').then(r => r.json()),
+      fetch('/macro-live').then(r => r.json()),
+    ]);
     _macroLoaded = true;
     document.getElementById('macro-lastupd').textContent =
       'Aggiornato: ' + new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
@@ -6139,7 +6185,80 @@ async function loadMacroTab(force = false) {
 function renderMacro() {
   renderMacroCB();
   renderGlobalYields();
+  renderMacroInflation();
+  renderMacroRates();
   renderMacroCalendar();
+}
+
+// ── Helper: formatta date macro (YYYY-MM → "Gen 2025", "Mar 2026", ecc.) ─
+function _fmtMacroDate(s) {
+  if (!s) return '—';
+  // YYYY-MM
+  const m = String(s).match(/^(\d{4})-(\d{2})$/);
+  if (m) {
+    const mesi = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+    return (mesi[parseInt(m[2],10)-1] || m[2]) + ' ' + m[1];
+  }
+  // "Mar 2026" già formattato, o data testuale — restituisce as-is
+  return s;
+}
+
+// ── Inflazione live ──────────────────────────────────────────
+function renderMacroInflation() {
+  const el = document.getElementById('macro-infl-body');
+  const d  = _macroLive;
+  if (!d || !d.inflation || Object.keys(d.inflation).length === 0) {
+    el.innerHTML = '<div class="yc-section-loading">Dati non disponibili</div>'; return;
+  }
+  if (d.ts) {
+    const dt = new Date(d.ts * 1000);
+    document.getElementById('ml-infl-upd').textContent =
+      dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}) + ' ' +
+      dt.toLocaleDateString('it-IT',{day:'numeric',month:'short'});
+  }
+  const ORDER = ['US','US_core','U2','DE','IT','FR','ES'];
+  const SRC   = {'US':'BLS','US_core':'BLS','U2':'ECB','DE':'ECB','IT':'ECB','FR':'ECB','ES':'ECB'};
+  const rows  = ORDER.map(k => {
+    const c = d.inflation[k]; if (!c) return '';
+    const v   = c.v;
+    const cls = v >= 3.5 ? 'pos' : v <= 1.0 ? 'neg' : 'neu';  // rosso=alta, verde=bassa
+    const src = SRC[k] || '●';
+    return `<tr>
+      <td><span class="ml-flag">${c.flag}</span></td>
+      <td><div class="ml-name">${c.name}</div><div class="ml-label">${c.label}</div></td>
+      <td><div class="ml-val ${cls}">${v > 0 ? '+' : ''}${v.toFixed(1)}%</div></td>
+      <td><div class="ml-date">${_fmtMacroDate(c.date)}</div><div class="ml-src">● ${src}</div></td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<table class="ml-table"><tbody>${rows}</tbody></table>`;
+}
+
+// ── Tassi ufficiali live (BCE + BOE) ─────────────────────────
+function renderMacroRates() {
+  const el = document.getElementById('macro-rates-body');
+  const d  = _macroLive;
+  if (!d || !d.rates || Object.keys(d.rates).length === 0) {
+    el.innerHTML = '<div class="yc-section-loading">Dati non disponibili</div>'; return;
+  }
+  const ORDER = ['ECB_DFR','ECB_MRR','BOE'];
+  const DESC  = {
+    'ECB_DFR': 'Tasso depositi — principale riferimento di politica monetaria',
+    'ECB_MRR': 'Tasso rifinanziamento principale — finanziamenti alle banche',
+    'BOE':     'Bank Rate ufficiale — tasso di riferimento BOE',
+  };
+  const rows = ORDER.map(k => {
+    const r = d.rates[k]; if (!r) return '';
+    return `<tr>
+      <td><span class="ml-flag">${r.flag}</span></td>
+      <td style="max-width:160px">
+        <div class="ml-name">${r.name}</div>
+        <div class="ml-label" style="white-space:normal;line-height:1.3">${DESC[k]||''}</div>
+      </td>
+      <td><div class="ml-val neu">${r.v.toFixed(2)}%</div></td>
+      <td><div class="ml-date">${_fmtMacroDate(r.date)}</div><div class="ml-src">● ${r.src}</div></td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<table class="ml-table"><tbody>${rows}</tbody></table>`;
 }
 
 // ── Banche Centrali ──────────────────────────────────────────

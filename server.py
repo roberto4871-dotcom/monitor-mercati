@@ -62,6 +62,7 @@ _rss_cache   = {}; _rss_lock   = threading.Lock(); RSS_TTL   = 600   # 10 min
 _macro_cache     = {}; _macro_lock     = threading.Lock(); MACRO_TTL     = 900   # 15 min
 _sovereign_cache = {}; _sovereign_lock = threading.Lock(); SOVEREIGN_TTL = 1800  # 30 min
 _global_yields_cache = None; _global_yields_ts = 0.0; GLOBAL_YIELDS_TTL = 900  # 15 min
+_macro_live_cache = None; _macro_live_ts = 0.0; MACRO_LIVE_TTL = 1800  # 30 min
 # ISIN cache — permanente (ISIN non cambia mai)
 
 
@@ -1113,6 +1114,162 @@ def fetch_global_yields():
     return result
 
 
+def _bls_fetch():
+    """CPI USA e Core CPI da BLS (Bureau of Labor Statistics). Nessuna API key."""
+    try:
+        import requests as req
+        year_now = datetime.datetime.now().year
+        payload = {
+            'seriesid': ['CUUR0000SA0', 'CUUR0000SA0L1E'],
+            'startyear': str(year_now - 1),
+            'endyear':   str(year_now),
+        }
+        r = req.post('https://api.bls.gov/publicAPI/v1/timeseries/data/',
+                     json=payload, timeout=15,
+                     headers={'User-Agent': 'Mozilla/5.0'})
+        if r.status_code != 200:
+            return {}
+        result = {}
+        for series in r.json().get('Results', {}).get('series', []):
+            sid  = series['seriesID']
+            data = series['data']
+            if len(data) >= 13:
+                latest   = float(data[0]['value'])
+                prev_yr  = float(data[12]['value'])
+                pct      = round((latest - prev_yr) / prev_yr * 100, 1)
+                date_lbl = f"{data[0]['periodName'][:3]} {data[0]['year']}"
+                if sid == 'CUUR0000SA0':
+                    result['cpi']      = {'v': pct, 'date': date_lbl}
+                elif sid == 'CUUR0000SA0L1E':
+                    result['cpi_core'] = {'v': pct, 'date': date_lbl}
+        return result
+    except Exception as e:
+        print(f'  [macro-live] BLS: {e}')
+        return {}
+
+
+def _ecb_hicp(country_code):
+    """HICP variazione annua (%) per paese — serie ECB ICP. Restituisce {'v':..., 'date':...}."""
+    try:
+        import requests as req
+        url = (f'https://data-api.ecb.europa.eu/service/data/'
+               f'ICP/M.{country_code}.N.000000.4.ANR'
+               f'?lastNObservations=2&format=csvdata')
+        r = req.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
+        if r.status_code != 200:
+            return None
+        for line in reversed(r.text.splitlines()):
+            if not line or line.startswith('KEY') or line.startswith('#') or line.startswith('{'):
+                continue
+            parts = line.split(',')
+            if len(parts) >= 9:
+                try:
+                    return {'v': float(parts[8]), 'date': parts[7][:7]}  # YYYY-MM
+                except ValueError:
+                    continue
+        return None
+    except Exception as e:
+        print(f'  [macro-live] ECB HICP {country_code}: {e}')
+        return None
+
+
+def _ecb_policy_rates():
+    """Tasso BCE depositi (DFR) e rifinanziamento principale (MRR). Restituisce dict."""
+    try:
+        import requests as req
+        result = {}
+        for key, series in [('dfr', 'FM/B.U2.EUR.4F.KR.DFR.LEV'),
+                             ('mrr', 'FM/B.U2.EUR.4F.KR.MRR_FR.LEV')]:
+            url = (f'https://data-api.ecb.europa.eu/service/data/{series}'
+                   f'?lastNObservations=1&format=csvdata')
+            r = req.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
+            if r.status_code != 200:
+                continue
+            for line in reversed(r.text.splitlines()):
+                if not line or line.startswith('KEY') or line.startswith('#') or line.startswith('{'):
+                    continue
+                parts = line.split(',')
+                if len(parts) >= 9:
+                    try:
+                        result[key] = {'v': float(parts[8]), 'date': parts[7][:10]}
+                        break
+                    except ValueError:
+                        continue
+        return result
+    except Exception as e:
+        print(f'  [macro-live] ECB rates: {e}')
+        return {}
+
+
+def _boe_base_rate():
+    """Tasso ufficiale BOE (IUDBEDR) via CSV API."""
+    try:
+        import requests as req
+        today = datetime.date.today()
+        start = (today - datetime.timedelta(days=180)).strftime('%d/%b/%Y')
+        end   = today.strftime('%d/%b/%Y')
+        url   = (f'https://www.bankofengland.co.uk/boeapps/database/_iadb-FromShowColumns.asp'
+                 f'?csv.x=yes&Datefrom={start}&Dateto={end}'
+                 f'&SeriesCodes=IUDBEDR&CSVF=TT&UsingCodes=Y&VPD=Y&VFD=N')
+        r = req.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
+        if r.status_code != 200:
+            return None
+        for line in reversed(r.text.splitlines()):
+            if not line or line.startswith('DATE') or line.startswith('"'):
+                continue
+            parts = line.split(',')
+            if len(parts) >= 2:
+                try:
+                    return {'v': float(parts[1].strip()), 'date': parts[0].strip()}
+                except ValueError:
+                    continue
+        return None
+    except Exception as e:
+        print(f'  [macro-live] BOE rate: {e}')
+        return None
+
+
+def fetch_macro_live():
+    """Inflazione live (BLS + ECB) + tassi ufficiali live (ECB + BOE). Cache 30 min."""
+    global _macro_live_cache, _macro_live_ts
+    now = time.time()
+    if _macro_live_cache and (now - _macro_live_ts) < MACRO_LIVE_TTL:
+        return _macro_live_cache
+
+    print('[macro-live] Fetching inflazione e tassi...')
+
+    # ── Inflazione ─────────────────────────────────────────────
+    infl = {}
+    us = _bls_fetch()
+    if us.get('cpi'):
+        infl['US']      = {'name':'USA',      'flag':'🇺🇸', 'label':'CPI',      **us['cpi']}
+    if us.get('cpi_core'):
+        infl['US_core'] = {'name':'USA Core', 'flag':'🇺🇸', 'label':'CPI Core', **us['cpi_core']}
+
+    for code, name, flag in [('U2','Eurozona','🇪🇺'),('DE','Germania','🇩🇪'),
+                               ('IT','Italia','🇮🇹'),('FR','Francia','🇫🇷'),('ES','Spagna','🇪🇸')]:
+        d = _ecb_hicp(code)
+        if d:
+            infl[code] = {'name': name, 'flag': flag, 'label': 'HICP', **d}
+
+    # ── Tassi ufficiali ────────────────────────────────────────
+    rates = {}
+    ecb = _ecb_policy_rates()
+    if ecb.get('dfr'):
+        rates['ECB_DFR'] = {'name':'BCE — Depositi', 'flag':'🇪🇺', 'src':'ECB', **ecb['dfr']}
+    if ecb.get('mrr'):
+        rates['ECB_MRR'] = {'name':'BCE — Rif. Princ.', 'flag':'🇪🇺', 'src':'ECB', **ecb['mrr']}
+    boe = _boe_base_rate()
+    if boe:
+        rates['BOE'] = {'name':'Bank of England', 'flag':'🇬🇧', 'src':'BOE', **boe}
+
+    print(f'  [macro-live] inflazione={list(infl.keys())} tassi={list(rates.keys())}')
+    result = {'inflation': infl, 'rates': rates, 'ts': int(now)}
+    _macro_live_cache = result
+    _macro_live_ts = now
+    return result
+
+
 def fetch_sovereign_yields():
     """
     Rendimenti sovrani 10A per DE/IT/ES/FR/PT/PL + Bund curve (2A/5A/10A/30A).
@@ -1663,6 +1820,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json(fetch_calendar())
         # ATTENZIONE: /macro-data e /macro- DEVONO stare PRIMA di /ma
         # perché '/macro-data'.startswith('/ma') == True!
+        elif self.path.startswith('/macro-live'):
+            self._json(fetch_macro_live())
         elif self.path.startswith('/macro-data'):
             self._json(fetch_macro_data())
         elif self.path.startswith('/global-yields'):
