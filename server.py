@@ -925,6 +925,23 @@ def fetch_sovereign_yields():
                     raw[f'sov_{cc}'] = d
                     print(f'  [sovereign] FRED OK per {cc}: {d["yield"]}%')
 
+    # Fallback statico se Stooq E FRED entrambi non disponibili (es. IP Railway bloccato)
+    # Valori approssimativi Aprile 2025 — etichettati chiaramente come statici
+    STATIC_FALLBACK = {
+        'DE': 2.50, 'IT': 3.58, 'ES': 3.38,
+        'FR': 3.22, 'PT': 2.97, 'PL': 5.25,
+    }
+    still_missing = [cc for cc in SPREAD_BONDS if f'sov_{cc}' not in raw]
+    if still_missing:
+        print(f'  [sovereign] FRED mancante per {still_missing}, uso fallback statico')
+        for cc in still_missing:
+            v = STATIC_FALLBACK.get(cc)
+            if v:
+                raw[f'sov_{cc}'] = {
+                    'yield': v, 'prev': v, 'chg': 0.0,
+                    'date': '⚠ statico Apr 2025',
+                }
+
     # Spread vs Bund
     de_data = raw.get('sov_DE')
     de_yield = de_data['yield'] if de_data else None
@@ -960,84 +977,97 @@ def fetch_sovereign_yields():
 
 
 def fetch_macro_data():
-    """Yield curve USA da FRED (daily, no rate limit, source ufficiale Fed) — cache 15 min.
-    VIX e DXY da Yahoo Finance (solo 2 simboli)."""
+    """Yield curve USA + VIX/DXY — cache 15 min.
+    Primario: Yahoo Finance yf.download() (provato funzionante su Railway).
+    Fallback: FRED via requests."""
     with _macro_lock:
         c = _macro_cache.get('macro')
         if c and (time.time() - c['ts']) < MACRO_TTL:
             return c['data']
 
-    # US Treasury yields da FRED St. Louis — dati giornalieri, affidabili, no rate limit
-    FRED_US_YIELDS = [
-        ('y3m',  'DGS3MO'),   # 3-Month Treasury Constant Maturity
-        ('y2y',  'DGS2'),     # 2-Year Treasury Constant Maturity
-        ('y5y',  'DGS5'),     # 5-Year Treasury Constant Maturity
-        ('y10y', 'DGS10'),    # 10-Year Treasury Constant Maturity
-        ('y30y', 'DGS30'),    # 30-Year Treasury Constant Maturity
-    ]
-
     out = {}
 
-    def _fetch_fred_yield(key, series):
-        try:
-            import requests as req
-            url = f'https://fred.stlouisfed.org/graph/fredgraph.csv?id={series}'
-            r = req.get(url, timeout=15, headers={'User-Agent': 'Mozilla/5.0'})
-            if r.status_code != 200:
-                return key, None
-            valid = _fred_parse_csv(r.text)
-            if len(valid) < 2:
-                return key, None
-            date, last = valid[-1]
-            _, prev    = valid[-2]
-            return key, {
-                'v':   round(last, 4),
-                'p':   round(prev, 4),
-                'chg': round(last - prev, 4),
-                'pct': round((last / prev - 1) * 100, 2) if prev else 0,
-                'date': date,
-            }
-        except Exception as e:
-            print(f'  [macro] FRED errore {series}: {e}')
-            return key, None
-
-    with ThreadPoolExecutor(max_workers=5) as ex:
-        futures = {ex.submit(_fetch_fred_yield, k, s): k for k, s in FRED_US_YIELDS}
-        for fut in as_completed(futures, timeout=25):
+    # ── Tentativo 1: Yahoo Finance yf.download() ─────────────────────────────
+    # yf.download con threads=False per evitare rate limit su simboli indice
+    YF_SYMS = {
+        '^IRX':      'y3m',   # 13-week T-bill ≈ 3M
+        '^FVX':      'y5y',   # 5-year T-note
+        '^TNX':      'y10y',  # 10-year T-note
+        '^TYX':      'y30y',  # 30-year T-bond
+        '^VIX':      'vix',
+        'DX-Y.NYB':  'dxy',
+    }
+    try:
+        import pandas as pd
+        import warnings
+        _yf_wait_cooldown()
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            raw = yf.download(
+                list(YF_SYMS.keys()), period='5d', interval='1d',
+                auto_adjust=False, group_by='ticker',
+                progress=False, threads=False,  # threads=False = no parallel, meno rate limit
+            )
+        is_multi = isinstance(raw.columns, pd.MultiIndex)
+        for sym, key in YF_SYMS.items():
             try:
-                k, v = fut.result()
-                if v:
-                    out[k] = v
+                col = raw[sym]['Close'] if is_multi else raw['Close']
+                col = col.dropna()
+                if len(col) >= 2:
+                    last = float(col.iloc[-1])
+                    prev = float(col.iloc[-2])
+                    out[key] = {
+                        'v':   round(last, 4),
+                        'p':   round(prev, 4),
+                        'chg': round(last - prev, 4),
+                        'pct': round((last / prev - 1) * 100, 2) if prev else 0,
+                    }
             except Exception:
                 pass
+        print(f'  [macro] YF download: {list(out.keys())}')
+    except Exception as e:
+        if is_rate_limit_error(e):
+            _yf_set_cooldown(15)
+        print(f'  [macro] YF download fallito ({e}), provo FRED…')
 
-    # VIX e DXY da Yahoo Finance (FRED non li ha) — solo 2 simboli
-    for key, sym in [('vix', '^VIX'), ('dxy', 'DX-Y.NYB')]:
-        for attempt in range(3):
+    # ── Tentativo 2: FRED per le yield mancanti ───────────────────────────────
+    FRED_MAP = {
+        'y3m':  'DGS3MO', 'y2y': 'DGS2',  'y5y':  'DGS5',
+        'y10y': 'DGS10',  'y30y': 'DGS30',
+    }
+    missing = [k for k in FRED_MAP if k not in out]
+    if missing:
+        def _fetch_fred(key):
             try:
-                _yf_wait_cooldown()
-                with _yf_semaphore:
-                    hist = yf.Ticker(sym).history(period='5d', interval='1d')
-                if hist.empty:
-                    break
-                closes = hist['Close'].dropna()
-                if len(closes) == 0:
-                    break
-                last = float(closes.iloc[-1])
-                prev = float(closes.iloc[-2]) if len(closes) >= 2 else last
-                out[key] = {
-                    'v':   round(last, 4),
-                    'p':   round(prev, 4),
-                    'chg': round(last - prev, 4),
-                    'pct': round((last / prev - 1) * 100, 2) if prev else 0,
-                }
-                break
+                import requests as req
+                series = FRED_MAP[key]
+                url = f'https://fred.stlouisfed.org/graph/fredgraph.csv?id={series}&observation_start=2025-01-01'
+                r = req.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
+                if r.status_code != 200:
+                    return key, None
+                valid = _fred_parse_csv(r.text)
+                if len(valid) < 2:
+                    return key, None
+                date, last = valid[-1]
+                _, prev    = valid[-2]
+                return key, {'v': round(last,4), 'p': round(prev,4),
+                             'chg': round(last-prev,4),
+                             'pct': round((last/prev-1)*100,2) if prev else 0}
             except Exception as e:
-                if is_rate_limit_error(e):
-                    _yf_set_cooldown(5)
-                    time.sleep(2 ** attempt)
-                else:
-                    break
+                print(f'  [macro] FRED {key} errore: {e}')
+                return key, None
+        with ThreadPoolExecutor(max_workers=5) as ex:
+            for k, v in ex.map(_fetch_fred, missing):
+                if v:
+                    out[k] = v
+        print(f'  [macro] dopo FRED: {list(out.keys())}')
+
+    # 2Y: se non disponibile, interpola tra 3M e 5Y
+    if 'y2y' not in out and 'y3m' in out and 'y5y' in out:
+        y3m  = out['y3m']['v']
+        y5y  = out['y5y']['v']
+        est  = round(y3m * 0.45 + y5y * 0.55, 4)
+        out['y2y'] = {'v': est, 'p': est, 'chg': 0, 'pct': 0, 'estimated': True}
 
     result = {'yields': out, 'ts': int(time.time())}
     with _macro_lock:
@@ -1383,8 +1413,47 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json(fetch_macro_data())
         elif self.path.startswith('/sovereign-yields'):
             self._json(fetch_sovereign_yields())
+        elif self.path.startswith('/debug-sources'):
+            self._json(self._debug_sources())
         else:
             super().do_GET()
+
+    def _debug_sources(self):
+        """Endpoint di debug: testa le sorgenti dati e restituisce i risultati."""
+        results = {}
+        # Test FRED
+        try:
+            import requests as req
+            r = req.get('https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10&observation_start=2025-01-01',
+                        timeout=8, headers={'User-Agent': 'Mozilla/5.0'})
+            results['fred_status'] = r.status_code
+            results['fred_ok'] = r.status_code == 200
+            if r.status_code == 200:
+                v = _fred_parse_csv(r.text)
+                results['fred_rows'] = len(v)
+                results['fred_last'] = v[-1] if v else None
+        except Exception as e:
+            results['fred_error'] = str(e)
+        # Test Stooq
+        try:
+            import requests as req
+            r = req.get('https://stooq.com/q/d/l/?s=10de.b&i=d',
+                        timeout=8, headers={'User-Agent': 'Mozilla/5.0', 'Referer': 'https://stooq.com/'})
+            results['stooq_status'] = r.status_code
+            results['stooq_ok'] = r.status_code == 200
+            results['stooq_preview'] = r.text[:200] if r.status_code == 200 else r.text[:100]
+        except Exception as e:
+            results['stooq_error'] = str(e)
+        # Test Yahoo Finance (TNX = 10Y Treasury)
+        try:
+            hist = yf.Ticker('^TNX').history(period='3d', interval='1d')
+            results['yf_tnx_ok'] = not hist.empty
+            results['yf_tnx_rows'] = len(hist)
+            if not hist.empty:
+                results['yf_tnx_last'] = float(hist['Close'].dropna().iloc[-1])
+        except Exception as e:
+            results['yf_tnx_error'] = str(e)
+        return results
 
     def handle_batch(self):
         parsed   = urllib.parse.urlparse(self.path)
