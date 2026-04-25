@@ -229,6 +229,10 @@ td.ora{color:#64b5f6;font-size:10px}
 .hm-tile-ticker{font-size:11px;font-weight:700;color:#fff}
 .hm-tile-val{font-size:12px;font-weight:700}
 .hm-tile-name{font-size:9px;color:rgba(255,255,255,.6);text-align:center;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Heatmap legend */
+.hm-legend{display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:4px 0 8px 0}
+.hm-legend-lbl{font-size:9px;color:var(--text3);margin-right:4px;white-space:nowrap;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.hm-legend-swatch{font-size:9px;font-weight:700;padding:3px 8px;border-radius:5px;white-space:nowrap;border:1px solid rgba(255,255,255,.08)}
 
 /* TA buttons */
 .ta-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);padding:3px 9px;border-radius:11px;cursor:pointer;font-size:10px;font-weight:600;transition:all .15s}
@@ -881,9 +885,14 @@ body.light .cal-item{background:var(--bg3)}
     <button class="filter-btn" data-hmmetric="p3y">3 Anni</button>
     <button class="filter-btn" data-hmmetric="p5y">5 Anni</button>
     <span style="width:1px;height:20px;background:var(--border);margin:0 4px;flex-shrink:0"></span>
-    <button id="hm-sort-btn" class="filter-btn" onclick="cycleHeatSort()" title="Ordina per rendimento">↕ Ordina</button>
+    <span class="controls-label">Ordina:</span>
+    <button id="hm-sort-desc" class="filter-btn" onclick="setHeatSort('desc')" title="Migliori per primi">↓ Migliori</button>
+    <button id="hm-sort-asc"  class="filter-btn" onclick="setHeatSort('asc')"  title="Peggiori per primi">↑ Peggiori</button>
+    <button id="hm-sort-none" class="filter-btn active" onclick="setHeatSort('none')" title="Ordine originale">↕ Default</button>
+    <button id="hm-flat-btn"  class="filter-btn" onclick="toggleHeatFlat()" title="Lista unica senza raggruppamento per categoria">📊 Globale</button>
     <span class="controls-label" id="hm-count"></span>
   </div>
+  <div class="hm-legend" id="hm-legend" style="padding-left:16px;padding-right:16px"></div>
   <div id="heatmap-grid" style="padding:4px 16px 16px;overflow-y:auto;flex:1"></div>
 </div>
 
@@ -1584,14 +1593,43 @@ let favorites2 = new Set(JSON.parse(localStorage.getItem('mm_fav2') || '[]'));
 let favorites3 = new Set(JSON.parse(localStorage.getItem('mm_fav3') || '[]'));
 let heatMetric = 'varAtt';
 let heatSort   = 'none'; // 'none' | 'desc' | 'asc'
+let heatFlat   = false;  // true = vista globale senza raggruppamento per categoria
 
-function cycleHeatSort() {
-  heatSort = heatSort === 'none' ? 'desc' : heatSort === 'desc' ? 'asc' : 'none';
-  const btn = document.getElementById('hm-sort-btn');
-  if (heatSort === 'none') { btn.textContent = '↕ Ordina'; btn.classList.remove('active'); }
-  else if (heatSort === 'desc') { btn.textContent = '↓ Migliori'; btn.classList.add('active'); }
-  else { btn.textContent = '↑ Peggiori'; btn.classList.add('active'); }
+function setHeatSort(val) {
+  heatSort = val;
+  ['desc','asc','none'].forEach(v => {
+    const b = document.getElementById(`hm-sort-${v}`);
+    if (b) b.classList.toggle('active', v === val);
+  });
   renderHeatmap();
+}
+
+function toggleHeatFlat() {
+  heatFlat = !heatFlat;
+  const btn = document.getElementById('hm-flat-btn');
+  if (btn) btn.classList.toggle('active', heatFlat);
+  // In vista globale forza ordinamento desc se ancora su 'none'
+  if (heatFlat && heatSort === 'none') setHeatSort('desc');
+  else renderHeatmap();
+}
+
+function renderHeatLegend() {
+  const el = document.getElementById('hm-legend');
+  if (!el) return;
+  const bands = [
+    { val: -6,   label: '< −5%'         },
+    { val: -3.5, label: '−2% → −5%'     },
+    { val: -1,   label: '−0.5% → −2%'   },
+    { val: 0,    label: '≈ 0'            },
+    { val: 1,    label: '+0.5% → +2%'   },
+    { val: 3.5,  label: '+2% → +5%'     },
+    { val: 6,    label: '> +5%'          },
+  ];
+  el.innerHTML = `<span class="hm-legend-lbl">Legenda:</span>` +
+    bands.map(b => {
+      const { bg, text } = heatColor(b.val);
+      return `<div class="hm-legend-swatch" style="background:${bg};color:${text}">${b.label}</div>`;
+    }).join('');
 }
 let modalTA = {bb: false, rsi: false};
 let modalRsiChart = null;
@@ -3387,41 +3425,55 @@ function heatColor(val) {
 
 function renderHeatmap() {
   const loaded = rows.filter(r => !r._loading && !r._err);
-  const groups = {}, order = [];
-  loaded.forEach(r => {
-    const k = r.a || 'ALTRO';
-    if (!groups[k]) { groups[k] = []; order.push(k); }
-    groups[k].push(r);
-  });
+
+  renderHeatLegend();
 
   const countEl = document.getElementById('hm-count');
   if (countEl) countEl.textContent = `${loaded.length} strumenti`;
 
+  // Helper: costruisce un tile HTML
+  function _tile(r) {
+    const origIdx = rows.indexOf(r);
+    const val = r[heatMetric];
+    const {bg, text} = heatColor(val);
+    const valStr = (val !== null && val !== undefined && !isNaN(val))
+      ? `${val > 0 ? '+' : ''}${val.toFixed(2)}%` : '—';
+    return `<div class="hm-tile" style="background:${bg}" onclick="openModal(${origIdx})">
+      <span class="hm-tile-ticker" style="color:${text}">${r.m}</span>
+      <span class="hm-tile-val" style="color:${text}">${valStr}</span>
+      <span class="hm-tile-name">${r.i}</span>
+    </div>`;
+  }
+
+  // Funzione ordinamento
+  function _sortFn(a, b) {
+    const va = a[heatMetric] ?? -Infinity;
+    const vb = b[heatMetric] ?? -Infinity;
+    return heatSort === 'asc' ? va - vb : vb - va;
+  }
+
   let html = '';
-  order.forEach(sec => {
-    html += `<div class="hm-section-title">${sec}</div><div class="hm-grid">`;
-    const secRows = groups[sec].slice();
-    if (heatSort !== 'none') {
-      secRows.sort((a, b) => {
-        const va = a[heatMetric] ?? -Infinity;
-        const vb = b[heatMetric] ?? -Infinity;
-        return heatSort === 'desc' ? vb - va : va - vb;
-      });
-    }
-    secRows.forEach(r => {
-      const origIdx = rows.indexOf(r);
-      const val = r[heatMetric];
-      const {bg, text} = heatColor(val);
-      const valStr = (val !== null && val !== undefined && !isNaN(val))
-        ? `${val > 0 ? '+' : ''}${val.toFixed(2)}%` : '—';
-      html += `<div class="hm-tile" style="background:${bg}" onclick="openModal(${origIdx})">
-        <span class="hm-tile-ticker" style="color:${text}">${r.m}</span>
-        <span class="hm-tile-val" style="color:${text}">${valStr}</span>
-        <span class="hm-tile-name">${r.i}</span>
-      </div>`;
+
+  if (heatFlat) {
+    // ── Vista Globale: tutti gli strumenti in una lista unica ordinata ──
+    const flat = loaded.slice().sort(_sortFn);
+    html += `<div class="hm-section-title">Tutti gli strumenti — ${heatSort === 'asc' ? 'dal peggiore al migliore' : 'dal migliore al peggiore'}</div>`;
+    html += `<div class="hm-grid">` + flat.map(_tile).join('') + `</div>`;
+  } else {
+    // ── Vista per categoria ──
+    const groups = {}, order = [];
+    loaded.forEach(r => {
+      const k = r.a || 'ALTRO';
+      if (!groups[k]) { groups[k] = []; order.push(k); }
+      groups[k].push(r);
     });
-    html += `</div>`;
-  });
+    order.forEach(sec => {
+      const secRows = groups[sec].slice();
+      if (heatSort !== 'none') secRows.sort(_sortFn);
+      html += `<div class="hm-section-title">${sec}</div>`;
+      html += `<div class="hm-grid">` + secRows.map(_tile).join('') + `</div>`;
+    });
+  }
 
   if (!html) html = `<div style="color:var(--text3);padding:40px;text-align:center">Nessun dato disponibile.</div>`;
   document.getElementById('heatmap-grid').innerHTML = html;
