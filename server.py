@@ -421,17 +421,20 @@ def fetch_fundamentals(symbol):
     if info is None:
         return {'error': 'Nessun dato disponibile.'}
     try:
-        dy  = info.get('dividendYield')
-        # yfinance restituisce solitamente decimale (0.018 = 1.8%)
-        # Valori > 0.50 come decimale = > 50% → quasi certamente errati (es. BABA 0.77)
-        # Normalizzazione: decimale < 0.50 → *100; già-percentuale ≤ 25 → as-is; > 25 → scarta
+        dy   = info.get('dividendYield')
+        tady = info.get('trailingAnnualDividendYield')
+        # dividendYield da Yahoo Finance è GIÀ in formato percentuale (0.38=0.38%, 4.71=4.71%)
+        # NON moltiplicare per 100!
+        # trailingAnnualDividendYield è in decimale (0.003767=0.377%) → usato come validazione
+        # Fonte primaria: trailingAnnualDividendYield (affidabile, 12 mesi reali)
+        # Fallback: dividendYield diretto se trailing è zero (es. dividendi speciali)
         dy_norm = None
-        if dy:
-            if dy < 0.50:        # formato decimale, es. 0.018 → 1.8%
-                dy_norm = round(dy * 100, 2)
-            elif dy <= 25.0:     # già in percentuale, es. 1.8 → 1.8%
-                dy_norm = round(dy, 2)
-            # else > 25% → implausibile, dy_norm resta None
+        if tady and tady > 0:
+            candidate = round(tady * 100, 2)
+            if candidate <= 25:
+                dy_norm = candidate
+        elif dy and 0 < dy <= 25:
+            dy_norm = round(dy, 2)
         data = {
             'trailingPE':        info.get('trailingPE'),
             'forwardPE':         info.get('forwardPE'),
