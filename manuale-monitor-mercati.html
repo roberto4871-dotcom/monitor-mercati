@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor Mercati — Manuale Utente</title>
+<style>
+  /* ── Reset & Base ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 15px; }
+  body {
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    color: #1a2332;
+    background: #fff;
+    line-height: 1.65;
+  }
+
+  /* ── Print ────────────────────────────────────────────────── */
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    @page { size: A4; margin: 14mm 16mm; }
+    .no-print { display: none !important; }
+    .page-break { page-break-before: always; }
+    .avoid-break { page-break-inside: avoid; }
+    body { font-size: 10.5pt; }
+    h1 { font-size: 22pt !important; }
+    h2 { font-size: 14pt !important; }
+    h3 { font-size: 11pt !important; }
+    .cover { min-height: 100vh; }
+  }
+
+  /* ── Layout ───────────────────────────────────────────────── */
+  .container { max-width: 860px; margin: 0 auto; padding: 0 28px; }
+
+  /* ── Cover ────────────────────────────────────────────────── */
+  .cover {
+    background: linear-gradient(145deg, #07090f 0%, #0d1220 50%, #111827 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 60px 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 30% 40%, rgba(255,215,0,.07) 0%, transparent 60%),
+                radial-gradient(ellipse at 70% 70%, rgba(30,100,200,.07) 0%, transparent 55%);
+  }
+  .cover-logo {
+    font-size: 48px;
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .cover-title {
+    font-size: 42px;
+    font-weight: 900;
+    color: #ffd700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    position: relative;
+    line-height: 1.1;
+  }
+  .cover-subtitle {
+    font-size: 18px;
+    color: #8fa8c8;
+    margin-top: 14px;
+    position: relative;
+    font-weight: 400;
+    letter-spacing: .5px;
+  }
+  .cover-divider {
+    width: 80px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #ffd700, transparent);
+    margin: 32px auto;
+    position: relative;
+  }
+  .cover-desc {
+    font-size: 14px;
+    color: #64b5f6;
+    position: relative;
+    max-width: 500px;
+    line-height: 1.8;
+  }
+  .cover-date {
+    position: absolute;
+    bottom: 36px;
+    right: 40px;
+    font-size: 11px;
+    color: #546e7a;
+  }
+  .cover-ver {
+    position: absolute;
+    bottom: 36px;
+    left: 40px;
+    font-size: 11px;
+    color: #546e7a;
+  }
+
+  /* ── TOC ──────────────────────────────────────────────────── */
+  .toc-page {
+    padding: 60px 0 40px;
+    min-height: 100vh;
+  }
+  .toc-title {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #ffd700;
+    background: #0d1220;
+    display: inline-block;
+    padding: 4px 14px 4px 10px;
+    border-radius: 0 20px 20px 0;
+    margin-left: -28px;
+    margin-bottom: 32px;
+  }
+  .toc-list { list-style: none; }
+  .toc-list li {
+    display: flex;
+    align-items: baseline;
+    padding: 5px 0;
+    border-bottom: 1px dotted #e2e8f0;
+    gap: 8px;
+  }
+  .toc-num {
+    font-size: 12px;
+    font-weight: 800;
+    color: #1a237e;
+    min-width: 28px;
+  }
+  .toc-name { flex: 1; font-size: 13px; color: #1a2332; }
+  .toc-sub {
+    padding-left: 36px;
+    font-size: 12px;
+    color: #546e7a;
+    border-bottom: none;
+  }
+
+  /* ── Section header ───────────────────────────────────────── */
+  .section {
+    padding: 48px 0 32px;
+  }
+  .section-badge {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #ffd700;
+    background: #0d1220;
+    display: inline-block;
+    padding: 3px 14px 3px 10px;
+    border-radius: 0 20px 20px 0;
+    margin-left: -28px;
+    margin-bottom: 16px;
+  }
+  h1 { font-size: 30px; font-weight: 900; color: #07090f; margin-bottom: 12px; }
+  h2 {
+    font-size: 20px;
+    font-weight: 800;
+    color: #1a237e;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e8edf5;
+  }
+  h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a2332;
+    margin: 20px 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h3::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 14px;
+    background: #ffd700;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  p { margin-bottom: 12px; color: #374151; }
+  ul, ol { margin: 8px 0 16px 20px; }
+  li { margin-bottom: 5px; color: #374151; }
+  strong { color: #1a2332; }
+
+  /* ── Info box ─────────────────────────────────────────────── */
+  .box {
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 16px 0;
+  }
+  .box-info  { background: #eff6ff; border-left: 4px solid #3b82f6; }
+  .box-tip   { background: #f0fdf4; border-left: 4px solid #22c55e; }
+  .box-warn  { background: #fff7ed; border-left: 4px solid #f59e0b; }
+  .box-title { font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .box-info  .box-title { color: #1d4ed8; }
+  .box-tip   .box-title { color: #15803d; }
+  .box-warn  .box-title { color: #b45309; }
+  .box p { margin-bottom: 4px; font-size: 13px; }
+  .box p:last-child { margin-bottom: 0; }
+
+  /* ── Feature table ────────────────────────────────────────── */
+  .feat-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+  .feat-table th {
+    background: #0d1220;
+    color: #ffd700;
+    text-align: left;
+    padding: 9px 14px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .feat-table td {
+    padding: 9px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: top;
+  }
+  .feat-table tr:last-child td { border-bottom: none; }
+  .feat-table tr:nth-child(even) td { background: #f8fafc; }
+  .tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+  .tag-live  { background: #dcfce7; color: #15803d; }
+  .tag-static{ background: #f1f5f9; color: #64748b; }
+  .tag-calc  { background: #eff6ff; color: #1d4ed8; }
+
+  /* ── Chip row ─────────────────────────────────────────────── */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  .chip {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #f1f5f9;
+    color: #374151;
+    border: 1px solid #e2e8f0;
+  }
+  .chip-gold   { background: rgba(255,215,0,.15); color: #92400e; border-color: rgba(255,215,0,.4); }
+  .chip-blue   { background: rgba(100,181,246,.15); color: #1d4ed8; border-color: rgba(100,181,246,.4); }
+  .chip-red    { background: rgba(239,154,154,.15); color: #9f1239; border-color: rgba(239,154,154,.4); }
+  .chip-green  { background: rgba(102,187,106,.15); color: #15803d; border-color: rgba(102,187,106,.4); }
+
+  /* ── Step list ────────────────────────────────────────────── */
+  .steps { list-style: none; counter-reset: step; margin: 12px 0; }
+  .steps li {
+    counter-increment: step;
+    display: flex;
+    gap: 14px;
+    margin-bottom: 10px;
+    align-items: flex-start;
+  }
+  .steps li::before {
+    content: counter(step);
+    background: #0d1220;
+    color: #ffd700;
+    font-weight: 800;
+    font-size: 11px;
+    min-width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .steps li div { flex: 1; }
+
+  /* ── Color legend ─────────────────────────────────────────── */
+  .color-legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .cl-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: #374151;
+  }
+  .cl-swatch {
+    width: 32px;
+    height: 18px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  /* ── Dashboard mockup ─────────────────────────────────────── */
+  .mockup {
+    background: #07090f;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin: 20px 0;
+    font-size: 11px;
+    color: #8fa8c8;
+    border: 1px solid #1e2d45;
+  }
+  .mockup-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #1e2d45;
+    padding-bottom: 8px;
+  }
+  .mockup-tab {
+    padding: 4px 10px;
+    border-radius: 6px 6px 0 0;
+    font-size: 10px;
+    font-weight: 600;
+    color: #546e7a;
+  }
+  .mockup-tab.active {
+    background: #ffd700;
+    color: #07090f;
+  }
+  .mockup-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+    align-items: center;
+  }
+  .mockup-cell {
+    background: #0d1220;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+  .mockup-green { color: #66bb6a; }
+  .mockup-red   { color: #ef9a9a; }
+  .mockup-gold  { color: #ffd700; }
+  .mockup-flex  { flex: 1; }
+
+  /* ── Footer ───────────────────────────────────────────────── */
+  .footer-disclaimer {
+    background: #f8fafc;
+    border-top: 2px solid #e2e8f0;
+    padding: 32px 0;
+    margin-top: 60px;
+    font-size: 11px;
+    color: #64748b;
+    line-height: 1.8;
+  }
+
+  /* ── Print button ─────────────────────────────────────────── */
+  .print-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: #0d1220;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    z-index: 1000;
+    box-shadow: 0 2px 12px rgba(0,0,0,.4);
+  }
+  .print-bar-title { color: #ffd700; font-weight: 700; font-size: 13px; }
+  .btn-print {
+    background: #ffd700;
+    color: #07090f;
+    border: none;
+    padding: 7px 20px;
+    border-radius: 20px;
+    font-weight: 800;
+    font-size: 12px;
+    cursor: pointer;
+    letter-spacing: .5px;
+  }
+  body { padding-top: 46px; }
+  @media print { body { padding-top: 0; } }
+
+  /* ── Separator ────────────────────────────────────────────── */
+  hr { border: none; border-top: 1px solid #e2e8f0; margin: 24px 0; }
+  .section-num {
+    font-size: 60px;
+    font-weight: 900;
+    color: rgba(26,35,126,.07);
+    line-height: 1;
+    margin-bottom: -8px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Print bar ─────────────────────────────────────────────── -->
+<div class="print-bar no-print">
+  <span class="print-bar-title">📊 Monitor Mercati — Manuale Utente</span>
+  <button class="btn-print" onclick="window.print()">🖨 Esporta PDF</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  COPERTINA                                                 -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-logo">📊</div>
+  <div class="cover-title">Monitor Mercati</div>
+  <div class="cover-subtitle">Dashboard Professionale di Analisi Finanziaria</div>
+  <div class="cover-divider"></div>
+  <div class="cover-desc">
+    Manuale utente completo — struttura, funzionalità e guida operativa
+  </div>
+  <div class="cover-date">Aprile 2025</div>
+  <div class="cover-ver">Versione 2.0</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  INDICE                                                    -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="container">
+<div class="toc-page page-break">
+  <div class="toc-title">Indice dei Contenuti</div>
+  <ul class="toc-list">
+    <li><span class="toc-num">1</span><span class="toc-name">Panoramica della Dashboard</span></li>
+    <li><span class="toc-num">2</span><span class="toc-name">Struttura dell'Interfaccia</span></li>
+    <li><span class="toc-num">3</span><span class="toc-name">Universo degli Strumenti — 470+ Asset</span></li>
+    <li><span class="toc-num">4</span><span class="toc-name">Tabella Principale — Navigazione e Filtri</span></li>
+    <li class="toc-sub"><span class="toc-num">4.1</span><span class="toc-name">Filtri per categoria</span></li>
+    <li class="toc-sub"><span class="toc-num">4.2</span><span class="toc-name">Ordinamento colonne</span></li>
+    <li class="toc-sub"><span class="toc-num">4.3</span><span class="toc-name">Screening avanzato</span></li>
+    <li><span class="toc-num">5</span><span class="toc-name">Liste Preferiti (3 Watchlist)</span></li>
+    <li><span class="toc-num">6</span><span class="toc-name">Scheda Strumento — Analisi Dettagliata</span></li>
+    <li class="toc-sub"><span class="toc-num">6.1</span><span class="toc-name">Grafico tecnico</span></li>
+    <li class="toc-sub"><span class="toc-num">6.2</span><span class="toc-name">Fondamentali</span></li>
+    <li class="toc-sub"><span class="toc-num">6.3</span><span class="toc-name">Performance storica</span></li>
+    <li class="toc-sub"><span class="toc-num">6.4</span><span class="toc-name">Stagionalità</span></li>
+    <li class="toc-sub"><span class="toc-num">6.5</span><span class="toc-name">News</span></li>
+    <li><span class="toc-num">7</span><span class="toc-name">Heatmap — Visualizzazione Cromatica</span></li>
+    <li><span class="toc-num">8</span><span class="toc-name">Matrice di Correlazione</span></li>
+    <li><span class="toc-num">9</span><span class="toc-name">Momentum — Vista Scatter</span></li>
+    <li><span class="toc-num">10</span><span class="toc-name">Sezione Macro — Dati Macroeconomici</span></li>
+    <li><span class="toc-num">11</span><span class="toc-name">News Feed — Notizie in Tempo Reale</span></li>
+    <li><span class="toc-num">12</span><span class="toc-name">Esportazione PDF</span></li>
+    <li><span class="toc-num">13</span><span class="toc-name">Fonti Dati e Aggiornamento</span></li>
+    <li><span class="toc-num">14</span><span class="toc-name">Note Legali</span></li>
+  </ul>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  1. PANORAMICA                                             -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 1</div>
+  <div class="section-num">01</div>
+  <h2>Panoramica della Dashboard</h2>
+
+  <p>
+    <strong>Monitor Mercati</strong> è una dashboard professionale di analisi finanziaria progettata per monitorare in tempo reale oltre <strong>470 strumenti finanziari</strong> su scala globale: indici, azioni, ETF, obbligazioni, materie prime, valute e volatilità.
+  </p>
+  <p>
+    La piattaforma integra dati di mercato live, analisi tecnica, fondamentali, correlazioni, stagionalità, notizie e contesto macroeconomico in un'unica interfaccia, accessibile da qualsiasi browser senza installazioni.
+  </p>
+
+  <div class="box box-tip avoid-break">
+    <div class="box-title">✅ Punti di forza</div>
+    <p>• <strong>Copertura globale</strong>: mercati di USA, Europa, Italia, Svizzera, Asia e mercati emergenti</p>
+    <p>• <strong>Dati live</strong>: prezzi aggiornati via Yahoo Finance con refresh automatico ogni 10 minuti</p>
+    <p>• <strong>Analisi integrata</strong>: tecnica, fondamentale, macro e notizie in un'unica schermata</p>
+    <p>• <strong>Personalizzazione</strong>: tre watchlist indipendenti, tema chiaro/scuro, screening personalizzato</p>
+    <p>• <strong>Export PDF</strong>: ogni sezione può essere esportata in PDF per presentazioni e reportistica</p>
+  </div>
+
+  <h3>Architettura tecnica</h3>
+  <p>
+    La dashboard è composta da un <strong>frontend HTML/JavaScript</strong> avanzato che comunica con un <strong>server backend Python</strong> (deployato su Railway) responsabile del recupero, normalizzazione e caching dei dati da più fonti ufficiali.
+  </p>
+
+  <table class="feat-table avoid-break">
+    <thead>
+      <tr><th>Componente</th><th>Tecnologia</th><th>Funzione</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Frontend</td><td>HTML5 / JavaScript / Chart.js</td><td>Interfaccia utente, grafici, tabelle</td></tr>
+      <tr><td>Backend</td><td>Python 3 / yfinance</td><td>Recupero prezzi, fondamentali, news</td></tr>
+      <tr><td>Deploy</td><td>Railway (cloud)</td><td>Disponibilità 24/7, aggiornamenti automatici</td></tr>
+      <tr><td>Grafici tecnici</td><td>Lightweight Charts (TradingView)</td><td>Candlestick, linee, indicatori</td></tr>
+    </tbody>
+  </table>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  2. STRUTTURA INTERFACCIA                                  -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 2</div>
+  <div class="section-num">02</div>
+  <h2>Struttura dell'Interfaccia</h2>
+
+  <p>L'interfaccia è organizzata in <strong>tre fasce orizzontali</strong>: barra di controllo superiore, tab di navigazione e area contenuto.</p>
+
+  <!-- Mockup semplice -->
+  <div class="mockup avoid-break">
+    <div style="border-bottom:1px solid #1e2d45;padding-bottom:8px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+      <span style="color:#ffd700;font-weight:800;font-size:12px">📊 MONITOR MERCATI</span>
+      <span style="font-size:10px;color:#546e7a">⏱ Ultimo aggiornamento: 14:32 · 🌙 Tema · ↺ Aggiorna</span>
+    </div>
+    <!-- Filtri categoria -->
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
+      <span style="background:#ffd700;color:#07090f;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700">📊 Sintesi</span>
+      <span style="background:#1e2d45;color:#546e7a;padding:2px 8px;border-radius:10px;font-size:9px">Indici</span>
+      <span style="background:#1e2d45;color:#546e7a;padding:2px 8px;border-radius:10px;font-size:9px">Azionari</span>
+      <span style="background:#1e2d45;color:#546e7a;padding:2px 8px;border-radius:10px;font-size:9px">ETF Az.</span>
+      <span style="background:#1e2d45;color:#546e7a;padding:2px 8px;border-radius:10px;font-size:9px">Titoli USA</span>
+      <span style="background:#1e2d45;color:#546e7a;padding:2px 8px;border-radius:10px;font-size:9px">Big Cap IT</span>
+      <span style="background:#1e2d45;color:#ffd700;padding:2px 8px;border-radius:10px;font-size:9px;border:1px solid rgba(255,215,0,.3)">★ Preferiti</span>
+      <span style="background:#1e2d45;color:#64b5f6;padding:2px 8px;border-radius:10px;font-size:9px;border:1px solid rgba(100,181,246,.3)">★ Lista 2</span>
+      <span style="background:#1e2d45;color:#ef9a9a;padding:2px 8px;border-radius:10px;font-size:9px;border:1px solid rgba(239,154,154,.3)">★ Lista 3</span>
+    </div>
+    <!-- Tab nav -->
+    <div class="mockup-tabs">
+      <span class="mockup-tab active">📋 Tabella</span>
+      <span class="mockup-tab">📊 Grafici</span>
+      <span class="mockup-tab">🔥 Heatmap</span>
+      <span class="mockup-tab">📐 Correlazione</span>
+      <span class="mockup-tab">🎯 Scatter</span>
+      <span class="mockup-tab">📰 News</span>
+      <span class="mockup-tab">🌐 Macro</span>
+    </div>
+    <!-- Tabella mini -->
+    <div class="mockup-row">
+      <span class="mockup-cell mockup-flex">S&amp;P 500</span>
+      <span class="mockup-cell">5.321,40</span>
+      <span class="mockup-cell mockup-green">+0,84%</span>
+      <span class="mockup-cell mockup-green">+12,3%</span>
+      <span class="mockup-cell mockup-green">+18,7%</span>
+    </div>
+    <div class="mockup-row">
+      <span class="mockup-cell mockup-flex">FTSE MIB</span>
+      <span class="mockup-cell">36.240,00</span>
+      <span class="mockup-cell mockup-red">−0,32%</span>
+      <span class="mockup-cell mockup-green">+8,1%</span>
+      <span class="mockup-cell mockup-green">+14,2%</span>
+    </div>
+    <div style="color:#546e7a;font-size:9px;margin-top:6px;text-align:right">470 strumenti caricati · barra di stato</div>
+  </div>
+
+  <h3>Le 7 sezioni principali (tab)</h3>
+  <table class="feat-table avoid-break">
+    <thead>
+      <tr><th>Tab</th><th>Icona</th><th>Contenuto</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Tabella</strong></td><td>📋</td><td>Vista principale con tutte le performance, colonne ordinabili, indicatori tecnici</td></tr>
+      <tr><td><strong>Grafici</strong></td><td>📊</td><td>Grafici multi-strumento sovrapposti per confronto visivo</td></tr>
+      <tr><td><strong>Heatmap</strong></td><td>🔥</td><td>Griglia colorata per identificare visivamente i migliori e peggiori performer</td></tr>
+      <tr><td><strong>Correlazione</strong></td><td>📐</td><td>Matrice di correlazione di Pearson per analisi di diversificazione</td></tr>
+      <tr><td><strong>Scatter / Momentum</strong></td><td>🎯</td><td>Ranking degli strumenti per forza del momentum</td></tr>
+      <tr><td><strong>News</strong></td><td>📰</td><td>Flusso di notizie in tempo reale con analisi del sentiment</td></tr>
+      <tr><td><strong>Macro</strong></td><td>🌐</td><td>Dati macroeconomici: inflazione, tassi, rendimenti governativi, calendario</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box box-info avoid-break">
+    <div class="box-title">💡 Tema chiaro / scuro</div>
+    <p>Il pulsante <strong>🌙</strong> in alto a destra alterna il tema tra scuro (predefinito, ottimale per monitor) e chiaro (ideale per stampa e presentazioni in ambienti luminosi). La preferenza viene salvata automaticamente.</p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  3. UNIVERSO STRUMENTI                                     -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 3</div>
+  <div class="section-num">03</div>
+  <h2>Universo degli Strumenti — 470+ Asset</h2>
+
+  <p>La dashboard monitora <strong>oltre 470 strumenti finanziari</strong> distribuiti in 17 categorie, coprendo i principali mercati mondiali.</p>
+
+  <table class="feat-table avoid-break">
+    <thead>
+      <tr><th>Categoria</th><th>Descrizione</th><th>Esempi</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>📈 Indici Azionari</td><td>Principali benchmark mondiali</td><td>S&amp;P 500, FTSE MIB, DAX, Nikkei, MSCI World</td></tr>
+      <tr><td>📉 Indici Obbligazionari</td><td>Benchmark fixed income globali</td><td>Bloomberg Global Agg, iBoxx Euro Corporate</td></tr>
+      <tr><td>🥇 Materie Prime</td><td>Metalli, energia, agricoltura</td><td>Oro, Petrolio WTI, Gas Naturale, Rame, Grano</td></tr>
+      <tr><td>💱 Valute</td><td>Principali coppie forex</td><td>EUR/USD, GBP/USD, USD/JPY, USD/CHF</td></tr>
+      <tr><td>⚡ Volatilità</td><td>Indici di stress e paura</td><td>VIX, VSTOXX</td></tr>
+      <tr><td>🌍 ETF Azionari</td><td>ETF su indici e mercati azionari</td><td>SWDA, VWCE, SXR8, IUSA, MEUD</td></tr>
+      <tr><td>🏦 ETF Obbligazionari</td><td>ETF su bond governativi e corporate</td><td>AGGH, VAGF, XG7S, IBTS</td></tr>
+      <tr><td>⚙️ ETF Commodity</td><td>ETF su materie prime</td><td>PHAU (Oro), PHAG (Argento), CRUD (Petrolio)</td></tr>
+      <tr><td>🚀 ETF Megatrend</td><td>ETF tematici e settoriali globali</td><td>AI, Clean Energy, Cybersecurity, Healthcare</td></tr>
+      <tr><td>🗺️ ETF Single Country</td><td>ETF su singoli paesi</td><td>India, Cina, Brasile, Giappone, Vietnam</td></tr>
+      <tr><td>📊 ETF Indici</td><td>ETF replicanti benchmark classici</td><td>S&amp;P 500, Nasdaq, Russell, Euro Stoxx</td></tr>
+      <tr><td>🏭 ETF Settoriali</td><td>ETF per settore economico</td><td>Banche, Energia, Tech, Industriali, Lusso</td></tr>
+      <tr><td>🇮🇹 Titoli IT Big Cap</td><td>Principali azioni italiane</td><td>ENI, ENEL, Intesa, Generali, Ferrari, Leonardo</td></tr>
+      <tr><td>🇪🇺 Titoli Europa</td><td>Blue chip europee</td><td>LVMH, TotalEnergies, SAP, Nestlé, ASML</td></tr>
+      <tr><td>🇺🇸 Titoli USA</td><td>Azioni americane principali</td><td>Apple, Microsoft, NVIDIA, Amazon, Alphabet</td></tr>
+      <tr><td>🇨🇭 Svizzera</td><td>Azioni svizzere</td><td>Nestlé, Novartis, Roche, UBS, ABB</td></tr>
+      <tr><td>🌟 Ultrabig</td><td>Mega-cap globali selezionati</td><td>Le più grandi capitalizzazioni mondiali</td></tr>
+    </tbody>
+  </table>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  4. TABELLA PRINCIPALE                                     -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 4</div>
+  <div class="section-num">04</div>
+  <h2>Tabella Principale — Navigazione e Filtri</h2>
+
+  <p>La tabella è il <strong>centro operativo</strong> della dashboard. Mostra tutti gli strumenti con le loro performance su più orizzonti temporali e indicatori tecnici, ed è interamente navigabile e personalizzabile.</p>
+
+  <h3>4.1 Colonne disponibili</h3>
+  <table class="feat-table avoid-break">
+    <thead>
+      <tr><th>Colonna</th><th>Descrizione</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Nome</strong></td><td>Nome completo dello strumento, cliccabile per aprire la scheda dettaglio</td></tr>
+      <tr><td><strong>Valore Attuale</strong></td><td>Prezzo corrente aggiornato</td></tr>
+      <tr><td><strong>Var. % Giornaliera</strong></td><td>Variazione percentuale rispetto alla chiusura precedente</td></tr>
+      <tr><td><strong>YTD Locale</strong></td><td>Rendimento dall'inizio anno nella valuta originale dello strumento</td></tr>
+      <tr><td><strong>YTD in €</strong></td><td>Rendimento dall'inizio anno convertito in Euro (utile per comparare strumenti in valute diverse)</td></tr>
+      <tr><td><strong>7 / 30 / 60 / 90 giorni</strong></td><td>Performance su orizzonti temporali brevi e medi</td></tr>
+      <tr><td><strong>Trend</strong></td><td>Mini-grafico sparkline degli ultimi 30 giorni</td></tr>
+      <tr><td><strong>MM 50/200</strong></td><td>Posizione rispetto alle medie mobili a 50 e 200 giorni — indicatore di trend</td></tr>
+      <tr><td><strong>Forza Trend</strong></td><td>Score composito di momentum 0–100 (sopra 60 = trend forte, sotto 40 = debolezza)</td></tr>
+      <tr><td><strong>Forza Relativa</strong></td><td>Performance relativa rispetto al benchmark di riferimento</td></tr>
+      <tr><td><strong>Yield %</strong></td><td>Rendimento cedolare (per strumenti obbligazionari ed ETF bond)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>4.2 Filtri per categoria</h3>
+  <p>I pulsanti nella barra superiore filtrano istantaneamente la tabella per mostrare solo la categoria selezionata. Esistono anche <strong>viste preconfigurate</strong>:</p>
+  <div class="chips avoid-break">
+    <span class="chip">📊 Sintesi — selezione rappresentativa di tutte le categorie</span>
+    <span class="chip">🌍 Asset Globale — visione cross-asset</span>
+    <span class="chip">📈 Indici — tutti i principali benchmark</span>
+  </div>
+
+  <h3>4.3 Ordinamento colonne</h3>
+  <p>Cliccando sull'intestazione di qualsiasi colonna si ordina la tabella in modo crescente o decrescente. Un clic successivo inverte l'ordine. L'indicatore <strong>↑ / ↓</strong> mostra la colonna e direzione attive.</p>
+
+  <h3>4.4 Screening avanzato</h3>
+  <p>Il pannello screening (icona ⚙) permette di filtrare la tabella con regole personalizzate:</p>
+  <ul>
+    <li>Seleziona la colonna (es. "YTD €"), l'operatore (&gt;, &lt;, =) e il valore</li>
+    <li>Esempio: <em>YTD € &gt; 15%</em> → mostra solo strumenti con rendimento YTD superiore al 15%</li>
+    <li>Le regole si combinano (AND logico)</li>
+    <li>Premi <strong>Invio</strong> o il tasto <strong>▶</strong> per applicare</li>
+  </ul>
+
+  <div class="box box-info avoid-break">
+    <div class="box-title">💡 Colonna MM 50/200</div>
+    <p>Indica la posizione del prezzo rispetto alle medie mobili chiave:<br>
+    <strong>🟢 Sopra entrambe</strong> = trend rialzista. <strong>🟡 Mista</strong> = transizione. <strong>🔴 Sotto entrambe</strong> = trend ribassista. È possibile filtrare per stato direttamente dalla barra filtri.</p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  5. LISTE PREFERITI                                        -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 5</div>
+  <div class="section-num">05</div>
+  <h2>Liste Preferiti — 3 Watchlist Indipendenti</h2>
+
+  <p>Monitor Mercati offre <strong>tre watchlist indipendenti</strong>, ciascuna con un colore distintivo, per organizzare il monitoraggio per client, strategia o categoria di interesse.</p>
+
+  <table class="feat-table avoid-break">
+    <thead>
+      <tr><th>Lista</th><th>Colore</th><th>Filtro</th><th>Utilizzo tipico</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>★ Preferiti</strong></td>
+        <td><span class="tag" style="background:rgba(255,215,0,.2);color:#92400e">● Oro</span></td>
+        <td>Pulsante "★ Preferiti"</td>
+        <td>Portafoglio principale, strumenti core da monitorare</td>
+      </tr>
+      <tr>
+        <td><strong>★ Lista 2</strong></td>
+        <td><span class="tag" style="background:rgba(100,181,246,.2);color:#1d4ed8">● Blu</span></td>
+        <td>Pulsante "★ Lista 2"</td>
+        <td>Secondo portafoglio, candidati all'acquisto, obbligazionario</td>
+      </tr>
+      <tr>
+        <td><strong>★ Lista 3</strong></td>
+        <td><span class="tag" style="background:rgba(239,154,154,.2);color:#9f1239">● Rosa</span></td>
+        <td>Pulsante "★ Lista 3"</td>
+        <td>Terzo portafoglio, posizioni corte, watch-list secondaria</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Come aggiungere uno strumento a una lista</h3>
+  <ol class="steps avoid-break">
+    <li><div>Individua lo strumento nella tabella</div></li>
+    <li><div>Nella colonna delle stelle (prima colonna), clicca sulla <strong>stella del colore desiderato</strong>: ★ dorata (Lista 1), ★ blu (Lista 2), ★ rosa (Lista 3)</div></li>
+    <li><div>La stella si illumina per confermare l'aggiunta. Clicca di nuovo per rimuovere</div></li>
+    <li><div>Usa il pulsante filtro corrispondente nella barra superiore per visualizzare solo quella lista</div></li>
+  </ol>
+
+  <div class="box box-tip avoid-break">
+    <div class="box-title">✅ Persistenza</div>
+    <p>Le watchlist vengono salvate automaticamente nel browser (localStorage) e rimangono disponibili anche dopo aver chiuso e riaperto la dashboard, senza necessità di login o account.</p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  6. SCHEDA STRUMENTO                                       -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 6</div>
+  <div class="section-num">06</div>
+  <h2>Scheda Strumento — Analisi Dettagliata</h2>
+
+  <p>Cliccando su qualsiasi riga della tabella si apre la <strong>scheda dettaglio</strong> dello strumento, che raccoglie in un'unica vista tutte le informazioni di analisi disponibili.</p>
+  <p>L'intestazione mostra il nome, la categoria di appartenenza e le performance principali (variazione giornaliera, YTD, 30 giorni, ultima settimana). I dati si aggiornano automaticamente all'apertura.</p>
+
+  <h3>6.1 Grafico Tecnico</h3>
+  <p>Grafico interattivo con candlestick o linea su periodi selezionabili:</p>
+  <div class="chips avoid-break">
+    <span class="chip">1 Mese</span>
+    <span class="chip">3 Mesi</span>
+    <span class="chip">YTD (default)</span>
+    <span class="chip">1 Anno</span>
+    <span class="chip">2 Anni</span>
+    <span class="chip">3 Anni</span>
+    <span class="chip">5 Anni</span>
+    <span class="chip">Massimo storico</span>
+  </div>
+  <p>Indicatori tecnici attivabili:</p>
+  <ul>
+    <li><strong>RSI 14</strong> — Relative Strength Index: misura la forza del trend su scala 0–100. Sopra 70 = ipercomprato, sotto 30 = ipervenduto</li>
+    <li><strong>Bande di Bollinger</strong> — Canale di volatilità basato su 20 periodi ± 2 deviazioni standard</li>
+  </ul>
+  <p>Ogni grafico include un pulsante <strong>🖨 PDF</strong> per esportare la vista corrente.</p>
+
+  <div class="box box-info avoid-break">
+    <div class="box-title">🔗 Link esterni</div>
+    <p>Per ogni strumento sono disponibili link diretti a <strong>TradingView</strong> (analisi avanzata), <strong>JustETF</strong> (per ETF) e <strong>Borsa Italiana</strong> per approfondimenti.</p>
+  </div>
+
+  <h3>6.2 Fondamentali</h3>
+  <p>Dati fondamentali aggiornati via Yahoo Finance:</p>
+  <table class="feat-table avoid-break">
+    <thead><tr><th>Dato</th><th>Descrizione</th></tr></thead>
+    <tbody>
+      <tr><td>P/E Trailing</td><td>Price/Earnings su utili degli ultimi 12 mesi</td></tr>
+      <tr><td>P/E Forward</td><td>Price/Earnings su utili attesi prossimi 12 mesi</td></tr>
+      <tr><td>Price/Book</td><td>Rapporto prezzo/valore contabile</td></tr>
+      <tr><td>Dividendo</td><td>Rendimento cedolare trailing annuo</td></tr>
+      <tr><td>Market Cap</td><td>Capitalizzazione di mercato (in miliardi/trilioni)</td></tr>
+      <tr><td>Beta</td><td>Sensibilità al mercato (1 = mercato, &gt;1 = più volatile)</td></tr>
+      <tr><td>52W High / Low</td><td>Massimo e minimo degli ultimi 52 settimane</td></tr>
+      <tr><td>Volume</td><td>Volume giornaliero e media volumetrica</td></tr>
+      <tr><td>Descrizione</td><td>Profilo aziendale sintetico (tradotto in italiano)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>6.3 Performance Storica</h3>
+  <p>Tabella delle performance mensili degli ultimi anni, organizzata mese per mese con evidenziazione cromatica (verde = positivo, rosso = negativo). Utile per identificare <strong>pattern stagionali ricorrenti</strong> e periodi storicamente forti o deboli.</p>
+
+  <h3>6.4 Stagionalità</h3>
+  <p>Grafico di stagionalità che sovrappone l'andamento degli ultimi 5–10 anni mese per mese, evidenziando la <strong>performance media stagionale</strong>. Permette di identificare i mesi statisticamente più favorevoli o avversi per ogni strumento.</p>
+
+  <h3>6.5 News</h3>
+  <p>Ultime notizie relative allo strumento selezionato, con indicatore di sentiment (positivo / negativo / neutro) e link alla fonte originale.</p>
+
+  <div class="box box-tip avoid-break">
+    <div class="box-title">📝 Note personali</div>
+    <p>Ogni scheda strumento include un campo note libero, salvato localmente nel browser. Utile per annotare target di prezzo, motivazioni di acquisto, livelli di attenzione o commenti personalizzati.</p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  7. HEATMAP                                                -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 7</div>
+  <div class="section-num">07</div>
+  <h2>Heatmap — Visualizzazione Cromatica delle Performance</h2>
+
+  <p>La <strong>heatmap</strong> è la vista più immediata per identificare a colpo d'occhio i migliori e peggiori performer. Ogni strumento è rappresentato da un riquadro colorato in base alla performance selezionata.</p>
+
+  <h3>Metrica di colorazione</h3>
+  <p>In alto sono presenti i pulsanti per scegliere il periodo su cui calcolare il colore di ogni riquadro:</p>
+  <div class="chips avoid-break">
+    <span class="chip chip-gold">Oggi</span>
+    <span class="chip">YTD €</span>
+    <span class="chip">YTD Locale</span>
+    <span class="chip">7 Giorni</span>
+    <span class="chip">30 Giorni</span>
+    <span class="chip">60 Giorni</span>
+    <span class="chip">90 Giorni</span>
+    <span class="chip">6 Mesi</span>
+    <span class="chip">1 Anno</span>
+    <span class="chip">2 Anni</span>
+    <span class="chip">3 Anni</span>
+    <span class="chip">5 Anni</span>
+  </div>
+
+  <h3>Scala cromatica</h3>
+  <div class="color-legend avoid-break">
+    <div class="cl-item"><div class="cl-swatch" style="background:#7b1c1c"></div>&lt; −5%</div>
+    <div class="cl-item"><div class="cl-swatch" style="background:#b71c1c"></div>−2% → −5%</div>
+    <div class="cl-item"><div class="cl-swatch" style="background:#c62828"></div>−0,5% → −2%</div>
+    <div class="cl-item"><div class="cl-swatch" style="background:#263238"></div>≈ 0%</div>
+    <div class="cl-item"><div class="cl-swatch" style="background:#1b5e20"></div>+0,5% → +2%</div>
+    <div class="cl-item"><div class="cl-swatch" style="background:#388e3c"></div>+2% → +5%</div>
+    <div class="cl-item"><div class="cl-swatch" style="background:#2e7d32"></div>&gt; +5%</div>
+  </div>
+
+  <h3>Ordinamento</h3>
+  <p>I tre pulsanti di ordinamento organizzano i riquadri <strong>all'interno di ogni categoria</strong>:</p>
+  <ul>
+    <li><strong>↓ Migliori</strong> — i migliori performer per primi</li>
+    <li><strong>↑ Peggiori</strong> — i peggiori performer per primi</li>
+    <li><strong>↕ Default</strong> — ordine originale della dashboard</li>
+  </ul>
+
+  <div class="box box-tip avoid-break">
+    <div class="box-title">✅ Come usare la heatmap</div>
+    <p>• Seleziona <strong>"Oggi"</strong> per una panoramica della seduta in corso<br>
+    • Seleziona <strong>"YTD €"</strong> per valutare le performance da inizio anno convertite in euro<br>
+    • Seleziona <strong>"1 Anno"</strong> per confrontare le performance di lungo periodo<br>
+    • Clicca su qualsiasi riquadro per aprire la scheda dettaglio di quello strumento</p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  8. CORRELAZIONE                                           -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 8</div>
+  <div class="section-num">08</div>
+  <h2>Matrice di Correlazione</h2>
+
+  <p>La matrice di correlazione misura il grado di correlazione lineare (coefficiente di Pearson) tra tutti gli strumenti di un gruppo, permettendo di valutare la <strong>diversificazione effettiva</strong> di un portafoglio.</p>
+
+  <h3>Come leggere la matrice</h3>
+  <table class="feat-table avoid-break">
+    <thead><tr><th>Valore</th><th>Interpretazione</th><th>Colore</th></tr></thead>
+    <tbody>
+      <tr><td><strong>+1,00</strong></td><td>Correlazione perfetta positiva — si muovono sempre insieme</td><td>Verde scuro</td></tr>
+      <tr><td>+0,70 / +0,90</td><td>Alta correlazione positiva — scarsa diversificazione</td><td>Verde</td></tr>
+      <tr><td>+0,30 / +0,70</td><td>Correlazione moderata — parziale diversificazione</td><td>Verde chiaro</td></tr>
+      <tr><td>0 / ±0,30</td><td>Bassa correlazione — buona diversificazione</td><td>Neutro/Grigio</td></tr>
+      <tr><td>−0,30 / −0,70</td><td>Correlazione negativa moderata — naturale hedging</td><td>Rosso chiaro</td></tr>
+      <tr><td><strong>−1,00</strong></td><td>Correlazione perfetta negativa — sempre contrari</td><td>Rosso scuro</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Come utilizzare la matrice</h3>
+  <ol class="steps avoid-break">
+    <li><div>Seleziona il <strong>gruppo di strumenti</strong> da analizzare (es. "Sintesi", "ETF Azionari", "Titoli IT")</div></li>
+    <li><div>Scegli il <strong>periodo</strong> su cui calcolare la correlazione: 3 Mesi, 1 Anno, 2 Anni o 3 Anni</div></li>
+    <li><div>Clicca su <strong>Calcola ↻</strong> — la matrice viene elaborata in pochi secondi</div></li>
+    <li><div>Esporta in PDF con <strong>🖨 PDF</strong> per la reportistica cliente</div></li>
+  </ol>
+
+  <div class="box box-info avoid-break">
+    <div class="box-title">📌 Applicazione pratica</div>
+    <p>La correlazione è uno strumento fondamentale per la <strong>costruzione di portafogli efficienti</strong>. Strumenti con bassa o negativa correlazione tra loro riducono il rischio complessivo del portafoglio a parità di rendimento atteso.<br><br>
+    Esempio: l'oro (GLD) mostra tipicamente bassa correlazione con le azioni, rendendolo un efficace diversificatore.</p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  9. SCATTER / MOMENTUM                                     -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 9</div>
+  <div class="section-num">09</div>
+  <h2>Momentum — Vista Scatter</h2>
+
+  <p>La sezione Scatter visualizza il <strong>ranking degli strumenti per forza del momentum</strong>, rappresentato come barre orizzontali con scala 0–100.</p>
+
+  <h3>Il punteggio di momentum (0–100)</h3>
+  <p>Lo score composito integra più segnali tecnici:</p>
+  <ul>
+    <li>Performance su più orizzonti temporali (7, 30, 90 giorni, 1 anno)</li>
+    <li>Posizione rispetto alle medie mobili (MM50 e MM200)</li>
+    <li>Forza relativa rispetto al benchmark di riferimento</li>
+  </ul>
+  <table class="feat-table avoid-break">
+    <thead><tr><th>Score</th><th>Segnale</th><th>Interpretazione</th></tr></thead>
+    <tbody>
+      <tr><td><strong>70–100</strong></td><td>🟢 Forte rialzo</td><td>Trend positivo su più orizzonti, sovraperformance vs benchmark</td></tr>
+      <tr><td><strong>50–70</strong></td><td>🟡 Moderatamente positivo</td><td>Trend positivo ma non uniforme su tutti i periodi</td></tr>
+      <tr><td><strong>30–50</strong></td><td>🟡 Neutro / debolezza</td><td>Segnali contrastanti, assenza di trend chiaro</td></tr>
+      <tr><td><strong>0–30</strong></td><td>🔴 Trend negativo</td><td>Sottoperformance persistente, debolezza tecnica</td></tr>
+    </tbody>
+  </table>
+
+  <p>Seleziona il gruppo di strumenti da analizzare tra le categorie disponibili in cima alla sezione. La vista si aggiorna istantaneamente. Esportabile in PDF con <strong>🖨 PDF</strong>.</p>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  10. SEZIONE MACRO                                         -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 10</div>
+  <div class="section-num">10</div>
+  <h2>Sezione Macro — Dati Macroeconomici</h2>
+
+  <p>La sezione Macro raccoglie in un'unica vista il contesto macroeconomico aggiornato, essenziale per interpretare i movimenti di mercato e posizionare il portafoglio.</p>
+
+  <h3>Pannello: Banche Centrali</h3>
+  <p>Tassi ufficiali delle principali banche centrali mondiali con data dell'ultimo meeting, tendenza (rialzo / taglio / invariato) e data della prossima riunione con countdown.</p>
+  <div class="chips avoid-break">
+    <span class="chip">🇺🇸 Federal Reserve (Fed)</span>
+    <span class="chip">🇪🇺 Banca Centrale Europea (BCE)</span>
+    <span class="chip">🇬🇧 Bank of England (BOE)</span>
+    <span class="chip">🇯🇵 Bank of Japan (BOJ)</span>
+  </div>
+
+  <h3>Pannello: Inflazione Live</h3>
+  <p>Dati di inflazione aggiornati da fonti ufficiali, con aggiornamento automatico ogni 30 minuti:</p>
+  <table class="feat-table avoid-break">
+    <thead><tr><th>Paese/Area</th><th>Indicatore</th><th>Fonte</th><th>Frequenza</th></tr></thead>
+    <tbody>
+      <tr><td>🇺🇸 USA</td><td>CPI (Consumer Price Index)</td><td>Bureau of Labor Statistics (BLS)</td><td>Mensile</td></tr>
+      <tr><td>🇺🇸 USA Core</td><td>CPI ex energia e alimentari</td><td>Bureau of Labor Statistics (BLS)</td><td>Mensile</td></tr>
+      <tr><td>🇪🇺 Eurozona</td><td>HICP (Harmonised CPI)</td><td>Banca Centrale Europea (ECB)</td><td>Mensile</td></tr>
+      <tr><td>🇩🇪 Germania</td><td>HICP</td><td>Banca Centrale Europea (ECB)</td><td>Mensile</td></tr>
+      <tr><td>🇮🇹 Italia</td><td>HICP</td><td>Banca Centrale Europea (ECB)</td><td>Mensile</td></tr>
+      <tr><td>🇫🇷 Francia</td><td>HICP</td><td>Banca Centrale Europea (ECB)</td><td>Mensile</td></tr>
+      <tr><td>🇪🇸 Spagna</td><td>HICP</td><td>Banca Centrale Europea (ECB)</td><td>Mensile</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Pannello: Tassi Ufficiali Live (BCE e BOE)</h3>
+  <p>Tassi di riferimento delle banche centrali recuperati direttamente dalle API ufficiali, aggiornati automaticamente a ogni variazione:</p>
+  <ul>
+    <li><strong>BCE — Tasso Depositi (DFR)</strong>: tasso principale di riferimento della politica monetaria europea</li>
+    <li><strong>BCE — Tasso Rifinanziamento (MRR)</strong>: tasso sui finanziamenti alle banche</li>
+    <li><strong>BOE — Bank Rate</strong>: tasso ufficiale della Banca d'Inghilterra</li>
+  </ul>
+
+  <h3>Pannello: Rendimenti Governativi Internazionali</h3>
+  <p>Tabella dei rendimenti (yield) su scadenze 3M, 2Y, 5Y, 10Y, 30Y per i principali paesi:</p>
+  <div class="chips avoid-break">
+    <span class="chip">🇺🇸 USA (Yahoo Finance)</span>
+    <span class="chip">🇨🇦 Canada (Bank of Canada)</span>
+    <span class="chip">🇬🇧 UK (Bank of England)</span>
+    <span class="chip">🇯🇵 Giappone (MOF Japan)</span>
+    <span class="chip">🇩🇪 Germania (BCE)</span>
+    <span class="chip">🇮🇹 Italia (BCE + spread)</span>
+    <span class="chip">🇫🇷 Francia (BCE + spread)</span>
+    <span class="chip">🇪🇸 Spagna (BCE + spread)</span>
+    <span class="chip">+ altri paesi UE</span>
+  </div>
+  <p>I rendimenti sono colorati con una scala cromatica: blu = bassi rendimenti, verde = medi, giallo/arancio/rosso = rendimenti elevati.</p>
+
+  <h3>Pannello: Calendario Economico</h3>
+  <p>Prossimi eventi macroeconomici rilevanti per i mercati: dati di inflazione, occupazione, PIL, riunioni banche centrali, con countdown al rilascio e link a spiegazioni dettagliate.</p>
+
+  <div class="box box-warn avoid-break">
+    <div class="box-title">⚠ Dati di inflazione — frequenza di pubblicazione</div>
+    <p>I dati CPI/HICP vengono pubblicati mensilmente con un ritardo di circa 2–4 settimane. La dashboard mostra sempre l'ultima lettura ufficiale disponibile con la data di riferimento esplicita.</p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  11. NEWS FEED                                             -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 11</div>
+  <div class="section-num">11</div>
+  <h2>News Feed — Notizie in Tempo Reale</h2>
+
+  <p>La sezione News aggrega notizie finanziarie da più fonti in tempo reale, con <strong>analisi automatica del sentiment</strong> per ogni articolo.</p>
+
+  <h3>Funzionalità principali</h3>
+  <ul>
+    <li><strong>Ticker scorrevole</strong>: barra in cima con i prezzi live dei principali indici e asset</li>
+    <li><strong>Analisi del sentiment</strong>: ogni notizia è classificata automaticamente come positiva, negativa o neutra</li>
+    <li><strong>Ricerca</strong>: filtra le notizie per parola chiave nel titolo o nel testo</li>
+    <li><strong>Aggiornamento automatico</strong>: le notizie si aggiornano automaticamente all'apertura del tab</li>
+    <li><strong>Export PDF</strong>: esporta il feed notizie corrente in formato stampabile</li>
+  </ul>
+
+  <h3>Notizie strumento-specifiche</h3>
+  <p>Aprendo la scheda di un singolo strumento (tab <strong>News</strong> nel modal), vengono mostrate le notizie specifiche relative a quell'asset, filtrate automaticamente.</p>
+
+  <div class="box box-info avoid-break">
+    <div class="box-title">📡 Indicatore sentiment</div>
+    <p><span style="color:#22c55e">●</span> <strong>Verde</strong> = sentiment positivo · <span style="color:#ef4444">●</span> <strong>Rosso</strong> = sentiment negativo · <span style="color:#9ca3af">●</span> <strong>Grigio</strong> = neutro</p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  12. EXPORT PDF                                            -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 12</div>
+  <div class="section-num">12</div>
+  <h2>Esportazione PDF</h2>
+
+  <p>Ogni sezione della dashboard può essere esportata in <strong>PDF professionale</strong> con un singolo click, pronto per presentazioni e reportistica cliente.</p>
+
+  <table class="feat-table avoid-break">
+    <thead>
+      <tr><th>Sezione</th><th>Pulsante</th><th>Contenuto esportato</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Scheda strumento</td><td>📄 PDF (in alto a destra nel modal)</td><td>Grafico, fondamentali, performance, news relative allo strumento</td></tr>
+      <tr><td>Matrice di correlazione</td><td>🖨 PDF (nella sezione Correlazione)</td><td>Matrice completa con scala cromatica, intestazione e legenda</td></tr>
+      <tr><td>Vista Scatter/Momentum</td><td>🖨 PDF (nella sezione Scatter)</td><td>Ranking per momentum del gruppo selezionato</td></tr>
+      <tr><td>News Feed</td><td>🖨 PDF (nella sezione News)</td><td>Feed notizie corrente con sentiment</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box box-tip avoid-break">
+    <div class="box-title">✅ Suggerimento per la stampa</div>
+    <p>Per ottenere PDF di qualità ottimale, usa <strong>Google Chrome</strong> o <strong>Microsoft Edge</strong>. Nella finestra di stampa, seleziona "Salva come PDF", imposta i margini su "Minimi" e abilita "Grafica di sfondo" per preservare i colori.</p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  13. FONTI DATI                                            -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 13</div>
+  <div class="section-num">13</div>
+  <h2>Fonti Dati e Aggiornamento</h2>
+
+  <p>Monitor Mercati si interfaccia con fonti dati ufficiali e riconosciute a livello internazionale. Tutti i dati sono recuperati in modo automatico senza intervento manuale.</p>
+
+  <table class="feat-table avoid-break">
+    <thead>
+      <tr><th>Dato</th><th>Fonte</th><th>Aggiornamento</th><th>Stato</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Prezzi, variazioni, fondamentali</td>
+        <td>Yahoo Finance</td>
+        <td>Ogni 10 min (mercati aperti)</td>
+        <td><span class="tag tag-live">● Live</span></td>
+      </tr>
+      <tr>
+        <td>Rendimenti Treasury USA</td>
+        <td>Yahoo Finance (^IRX, ^FVX, ^TNX, ^TYX)</td>
+        <td>Ogni 15 min</td>
+        <td><span class="tag tag-live">● Live</span></td>
+      </tr>
+      <tr>
+        <td>Rendimenti Bund e Eurozona</td>
+        <td>ECB AAA Yield Curve API</td>
+        <td>Ogni 15 min</td>
+        <td><span class="tag tag-live">● Live</span></td>
+      </tr>
+      <tr>
+        <td>Rendimenti Gilt UK</td>
+        <td>Bank of England Stats API</td>
+        <td>Ogni 15 min</td>
+        <td><span class="tag tag-live">● Live</span></td>
+      </tr>
+      <tr>
+        <td>Rendimenti JGB Giappone</td>
+        <td>Ministry of Finance Japan</td>
+        <td>Ogni 15 min</td>
+        <td><span class="tag tag-live">● Live</span></td>
+      </tr>
+      <tr>
+        <td>Rendimenti Canada</td>
+        <td>Bank of Canada Valet API</td>
+        <td>Ogni 15 min</td>
+        <td><span class="tag tag-live">● Live</span></td>
+      </tr>
+      <tr>
+        <td>Inflazione USA (CPI / Core CPI)</td>
+        <td>Bureau of Labor Statistics (BLS)</td>
+        <td>Mensile (dati ufficiali)</td>
+        <td><span class="tag tag-live">● Live</span></td>
+      </tr>
+      <tr>
+        <td>Inflazione Eurozona / paesi UE (HICP)</td>
+        <td>Banca Centrale Europea (ECB API)</td>
+        <td>Mensile (dati ufficiali)</td>
+        <td><span class="tag tag-live">● Live</span></td>
+      </tr>
+      <tr>
+        <td>Tassi BCE (DFR, MRR)</td>
+        <td>ECB Statistical Data Warehouse</td>
+        <td>Aggiornato a ogni variazione</td>
+        <td><span class="tag tag-live">● Live</span></td>
+      </tr>
+      <tr>
+        <td>Tasso BOE</td>
+        <td>Bank of England Database</td>
+        <td>Aggiornato a ogni variazione</td>
+        <td><span class="tag tag-live">● Live</span></td>
+      </tr>
+      <tr>
+        <td>News finanziarie</td>
+        <td>Feed RSS aggregati</td>
+        <td>Ogni 10 min</td>
+        <td><span class="tag tag-live">● Live</span></td>
+      </tr>
+      <tr>
+        <td>Tassi Fed e BOJ</td>
+        <td>Aggiornamento manuale post-meeting</td>
+        <td>4–8 volte/anno</td>
+        <td><span class="tag tag-static">Curato</span></td>
+      </tr>
+      <tr>
+        <td>Rendimenti paesi UE non-DE (spread)</td>
+        <td>DE live + spread medio storico</td>
+        <td>In tempo reale (approssimazione)</td>
+        <td><span class="tag tag-calc">Derivato</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="box box-info avoid-break">
+    <div class="box-title">🔄 Caching e performance</div>
+    <p>Per garantire rapidità di risposta e non sovraccaricare le fonti esterne, i dati vengono memorizzati in cache con TTL variabile: 5 minuti per i prezzi, 15 minuti per i rendimenti, 30 minuti per i dati macro, 1 ora per i fondamentali. La cache si aggiorna automaticamente allo scadere.</p>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════ -->
+<!--  14. NOTE LEGALI                                           -->
+<!-- ══════════════════════════════════════════════════════════ -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 14</div>
+  <div class="section-num">14</div>
+  <h2>Note Legali e Disclaimer</h2>
+
+  <div class="box box-warn avoid-break">
+    <div class="box-title">⚠ Avviso importante</div>
+    <p>Le informazioni, i dati e le analisi contenuti in Monitor Mercati sono forniti <strong>esclusivamente a scopo informativo e didattico</strong> e non costituiscono in alcun modo consulenza finanziaria, raccomandazione di investimento, offerta o sollecitazione all'acquisto o alla vendita di strumenti finanziari.</p>
+  </div>
+
+  <h3>Limitazioni</h3>
+  <ul>
+    <li>I dati di mercato possono presentare ritardi, imprecisioni o interruzioni temporanee legate alle fonti esterne</li>
+    <li>Le performance storiche non sono indicative di rendimenti futuri</li>
+    <li>Le analisi tecniche e i punteggi di momentum sono strumenti di supporto e non garantiscono risultati</li>
+    <li>I dati fondamentali sono recuperati da Yahoo Finance e possono non essere sempre accurati o completi</li>
+    <li>I tassi di inflazione mostrano l'ultima lettura ufficiale disponibile, che può essere riferita al mese precedente</li>
+  </ul>
+
+  <h3>Responsabilità</h3>
+  <p>L'utilizzo della dashboard e delle informazioni in essa contenute è a esclusiva responsabilità dell'utente. Non si assume alcuna responsabilità per decisioni di investimento prese sulla base dei dati visualizzati.</p>
+
+  <h3>Dati personali</h3>
+  <p>Monitor Mercati non raccoglie, trasmette o elabora dati personali degli utenti. Le watchlist e le note personali sono salvate esclusivamente nel browser locale dell'utente (localStorage) e non vengono mai trasmesse a server esterni.</p>
+</div>
+</div>
+
+<!-- ── Footer ─────────────────────────────────────────────── -->
+<div class="footer-disclaimer">
+  <div class="container">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+      <div>
+        <strong style="color:#1a2332;font-size:13px">📊 Monitor Mercati</strong> — Dashboard Professionale di Analisi Finanziaria<br>
+        Manuale Utente v2.0 · Aprile 2025
+      </div>
+      <div style="text-align:right">
+        I dati sono forniti a scopo informativo.<br>
+        Non costituiscono consulenza finanziaria.
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
