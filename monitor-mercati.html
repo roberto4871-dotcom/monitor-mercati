@@ -5626,8 +5626,10 @@ function nfRenderItems(items) {
     const expandBtn = hasSum ? `<button class="nf-expand-btn" onclick="nfToggleExpand('${eid}',this)">▸ Dettagli</button>` : '';
     const expandBody = hasSum ? `<div class="nf-expand-body" id="${eid}">${summary}</div>` : '';
 
-    // Open link button (separate from title click)
-    const linkBtn = it.link ? `<a href="${it.link}" target="_blank" rel="noopener" class="nf-expand-btn" title="Apri articolo" style="font-size:12px">↗</a>` : '';
+    // Titolo cliccabile (apre link) + bottone ↗ ridondante rimosso
+    const titleHtml = it.link
+      ? `<a href="${it.link}" target="_blank" rel="noopener">${it.title}</a>`
+      : it.title;
 
     return `<div class="nf-card">
       <div class="nf-meta">
@@ -5635,9 +5637,8 @@ function nfRenderItems(items) {
         ${srcHtml}
         <span class="nf-time">🕐 ${nfFmtTime(it.ts)}</span>
         ${expandBtn}
-        ${linkBtn}
       </div>
-      <div class="nf-title">${it.title}</div>
+      <div class="nf-title">${titleHtml}</div>
       ${expandBody}
     </div>`;
   }).join('');
