@@ -3744,47 +3744,6 @@ function dateLabelFor(ts, period) {
   return d.toLocaleDateString('it-IT', {day:'2-digit', month:'short'});
 }
 
-// ── Calcolo Supporti / Resistenze ─────────────────────────────
-function calcSR(pairs) {
-  if (pairs.length < 12) return [];
-  const LB = Math.min(5, Math.floor(pairs.length / 10));
-  const levels = [];
-  for (let i = LB; i < pairs.length - LB; i++) {
-    const ph = pairs[i].h ?? pairs[i].c;
-    const pl = pairs[i].l ?? pairs[i].c;
-    const leftH  = pairs.slice(i - LB, i);
-    const rightH = pairs.slice(i + 1, i + LB + 1);
-    // Resistenza (massimo locale)
-    if (leftH.every(p => (p.h ?? p.c) <= ph) && rightH.every(p => (p.h ?? p.c) <= ph))
-      levels.push({ price: ph, type: 'R', ts: pairs[i].t });
-    // Supporto (minimo locale)
-    if (leftH.every(p => (p.l ?? p.c) >= pl) && rightH.every(p => (p.l ?? p.c) >= pl))
-      levels.push({ price: pl, type: 'S', ts: pairs[i].t });
-  }
-  // Cluster entro 1.5%
-  levels.sort((a, b) => a.price - b.price);
-  const out = [];
-  const used = new Set();
-  for (let i = 0; i < levels.length; i++) {
-    if (used.has(i)) continue;
-    const grp = [levels[i]];
-    for (let j = i + 1; j < levels.length; j++) {
-      if (used.has(j)) continue;
-      if (Math.abs(levels[j].price - levels[i].price) / levels[i].price < 0.015) {
-        grp.push(levels[j]); used.add(j);
-      }
-    }
-    const avg  = grp.reduce((s, x) => s + x.price, 0) / grp.length;
-    const rCnt = grp.filter(x => x.type === 'R').length;
-    out.push({ price: avg, type: rCnt >= grp.length - rCnt ? 'R' : 'S', strength: grp.length });
-  }
-  // Prendi i più forti (max 8), escludendo livelli troppo vicini al prezzo corrente (< 0.1%)
-  const cur = pairs[pairs.length - 1].c;
-  return out
-    .filter(lvl => Math.abs(lvl.price - cur) / cur > 0.001)
-    .sort((a, b) => b.strength - a.strength)
-    .slice(0, 8);
-}
 
 function drawModalChart(pairs, period) {
   if (modalChart) { modalChart.remove(); modalChart = null; }
@@ -3941,23 +3900,6 @@ function drawModalChart(pairs, period) {
     rsiContainer.style.display = 'none';
   }
 
-  // ── Livelli Supporto / Resistenza ────────────────────────
-  try {
-    const srLevels = calcSR(pairs);
-    srLevels.forEach(lvl => {
-      const alpha = Math.min(0.8, 0.3 + lvl.strength * 0.15);
-      _mainSeries.createPriceLine({
-        price: lvl.price,
-        color: lvl.type === 'R' ? `rgba(239,83,80,${alpha})` : `rgba(76,175,80,${alpha})`,
-        lineWidth: lvl.strength >= 3 ? 2 : 1,
-        lineStyle: 2,
-        axisLabelVisible: true,
-        title: lvl.type === 'R'
-          ? `R${lvl.strength > 2 ? lvl.strength : ''}`
-          : `S${lvl.strength > 2 ? lvl.strength : ''}`,
-      });
-    });
-  } catch(e) {}
 
   // ── Correlazione news-prezzo ──────────────────────────────
   if (_mainSeries && _nfAllItems.length && modalRow) {
