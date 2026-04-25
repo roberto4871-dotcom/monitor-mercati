@@ -218,6 +218,8 @@ td.ora{color:#64b5f6;font-size:10px}
 .fav-star.on{color:#ffd700}
 .fav-star2.on{color:#64b5f6}
 .fav-star3.on{color:#ef9a9a}
+.fav-rename{background:none;border:none;cursor:pointer;font-size:10px;padding:0 2px;color:#546e7a;line-height:1;opacity:.45;transition:opacity .15s;margin-left:-1px;vertical-align:middle}
+.fav-rename:hover{opacity:1;color:var(--accent)}
 
 /* Heatmap */
 #tab-heatmap{padding:16px;overflow-y:auto;flex-direction:column;gap:12px}
@@ -730,9 +732,9 @@ body.light .cal-item{background:var(--bg3)}
     <button class="filter-btn" data-filter="SVIZZERA">Svizzera</button>
     <button class="filter-btn" data-filter="ETF INDICI">ETF Indici</button>
     <button class="filter-btn" data-filter="ETF SETTORIALE">ETF Settoriali</button>
-    <button class="filter-btn" data-filter="favorites">⭐ Preferiti</button>
-    <button class="filter-btn" data-filter="favorites2" style="color:#64b5f6;border-color:rgba(100,181,246,.35)">★ Lista 2</button>
-    <button class="filter-btn" data-filter="favorites3" style="color:#ef9a9a;border-color:rgba(239,154,154,.35)">★ Lista 3</button>
+    <button class="filter-btn" data-filter="favorites" id="fav-filter-1">⭐ Preferiti</button><button class="fav-rename" onclick="renameFav(1)" title="Rinomina">✏</button>
+    <button class="filter-btn" data-filter="favorites2" id="fav-filter-2" style="color:#64b5f6;border-color:rgba(100,181,246,.35)">★ Lista 2</button><button class="fav-rename" onclick="renameFav(2)" title="Rinomina" style="color:#64b5f6">✏</button>
+    <button class="filter-btn" data-filter="favorites3" id="fav-filter-3" style="color:#ef9a9a;border-color:rgba(239,154,154,.35)">★ Lista 3</button><button class="fav-rename" onclick="renameFav(3)" title="Rinomina" style="color:#ef9a9a">✏</button>
     <input class="search-box" id="search-box" placeholder="Cerca…" autocomplete="off">
     <button class="font-btn" id="font-btn-s" onclick="setFontSize('S')">S</button>
     <button class="font-btn active" id="font-btn-m" onclick="setFontSize('M')">M</button>
@@ -846,6 +848,9 @@ body.light .cal-item{background:var(--bg3)}
         <button class="chart-btn" data-cat="ETF SINGLE COUNTRY">ETF Paese</button>
         <button class="chart-btn" data-cat="ETF INDICI">ETF Indici</button>
         <button class="chart-btn" data-cat="ETF SETTORIALE">ETF Settoriali</button>
+        <button class="chart-btn" data-cat="_favorites"  id="chart-fav-1" style="color:#ffd700;border-color:rgba(255,215,0,.35)">⭐ Preferiti</button>
+        <button class="chart-btn" data-cat="_favorites2" id="chart-fav-2" style="color:#64b5f6;border-color:rgba(100,181,246,.35)">★ Lista 2</button>
+        <button class="chart-btn" data-cat="_favorites3" id="chart-fav-3" style="color:#ef9a9a;border-color:rgba(239,154,154,.35)">★ Lista 3</button>
       </div>
     </div>
     <div class="chart-ctrl-row">
@@ -1631,6 +1636,37 @@ let loading = false;
 let favorites  = new Set(JSON.parse(localStorage.getItem('mm_fav')  || '[]'));
 let favorites2 = new Set(JSON.parse(localStorage.getItem('mm_fav2') || '[]'));
 let favorites3 = new Set(JSON.parse(localStorage.getItem('mm_fav3') || '[]'));
+
+function favName(n) {
+  const defaults = {1:'Preferiti', 2:'Lista 2', 3:'Lista 3'};
+  const key = n === 1 ? 'mm_fav_name' : `mm_fav${n}_name`;
+  return localStorage.getItem(key) || defaults[n];
+}
+function renameFav(n) {
+  const cur = favName(n);
+  const val = prompt(`Nuovo nome per la lista ${n}:`, cur);
+  if (val === null) return;
+  const trimmed = val.trim();
+  if (!trimmed) return;
+  const key = n === 1 ? 'mm_fav_name' : `mm_fav${n}_name`;
+  localStorage.setItem(key, trimmed);
+  applyFavNames();
+}
+function applyFavNames() {
+  const n1 = favName(1), n2 = favName(2), n3 = favName(3);
+  const f1 = document.getElementById('fav-filter-1');
+  const f2 = document.getElementById('fav-filter-2');
+  const f3 = document.getElementById('fav-filter-3');
+  if (f1) f1.textContent = `⭐ ${n1}`;
+  if (f2) f2.textContent = `★ ${n2}`;
+  if (f3) f3.textContent = `★ ${n3}`;
+  const c1 = document.getElementById('chart-fav-1');
+  const c2 = document.getElementById('chart-fav-2');
+  const c3 = document.getElementById('chart-fav-3');
+  if (c1) c1.textContent = `⭐ ${n1}`;
+  if (c2) c2.textContent = `★ ${n2}`;
+  if (c3) c3.textContent = `★ ${n3}`;
+}
 let heatMetric = 'varAtt';
 let heatSort   = 'none'; // 'none' | 'desc' | 'asc'
 
@@ -2517,7 +2553,7 @@ function updateBreadthPanel() {
 
   // Etichetta filtro corrente
   const filterLabels = {
-    'all':'Tutti gli strumenti', 'favorites':'Preferiti', 'favorites2':'Lista 2', 'favorites3':'Lista 3',
+    'all':'Tutti gli strumenti', 'favorites':favName(1), 'favorites2':favName(2), 'favorites3':favName(3),
     'INDICE AZIONARIO':'Indici Azionari', 'INDICE OBBLIGAZIONARIO':'Indici Obbligazionari',
     'MATERIA PRIMA':'Materie Prime', 'VALUTA':'Valute', 'VOLATILITA':'Volatilità',
     'TITOLI EUROPA':'Titoli Europa', 'TITOLI IT BIG CAP':'Big Cap IT', 'TITOLI USA':'Titoli USA',
@@ -2917,6 +2953,9 @@ function doScreeningFilter(data) {
   });
 });
 
+// Applica nomi watchlist personalizzati all'avvio
+document.addEventListener('DOMContentLoaded', applyFavNames);
+
 function applyFilters(data) {
   const q = document.getElementById('search-box').value.toLowerCase().trim();
   // Filtri gruppi Excel (Sintesi / Asset Globale / Indici) — dedup per simbolo
@@ -3018,6 +3057,9 @@ function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete chart
 function renderCharts() {
   const loaded = rows.filter(r => {
     if (r._loading || r._err) return false;
+    if (chartCat === '_favorites')  return favorites.has(r.s);
+    if (chartCat === '_favorites2') return favorites2.has(r.s);
+    if (chartCat === '_favorites3') return favorites3.has(r.s);
     if (chartCat.startsWith('_')) {
       const sg = SPECIAL_GROUPS[chartCat];
       return sg ? sg.has(r.s) : false;
@@ -3070,7 +3112,10 @@ function renderCharts() {
 
   // ── Titolo ────────────────────────────────────────
   const meta = METRIC_META[metric] || { label: metric };
-  const catLabel = {'_sintesi':'Sintesi','_asset_globale':'Asset Globale','_indici':'Indici'}[chartCat] || chartCat;
+  const catLabel = {
+    '_sintesi':'Sintesi','_asset_globale':'Asset Globale','_indici':'Indici',
+    '_favorites':favName(1),'_favorites2':favName(2),'_favorites3':favName(3)
+  }[chartCat] || chartCat;
   document.getElementById('chart-main-title').textContent =
     `${meta.label} — ${catLabel}`;
 
