@@ -1729,6 +1729,7 @@ const COLS = [
   {key:'spark',    label:'Trend',               cls:'spark-col',         fmt:'spark'},
   {key:'ma',       label:'MM\n50/200',          cls:'num ma-col',        fmt:'ma'},
   {key:'_signal',   label:'Segnale\nOperativo',   cls:'num',               fmt:'signal'},
+  {key:'_action',   label:'Buy\nSell',            cls:'num',               fmt:'action'},
   {key:'_momentum',label:'Forza del Trend\n0 / 100',   cls:'num',               fmt:'momentum'},
   {key:'_rs',      label:'Forza\nRelativa',     cls:'num',               fmt:'rs'},
   {key:'yld',      label:'Rendimento\n(Yield %)',cls:'num',              fmt:'yld', bondsOnly:true},
@@ -1846,6 +1847,15 @@ function fmtCell(col, row) {
     }
     case 'numS': return fmtS(v);
     case 'yld':  return v !== null && v !== undefined ? `<span class="pos">${fmtN(v,2)}%</span>` : '<span class="na">—</span>';
+    case 'action': {
+      // v = 3 (BUY) | 2 (HOLD) | 1 (SELL) | null
+      if (!v) return '<span class="na">—</span>';
+      const sig = row._signal;
+      const str = sig ? sig.icon : '';
+      if (v === 3) return `<div style="text-align:center"><span style="background:#4caf50;color:#fff;font-weight:900;font-size:11px;padding:3px 12px;border-radius:8px;letter-spacing:.8px;display:inline-block">${str} BUY</span></div>`;
+      if (v === 1) return `<div style="text-align:center"><span style="background:#ef5350;color:#fff;font-weight:900;font-size:11px;padding:3px 12px;border-radius:8px;letter-spacing:.8px;display:inline-block">${str} SELL</span></div>`;
+      return `<div style="text-align:center"><span style="background:var(--bg3);color:var(--text3);font-weight:700;font-size:11px;padding:3px 12px;border-radius:8px;letter-spacing:.8px;border:1px solid var(--border);display:inline-block">HOLD</span></div>`;
+    }
     case 'signal': {
       if (!v) return '<span class="na">—</span>';
       // Pill principale con icona forza integrata
@@ -2239,6 +2249,7 @@ async function loadMA() {
   // Ricalcola segnali operativi (le MA influenzano i segnali azionari)
   rows.forEach((row, idx) => {
     rows[idx]._signal = computeAssetSignal(rows[idx]);
+    rows[idx]._action = deriveAction(rows[idx]._signal);
     updateRow(idx);
   });
   // Aggiorna il Market Breadth Panel dopo aver caricato tutte le MA
@@ -2319,6 +2330,14 @@ function momentumScore(row) {
 // ═══════════════════════════════════════════════════
 //  SEGNALE OPERATIVO — helper constants & functions
 // ═══════════════════════════════════════════════════
+
+// ── Deriva azione semplice da segnale: 3=BUY / 2=HOLD / 1=SELL ──────────────
+function deriveAction(sig) {
+  if (!sig) return null;
+  if (sig.key === 'buy')    return 3;
+  if (sig.key === 'reduce') return 1;
+  return 2; // hold, neutral, caution, VIX → HOLD
+}
 
 // ── MARKET SCORE live — composito VIX 40% + Breadth MM200 35% + SP500 p30 25% ──
 function getMarketScore() {
@@ -2610,6 +2629,7 @@ function computeMomentumScores() {
     const score = momentumScore(row);
     rows[idx]._momentum = score;
     rows[idx]._signal   = computeAssetSignal(rows[idx]);
+    rows[idx]._action   = deriveAction(rows[idx]._signal);
     updateRow(idx);
   });
 }
@@ -3164,14 +3184,14 @@ function showTopSignals(btn) {
   const strOrd = {strong:3, medium:2, weak:1};
 
   const allBuy = rows
-    .filter(r => r._signal && (r._signal.key === 'buy' || r._signal.key === 'hold') && !r._loading && !r._err)
+    .filter(r => r._signal?.key === 'buy' && !r._loading && !r._err)
     .sort((a,b) => {
       const sd = (strOrd[b._signal.strength]||0) - (strOrd[a._signal.strength]||0);
       return sd !== 0 ? sd : (b._signal.rawScore||0) - (a._signal.rawScore||0);
     });
 
   const allSell = rows
-    .filter(r => r._signal && (r._signal.key === 'reduce' || r._signal.key === 'caution') && !r._loading && !r._err)
+    .filter(r => r._signal?.key === 'reduce' && !r._loading && !r._err)
     .sort((a,b) => {
       const sd = (strOrd[b._signal.strength]||0) - (strOrd[a._signal.strength]||0);
       return sd !== 0 ? sd : (a._signal.rawScore||0) - (b._signal.rawScore||0);
@@ -3228,10 +3248,10 @@ function showTopSignals(btn) {
      </div>
      <div style="display:flex;gap:0;border-bottom:2px solid var(--border)">
        <button id="ts-tab-buy" onclick="tsSwitch('buy')" style="flex:1;padding:8px 0;font-size:11px;font-weight:800;background:rgba(76,175,80,.15);color:#4caf50;border:none;border-bottom:2px solid #4caf50;cursor:pointer;letter-spacing:.3px">
-         📈 BUY &amp; HOLD <span style="background:#4caf50;color:#000;border-radius:10px;padding:0 6px;font-size:10px;margin-left:4px">${allBuy.length}</span>
+         📈 BUY <span style="background:#4caf50;color:#000;border-radius:10px;padding:0 6px;font-size:10px;margin-left:4px">${allBuy.length}</span>
        </button>
        <button id="ts-tab-sell" onclick="tsSwitch('sell')" style="flex:1;padding:8px 0;font-size:11px;font-weight:800;background:transparent;color:var(--text3);border:none;border-bottom:2px solid transparent;cursor:pointer;letter-spacing:.3px">
-         📉 SELL &amp; CAUTION <span style="background:var(--bg3);color:var(--text3);border-radius:10px;padding:0 6px;font-size:10px;margin-left:4px">${allSell.length}</span>
+         📉 SELL <span style="background:var(--bg3);color:var(--text3);border-radius:10px;padding:0 6px;font-size:10px;margin-left:4px">${allSell.length}</span>
        </button>
      </div>`;
   popup.appendChild(header);
@@ -3264,11 +3284,11 @@ function showTopSignals(btn) {
     const tb = document.getElementById('ts-tab-buy');
     const ts = document.getElementById('ts-tab-sell');
     if (tab === 'buy') {
-      bd.innerHTML = mkTable(allBuy, 'Nessun asset in BUY al momento');
+      bd.innerHTML = mkTable(allBuy, 'Nessun asset con segnale BUY al momento');
       Object.assign(tb.style, {background:'rgba(76,175,80,.15)',color:'#4caf50',borderBottom:'2px solid #4caf50'});
       Object.assign(ts.style, {background:'transparent',color:'var(--text3)',borderBottom:'2px solid transparent'});
     } else {
-      bd.innerHTML = mkTable(allSell, 'Nessun asset in SELL al momento');
+      bd.innerHTML = mkTable(allSell, 'Nessun asset con segnale SELL al momento');
       Object.assign(ts.style, {background:'rgba(239,83,80,.12)',color:'#ef5350',borderBottom:'2px solid #ef5350'});
       Object.assign(tb.style, {background:'transparent',color:'var(--text3)',borderBottom:'2px solid transparent'});
     }
@@ -7045,6 +7065,7 @@ async function loadMacroTab(force = false) {
     rows.forEach((row, idx) => {
       if (BOND_CATS_REFRESH.has(row.a) || row.a === 'VOLATILITA') {
         rows[idx]._signal = computeAssetSignal(rows[idx]);
+        rows[idx]._action = deriveAction(rows[idx]._signal);
         updateRow(idx);
       }
     });
