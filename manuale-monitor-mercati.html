@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monitor Mercati — Manuale Utente</title>
+<title>Market Compass — Manuale Utente</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:15px}
@@ -25,9 +25,9 @@ body{font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;color:#1a2332;back
 .cover{background:#07090f;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:48px 30px 36px;position:relative;overflow:hidden}
 .cover::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 25% 35%,rgba(255,215,0,.06) 0%,transparent 55%),radial-gradient(ellipse at 75% 65%,rgba(30,100,200,.06) 0%,transparent 50%)}
 .cover-top{text-align:center;position:relative;z-index:1;margin-bottom:32px}
-.cover-logo{font-size:42px;margin-bottom:16px}
+.cover-logo{font-size:52px;margin-bottom:16px}
 .cover-title{font-size:38px;font-weight:900;color:#ffd700;letter-spacing:2px;text-transform:uppercase;line-height:1.1}
-.cover-subtitle{font-size:16px;color:#8fa8c8;margin-top:10px}
+.cover-subtitle{font-size:16px;color:rgba(255,255,255,.82);margin-top:10px;font-style:italic;font-weight:300;letter-spacing:.4px}
 .cover-divider{width:70px;height:3px;background:linear-gradient(90deg,transparent,#ffd700,transparent);margin:22px auto}
 .cover-desc{font-size:13px;color:#64b5f6;max-width:460px;margin:0 auto;line-height:1.8}
 .cover-meta{margin-top:24px;font-size:11px;color:#37474f;display:flex;gap:40px;position:relative;z-index:1}
@@ -68,6 +68,7 @@ body{font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif;color:#1a2332;back
 .toc-num{font-size:12px;font-weight:800;color:#1a237e;min-width:28px}
 .toc-name{flex:1;font-size:13px;color:#1a2332}
 .toc-sub{padding-left:36px;font-size:12px;color:#546e7a;border-bottom:none!important}
+.toc-new{font-size:9px;font-weight:800;background:#ffd700;color:#07090f;padding:1px 6px;border-radius:8px;margin-left:4px}
 /* Sections */
 .section{padding:48px 0 32px}
 .section-num{font-size:60px;font-weight:900;color:rgba(26,35,126,.06);line-height:1;margin-bottom:-8px}
@@ -84,12 +85,15 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
 .box-info{background:#eff6ff;border-left:4px solid #3b82f6}
 .box-tip{background:#f0fdf4;border-left:4px solid #22c55e}
 .box-warn{background:#fff7ed;border-left:4px solid #f59e0b}
+.box-signal{background:#0d1220;border-left:4px solid #ffd700;color:#8fa8c8}
 .box-title{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
 .box-info .box-title{color:#1d4ed8}
 .box-tip .box-title{color:#15803d}
 .box-warn .box-title{color:#b45309}
+.box-signal .box-title{color:#ffd700}
 .box p{margin-bottom:4px;font-size:13px}
 .box p:last-child{margin-bottom:0}
+.box-signal p{color:#8fa8c8}
 /* Tables */
 .feat-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}
 .feat-table th{background:#0d1220;color:#ffd700;text-align:left;padding:9px 14px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase}
@@ -104,12 +108,34 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
 .chip{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#f1f5f9;color:#374151;border:1px solid #e2e8f0}
 .chip-gold{background:rgba(255,215,0,.15);color:#92400e;border-color:rgba(255,215,0,.4)}
+.chip-green{background:rgba(76,175,80,.12);color:#1b5e20;border-color:rgba(76,175,80,.3)}
+.chip-red{background:rgba(239,83,80,.1);color:#b71c1c;border-color:rgba(239,83,80,.3)}
+.chip-orange{background:rgba(255,152,0,.1);color:#e65100;border-color:rgba(255,152,0,.3)}
 .steps{list-style:none;counter-reset:step;margin:12px 0}
 .steps li{counter-increment:step;display:flex;gap:14px;margin-bottom:10px;align-items:flex-start}
 .steps li::before{content:counter(step);background:#0d1220;color:#ffd700;font-weight:800;font-size:11px;min-width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
 .steps li div{flex:1}
 /* Mockup base */
 .mockup{background:#07090f;border-radius:10px;padding:14px 16px;margin:20px 0;font-size:11px;color:#8fa8c8;border:1px solid #1e2d45}
+/* Bias strip mockup */
+.bias-strip{border-radius:8px;padding:14px 22px;display:flex;align-items:center;gap:20px;margin:16px 0}
+.bias-long{background:#1b5e20}.bias-short{background:#7f0000}.bias-neutral{background:#bf360c}
+.bias-label{font-size:40px;font-weight:900;color:#fff;letter-spacing:-1px;line-height:1.05}
+.bias-meta{font-size:9px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px}
+.bias-div{width:1px;align-self:stretch;background:rgba(255,255,255,.2)}
+/* Signal pills */
+.sig-pill{display:inline-block;font-size:12px;font-weight:800;padding:4px 14px;border-radius:9px;white-space:nowrap}
+.sig-buy{background:rgba(76,175,80,.2);color:#4caf50;border:1px solid rgba(76,175,80,.5)}
+.sig-sell{background:rgba(239,83,80,.2);color:#ef5350;border:1px solid rgba(239,83,80,.5)}
+.sig-hold{background:rgba(41,182,246,.2);color:#29b6f6;border:1px solid rgba(41,182,246,.5)}
+.sig-neutral{background:rgba(120,144,156,.2);color:#78909c;border:1px solid rgba(120,144,156,.5)}
+.sig-caution{background:rgba(255,193,7,.2);color:#ffc107;border:1px solid rgba(255,193,7,.5)}
+.str-forte{color:#ff6f00;font-weight:800}
+.str-medio{color:#ffc107;font-weight:800}
+.str-debole{color:#78909c;font-weight:800}
+/* Cond table */
+.cond-row{display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.cond-row:last-child{border-bottom:none}
 /* Heatmap */
 .hm-grid{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
 .hm-cat{font-size:9px;font-weight:800;color:#546e7a;text-transform:uppercase;letter-spacing:1px;margin:10px 0 4px;width:100%}
@@ -126,27 +152,6 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
 .mom-bar-wrap{flex:1;background:#0d1220;border-radius:4px;height:14px;overflow:hidden}
 .mom-bar{height:100%;border-radius:4px}
 .mom-val{font-size:10px;font-weight:800;min-width:30px}
-/* News */
-.news-ticker{background:#111c2e;border-radius:6px;padding:6px 10px;font-size:9px;color:#8fa8c8;overflow:hidden;margin-bottom:10px;border:1px solid #1e2d45;white-space:nowrap}
-.news-card{background:#0d1220;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:flex-start;gap:10px;border:1px solid #1e2d45}
-.news-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px}
-.news-body{flex:1}
-.news-title{font-size:10px;font-weight:700;color:#c5d8f0;margin-bottom:3px}
-.news-meta{font-size:9px;color:#546e7a}
-.news-action{font-size:9px;color:#64b5f6;white-space:nowrap}
-/* Macro */
-.macro-panels{display:flex;gap:10px;margin:12px 0}
-.macro-panel{flex:1;background:#0d1220;border-radius:8px;border:1px solid #1e2d45;overflow:hidden;min-width:0}
-.macro-panel-hdr{background:#111c2e;padding:8px 12px;font-size:10px;font-weight:800;color:#ffd700;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #1e2d45}
-.macro-row-item{display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:10px}
-.macro-row-item:last-child{border-bottom:none}
-.macro-flag{font-size:13px}
-.macro-lbl{flex:1;color:#8fa8c8}
-.macro-val{font-weight:800;font-size:12px}
-.macro-val.hi{color:#ef9a9a}
-.macro-val.lo{color:#66bb6a}
-.macro-val.neu{color:#e8f0fe}
-.macro-date{font-size:8px;color:#37474f}
 /* Modal card */
 .modal-card{background:#0d1220;border-radius:10px;border:1px solid #1e2d45;overflow:hidden;margin:16px 0;font-size:10px;color:#8fa8c8}
 .modal-hdr{background:#111c2e;padding:12px 16px;border-bottom:1px solid #1e2d45}
@@ -170,6 +175,22 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
 .wl-table th{font-size:8px;color:#546e7a;text-transform:uppercase;padding:4px 6px;border-bottom:1px solid #1e2d45}
 .wl-table td{padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.04);color:#8fa8c8}
 .wl-table td:nth-child(2){color:#c5d8f0;font-weight:600}
+/* News */
+.news-card{background:#0d1220;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:flex-start;gap:10px;border:1px solid #1e2d45}
+.news-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.news-body{flex:1}
+.news-title{font-size:10px;font-weight:700;color:#c5d8f0;margin-bottom:3px}
+.news-meta{font-size:9px;color:#546e7a}
+/* Macro */
+.macro-panels{display:flex;gap:10px;margin:12px 0}
+.macro-panel{flex:1;background:#0d1220;border-radius:8px;border:1px solid #1e2d45;overflow:hidden;min-width:0}
+.macro-panel-hdr{background:#111c2e;padding:8px 12px;font-size:10px;font-weight:800;color:#ffd700;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #1e2d45}
+.macro-row-item{display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid rgba(255,255,255,.04);font-size:10px}
+.macro-row-item:last-child{border-bottom:none}
+.macro-lbl{flex:1;color:#8fa8c8}
+.macro-val{font-weight:800;font-size:12px}
+.macro-val.hi{color:#ef9a9a}
+.macro-val.lo{color:#66bb6a}
 /* Footer */
 .footer-disclaimer{background:#f8fafc;border-top:2px solid #e2e8f0;padding:32px 0;margin-top:60px;font-size:11px;color:#64748b;line-height:1.8}
 </style>
@@ -177,57 +198,55 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
 <body>
 
 <div class="print-bar no-print">
-  <span class="print-bar-title">📊 Monitor Mercati — Manuale Utente</span>
+  <span class="print-bar-title">🧭 Market Compass — Manuale Utente</span>
   <button class="btn-print" onclick="window.print()">🖨 Esporta PDF</button>
 </div>
 
 <!-- COVER -->
 <div class="cover">
   <div class="cover-top">
-    <div class="cover-logo">📊</div>
-    <div class="cover-title">Monitor Mercati</div>
-    <div class="cover-subtitle">Dashboard Professionale di Analisi Finanziaria</div>
+    <div class="cover-logo">🧭</div>
+    <div class="cover-title">Market Compass</div>
+    <div class="cover-subtitle">La direzione dei mercati, in un attimo</div>
     <div class="cover-divider"></div>
     <div class="cover-desc">Manuale utente completo — struttura, funzionalità e guida operativa</div>
   </div>
   <div class="browser">
     <div class="browser-bar">
       <div class="browser-dots"><div class="browser-dot bd-r"></div><div class="browser-dot bd-y"></div><div class="browser-dot bd-g"></div></div>
-      <div class="browser-url">monitor-mercati-production.up.railway.app</div>
+      <div class="browser-url">market-compass.up.railway.app</div>
     </div>
     <div class="db">
       <div class="db-header">
-        <span class="db-logo">📊 MONITOR MERCATI</span>
-        <span class="db-ctrl">⏱ Ultimo aggiornamento: 14:32 &nbsp;🌙 Tema &nbsp;↺ Aggiorna</span>
+        <span class="db-logo">🧭 MARKET COMPASS</span>
+        <span class="db-ctrl">⏱ 14:32 &nbsp;🌙 Tema &nbsp;↺ Aggiorna</span>
+      </div>
+      <!-- Bias strip mockup -->
+      <div style="background:#1b5e20;border-radius:6px;padding:10px 16px;margin-bottom:10px;display:flex;align-items:center;gap:18px">
+        <div><div style="font-size:8px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:1.5px;text-transform:uppercase">Bias</div><div style="font-size:28px;font-weight:900;color:#fff;line-height:1">LONG</div></div>
+        <div style="width:1px;align-self:stretch;background:rgba(255,255,255,.2)"></div>
+        <div><div style="font-size:8px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Distribuzione</div><div style="display:flex;gap:10px"><span style="color:#fff;font-weight:900;font-size:14px">▲ 18</span><span style="color:rgba(255,255,255,.6);font-weight:900;font-size:14px">▼ 4</span><span style="color:rgba(255,255,255,.3);font-size:11px">— 12</span></div></div>
+        <div style="width:1px;align-self:stretch;background:rgba(255,255,255,.2)"></div>
+        <div style="font-size:10px;color:rgba(255,255,255,.75)">📈 TOP BUY <span style="font-weight:700">🔥 NVIDIA &nbsp;·&nbsp; 🔥 Oro &nbsp;·&nbsp; ⚠️ Apple</span></div>
       </div>
       <div class="db-filters">
         <span class="db-pill act">📊 Sintesi</span>
         <span class="db-pill">Indici</span><span class="db-pill">Azionari</span><span class="db-pill">ETF Az.</span>
-        <span class="db-pill">Big Cap IT</span><span class="db-pill">Titoli USA</span>
-        <span class="db-pill gold">⭐ Preferiti</span><span class="db-pill blue">★ Lista 2</span><span class="db-pill pink">★ Lista 3</span>
-      </div>
-      <div class="db-tabs">
-        <span class="db-tab act">📋 Tabella</span><span class="db-tab">📊 Grafici</span>
-        <span class="db-tab">🔥 Heatmap</span><span class="db-tab">📐 Correlazione</span>
-        <span class="db-tab">🎯 Scatter</span><span class="db-tab">📰 News</span><span class="db-tab">🌐 Macro</span>
+        <span class="db-pill gold">⭐ Preferiti</span><span class="db-pill blue">★ Lista 2</span>
       </div>
       <table class="db-table">
-        <thead><tr><th>Nome</th><th>Prezzo</th><th>Oggi %</th><th>YTD €</th><th>7g</th><th>30g</th><th>60g</th><th>MM</th><th>Score</th></tr></thead>
+        <thead><tr><th>Nome</th><th>Prezzo</th><th>Oggi%</th><th>30g</th><th>Score</th><th>Segnale</th></tr></thead>
         <tbody>
-          <tr><td>S&amp;P 500</td><td>5.321,40</td><td class="g">+0,84%</td><td class="g">+7,2%</td><td class="g">+1,2%</td><td class="g">+3,4%</td><td class="g">+5,1%</td><td>🟢</td><td class="g">73</td></tr>
-          <tr><td>FTSE MIB</td><td>36.240,00</td><td class="r">−0,32%</td><td class="g">+8,1%</td><td class="r">−0,5%</td><td class="g">+2,1%</td><td class="g">+4,8%</td><td>🟢</td><td class="g">65</td></tr>
-          <tr><td>DAX</td><td>18.340,20</td><td class="g">+0,61%</td><td class="g">+6,8%</td><td class="g">+0,8%</td><td class="g">+3,1%</td><td class="g">+4,2%</td><td>🟢</td><td class="g">70</td></tr>
-          <tr><td>Oro / Gold</td><td>2.345,00</td><td class="g">+1,20%</td><td class="g">+15,3%</td><td class="g">+2,1%</td><td class="g">+8,2%</td><td class="g">+12,4%</td><td>🟢</td><td class="g">88</td></tr>
-          <tr><td>Apple (AAPL)</td><td>195,82</td><td class="g">+1,34%</td><td class="g">+8,2%</td><td class="g">+1,8%</td><td class="g">+4,1%</td><td class="r">−1,2%</td><td>🟡</td><td>55</td></tr>
-          <tr><td>NVIDIA (NVDA)</td><td>847,60</td><td class="g">+2,10%</td><td class="g">+22,4%</td><td class="g">+3,2%</td><td class="g">+12,8%</td><td class="g">+18,6%</td><td>🟢</td><td class="g">91</td></tr>
-          <tr><td>ENI</td><td>14,82</td><td class="r">−0,54%</td><td class="g">+3,1%</td><td class="r">−0,8%</td><td class="r">−1,2%</td><td class="g">+2,4%</td><td>🟡</td><td>48</td></tr>
-          <tr><td>EUR/USD</td><td>1,0821</td><td class="r">−0,15%</td><td class="r">−1,2%</td><td class="r">−0,3%</td><td class="g">+0,8%</td><td class="r">−0,6%</td><td>🔴</td><td class="r">38</td></tr>
+          <tr><td>NVIDIA (NVDA)</td><td>847,60</td><td class="g">+2,10%</td><td class="g">+12,8%</td><td class="g">91</td><td><span style="background:rgba(76,175,80,.3);color:#4caf50;padding:1px 6px;border-radius:5px;font-size:10px;font-weight:800">🔥 🟢 Accumula</span></td></tr>
+          <tr><td>Oro / Gold</td><td>2.345,00</td><td class="g">+1,20%</td><td class="g">+8,2%</td><td class="g">88</td><td><span style="background:rgba(76,175,80,.3);color:#4caf50;padding:1px 6px;border-radius:5px;font-size:10px;font-weight:800">🔥 🟢 Accumula</span></td></tr>
+          <tr><td>EUR/USD</td><td>1,0821</td><td class="r">−0,15%</td><td class="r">−1,8%</td><td class="r">32</td><td><span style="background:rgba(239,83,80,.3);color:#ef5350;padding:1px 6px;border-radius:5px;font-size:10px;font-weight:800">⚠️ 🔴 Riduci</span></td></tr>
+          <tr><td>S&amp;P 500</td><td>5.321,40</td><td class="g">+0,84%</td><td class="g">+3,4%</td><td class="g">73</td><td><span style="background:rgba(76,175,80,.2);color:#4caf50;padding:1px 6px;border-radius:5px;font-size:10px;font-weight:800">⚠️ 🟢 Accumula</span></td></tr>
         </tbody>
       </table>
       <div class="db-status">472 strumenti caricati · dati aggiornati alle 14:32 · prossimo refresh tra 4:28</div>
     </div>
   </div>
-  <div class="cover-meta"><span>Versione 2.0</span><span>Aprile 2026</span></div>
+  <div class="cover-meta"><span>Versione 3.0</span><span>Aprile 2026</span></div>
 </div>
 
 <!-- TOC -->
@@ -235,7 +254,7 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
 <div class="toc-page page-break">
   <div class="toc-title">Indice dei Contenuti</div>
   <ul class="toc-list">
-    <li><span class="toc-num">1</span><span class="toc-name">Panoramica della Dashboard</span></li>
+    <li><span class="toc-num">1</span><span class="toc-name">Panoramica di Market Compass</span></li>
     <li><span class="toc-num">2</span><span class="toc-name">Struttura dell'Interfaccia</span></li>
     <li><span class="toc-num">3</span><span class="toc-name">Universo degli Strumenti — 470+ Asset</span></li>
     <li><span class="toc-num">4</span><span class="toc-name">Tabella Principale — Navigazione e Filtri</span></li>
@@ -243,14 +262,21 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
     <li class="toc-sub"><span class="toc-num">4.2</span><span class="toc-name">Filtri, ordinamento, screening</span></li>
     <li><span class="toc-num">5</span><span class="toc-name">Liste Preferiti — 3 Watchlist Indipendenti</span></li>
     <li><span class="toc-num">6</span><span class="toc-name">Scheda Strumento — Analisi Dettagliata</span></li>
-    <li><span class="toc-num">7</span><span class="toc-name">Heatmap — Visualizzazione Cromatica</span></li>
-    <li><span class="toc-num">8</span><span class="toc-name">Matrice di Correlazione</span></li>
-    <li><span class="toc-num">9</span><span class="toc-name">Momentum — Vista Scatter</span></li>
-    <li><span class="toc-num">10</span><span class="toc-name">Sezione Macro — Dati Macroeconomici</span></li>
-    <li><span class="toc-num">11</span><span class="toc-name">News Feed — Notizie in Tempo Reale</span></li>
-    <li><span class="toc-num">12</span><span class="toc-name">Esportazione PDF</span></li>
-    <li><span class="toc-num">13</span><span class="toc-name">Fonti Dati e Aggiornamento</span></li>
-    <li><span class="toc-num">14</span><span class="toc-name">Note Legali</span></li>
+    <li><span class="toc-num">7</span><span class="toc-name">Segnali Operativi <span class="toc-new">NUOVO</span></span></li>
+    <li class="toc-sub"><span class="toc-num">7.1</span><span class="toc-name">Bias di Mercato — LONG / SHORT / NEUTRAL</span></li>
+    <li class="toc-sub"><span class="toc-num">7.2</span><span class="toc-name">Forza del Segnale — 🔥 ⚠️ ❄️</span></li>
+    <li class="toc-sub"><span class="toc-num">7.3</span><span class="toc-name">Tipi di Segnale</span></li>
+    <li class="toc-sub"><span class="toc-num">7.4</span><span class="toc-name">Contro Trend — Feature operativa</span></li>
+    <li class="toc-sub"><span class="toc-num">7.5</span><span class="toc-name">Regime di Mercato — stabilizzato</span></li>
+    <li class="toc-sub"><span class="toc-num">7.6</span><span class="toc-name">Popup Top Segnali — filtro e PDF</span></li>
+    <li><span class="toc-num">8</span><span class="toc-name">Heatmap — Visualizzazione Cromatica</span></li>
+    <li><span class="toc-num">9</span><span class="toc-name">Matrice di Correlazione</span></li>
+    <li><span class="toc-num">10</span><span class="toc-name">Scatter / Momentum</span></li>
+    <li><span class="toc-num">11</span><span class="toc-name">Sezione Macro</span></li>
+    <li><span class="toc-num">12</span><span class="toc-name">News Feed</span></li>
+    <li><span class="toc-num">13</span><span class="toc-name">Esportazione PDF</span></li>
+    <li><span class="toc-num">14</span><span class="toc-name">Fonti Dati e Aggiornamento</span></li>
+    <li><span class="toc-num">15</span><span class="toc-name">Note Legali</span></li>
   </ul>
 </div>
 </div>
@@ -260,14 +286,15 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
 <div class="section page-break">
   <div class="section-badge">Sezione 1</div>
   <div class="section-num">01</div>
-  <h2>Panoramica della Dashboard</h2>
-  <p><strong>Monitor Mercati</strong> è una dashboard professionale di analisi finanziaria per monitorare in tempo reale oltre <strong>470 strumenti finanziari</strong> su scala globale: indici, azioni, ETF, obbligazioni, materie prime, valute e volatilità.</p>
-  <p>La piattaforma integra dati live, analisi tecnica, fondamentali, correlazioni, stagionalità, notizie e macro in un'unica interfaccia accessibile da qualsiasi browser senza installazioni.</p>
+  <h2>Panoramica di Market Compass</h2>
+  <p><strong>Market Compass</strong> è una dashboard professionale di analisi finanziaria per monitorare in tempo reale oltre <strong>470 strumenti finanziari</strong> su scala globale: indici, azioni, ETF, obbligazioni, materie prime, valute e volatilità.</p>
+  <p>La piattaforma integra dati live, analisi tecnica, segnali operativi, correlazioni, stagionalità, notizie e macro in un'unica interfaccia accessibile da qualsiasi browser — senza installazioni.</p>
   <div class="box box-tip avoid-break">
     <div class="box-title">✅ Punti di forza</div>
     <p>• <strong>Copertura globale</strong>: USA, Europa, Italia, Svizzera, Asia, mercati emergenti</p>
     <p>• <strong>Dati live</strong>: prezzi aggiornati via Yahoo Finance con refresh automatico ogni 10 minuti</p>
-    <p>• <strong>Analisi integrata</strong>: tecnica, fondamentale, macro e notizie in un'unica schermata</p>
+    <p>• <strong>Segnali Operativi</strong>: sistema di segnali con forza, tipo e contesto macro — non solo indicatori tecnici</p>
+    <p>• <strong>Bias di Mercato</strong>: direzione dominante (LONG/SHORT/NEUTRAL) visibile a colpo d'occhio</p>
     <p>• <strong>3 watchlist rinominabili</strong>: organizza per cliente, strategia o categoria</p>
     <p>• <strong>Export PDF</strong>: ogni sezione esportabile in un click per presentazioni e report</p>
   </div>
@@ -277,7 +304,7 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
     <tbody>
       <tr><td>Frontend</td><td>HTML5 / JavaScript / Chart.js</td><td>Interfaccia, grafici, tabelle interattive</td></tr>
       <tr><td>Backend</td><td>Python 3 / yfinance</td><td>Recupero prezzi, fondamentali, news, macro</td></tr>
-      <tr><td>Deploy</td><td>Railway (cloud)</td><td>Disponibilità 24/7, aggiornamenti automatici</td></tr>
+      <tr><td>Deploy</td><td>Railway (cloud)</td><td>Disponibilità 24/7, aggiornamenti automatici via GitHub</td></tr>
       <tr><td>Grafici tecnici</td><td>Lightweight Charts (TradingView)</td><td>Candlestick, RSI, Bande di Bollinger</td></tr>
     </tbody>
   </table>
@@ -290,24 +317,13 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
   <div class="section-badge">Sezione 2</div>
   <div class="section-num">02</div>
   <h2>Struttura dell'Interfaccia</h2>
-  <p>L'interfaccia è organizzata in <strong>tre fasce orizzontali</strong>: barra di controllo superiore, filtri categoria + tab di navigazione, e area contenuto.</p>
+  <p>L'interfaccia è organizzata in <strong>cinque fasce orizzontali</strong> impilate: header, tab di navigazione, barra filtri/controlli, <strong>Bias strip</strong> (striscia LONG/SHORT/NEUTRAL), e area contenuto.</p>
   <div class="mockup avoid-break" style="padding:0;overflow:hidden">
-    <div style="background:#111c2e;padding:6px 12px;font-size:9px;color:#ffd700;font-weight:800;border-bottom:1px solid #1e2d45;display:flex;justify-content:space-between">
-      <span>① BARRA DI CONTROLLO</span>
-      <span style="color:#546e7a;font-weight:400">⏱ 14:32 · 🌙 Tema · ↺ Aggiorna · ▶ Feed News</span>
+    <div style="background:#1a237e;padding:10px 14px;font-size:9px;color:#ffd700;font-weight:800;border-bottom:1px solid #1e2d45;display:flex;justify-content:space-between;align-items:center">
+      <span>🧭 MARKET COMPASS &nbsp;<span style="color:rgba(255,255,255,.5);font-weight:300;font-style:italic">La direzione dei mercati, in un attimo</span></span>
+      <span style="color:#90caf9;font-weight:400">14:32 · 🌙 · ↺</span>
     </div>
-    <div style="padding:8px 12px;border-bottom:1px solid #1e2d45">
-      <div style="font-size:8px;color:#ffd700;font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">② FILTRI CATEGORIA + WATCHLIST</div>
-      <div style="display:flex;gap:3px;flex-wrap:wrap">
-        <span class="db-pill act">📊 Sintesi</span><span class="db-pill">Indici</span><span class="db-pill">Azionari</span>
-        <span class="db-pill">ETF Az.</span><span class="db-pill">Big Cap IT</span>
-        <span class="db-pill gold">⭐ Preferiti ✏</span><span class="db-pill blue">★ Lista 2 ✏</span><span class="db-pill pink">★ Lista 3 ✏</span>
-        <span style="font-size:9px;background:#1e2d45;padding:2px 6px;border-radius:4px;color:#546e7a">🔍 Screening</span>
-        <span style="font-size:9px;background:#1e2d45;padding:2px 6px;border-radius:4px;color:#546e7a">⚙ Colonne</span>
-      </div>
-    </div>
-    <div style="padding:6px 12px;border-bottom:1px solid #1e2d45">
-      <div style="font-size:8px;color:#ffd700;font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">③ TAB DI NAVIGAZIONE</div>
+    <div style="background:#111c2e;padding:4px 14px;border-bottom:1px solid #1e2d45">
       <div style="display:flex;gap:2px">
         <span class="db-tab act" style="font-size:9px;padding:3px 10px">📋 Tabella</span>
         <span class="db-tab" style="font-size:9px;padding:3px 10px">📊 Grafici</span>
@@ -318,15 +334,31 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
         <span class="db-tab" style="font-size:9px;padding:3px 10px">🌐 Macro</span>
       </div>
     </div>
-    <div style="padding:12px;font-size:9px;color:#37474f;text-align:center;min-height:36px">
-      ④ AREA CONTENUTO — cambia in base al tab selezionato
+    <div style="padding:6px 12px;border-bottom:1px solid #1e2d45">
+      <div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center">
+        <span class="db-pill act" style="font-size:9px">📊 Sintesi</span>
+        <span class="db-pill" style="font-size:9px">Indici</span>
+        <span class="db-pill" style="font-size:9px">ETF Az.</span>
+        <span class="db-pill gold" style="font-size:9px">⭐ Lista 1</span>
+        <span style="margin-left:auto;font-size:9px;background:#1e2d45;padding:2px 6px;border-radius:4px;color:#ffd700">🎯 Segnali ℹ ▼</span>
+      </div>
+    </div>
+    <div style="background:#1b5e20;padding:10px 16px;border-bottom:2px solid rgba(0,0,0,.3);display:flex;align-items:center;gap:16px">
+      <div><div style="font-size:7px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:1.5px;text-transform:uppercase">Bias</div><div style="font-size:22px;font-weight:900;color:#fff;line-height:1">LONG</div></div>
+      <div style="width:1px;align-self:stretch;background:rgba(255,255,255,.2)"></div>
+      <div style="font-size:10px;color:rgba(255,255,255,.8)">▲ 18 &nbsp;▼ 4 &nbsp;<span style="opacity:.4">— 12</span></div>
+      <div style="width:1px;align-self:stretch;background:rgba(255,255,255,.2)"></div>
+      <div style="font-size:9px;color:rgba(255,255,255,.7)">📈 TOP BUY: <b>🔥 NVIDIA · 🔥 Oro</b></div>
+    </div>
+    <div style="padding:12px;font-size:9px;color:#37474f;text-align:center;min-height:28px">
+      📋 TABELLA PRINCIPALE — righe asset con prezzi, performance, segnali
     </div>
   </div>
   <h3>Le 7 sezioni principali (tab)</h3>
   <table class="feat-table avoid-break">
     <thead><tr><th>Tab</th><th>Icona</th><th>Contenuto</th></tr></thead>
     <tbody>
-      <tr><td><strong>Tabella</strong></td><td>📋</td><td>Vista principale con performance su più orizzonti e indicatori tecnici</td></tr>
+      <tr><td><strong>Tabella</strong></td><td>📋</td><td>Vista principale con prezzi, performance su più orizzonti, indicatori tecnici e segnali operativi</td></tr>
       <tr><td><strong>Grafici</strong></td><td>📊</td><td>Grafici a barre multi-strumento, filtrabile per categoria o watchlist personale</td></tr>
       <tr><td><strong>Heatmap</strong></td><td>🔥</td><td>Griglia colorata per identificare immediatamente migliori e peggiori performer</td></tr>
       <tr><td><strong>Correlazione</strong></td><td>📐</td><td>Matrice di Pearson per analisi di diversificazione del portafoglio</td></tr>
@@ -335,10 +367,6 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
       <tr><td><strong>Macro</strong></td><td>🌐</td><td>Inflazione live, tassi ufficiali, rendimenti governativi, calendario economico</td></tr>
     </tbody>
   </table>
-  <div class="box box-info avoid-break">
-    <div class="box-title">💡 Tema chiaro / scuro</div>
-    <p>Il pulsante <strong>🌙</strong> in alto a destra alterna il tema tra scuro (predefinito, ottimale per monitor) e chiaro (ideale per stampa e presentazioni). La preferenza viene salvata automaticamente.</p>
-  </div>
 </div>
 </div>
 
@@ -348,7 +376,7 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
   <div class="section-badge">Sezione 3</div>
   <div class="section-num">03</div>
   <h2>Universo degli Strumenti — 470+ Asset</h2>
-  <p>La dashboard monitora <strong>oltre 470 strumenti finanziari</strong> distribuiti in 17 categorie, coprendo i principali mercati mondiali.</p>
+  <p>Market Compass monitora <strong>oltre 470 strumenti finanziari</strong> distribuiti in 17 categorie, coprendo i principali mercati mondiali.</p>
   <table class="feat-table avoid-break">
     <thead><tr><th>Categoria</th><th>Descrizione</th><th>Esempi</th></tr></thead>
     <tbody>
@@ -379,115 +407,27 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
   <div class="section-badge">Sezione 4</div>
   <div class="section-num">04</div>
   <h2>Tabella Principale — Navigazione e Filtri</h2>
-  <p>La tabella è il <strong>centro operativo</strong> della dashboard. Mostra tutti gli strumenti con performance su più orizzonti temporali, indicatori tecnici e trend, ed è completamente personalizzabile.</p>
-  <div class="mockup avoid-break" style="padding:10px 12px;overflow-x:auto">
-    <div style="font-size:8px;color:#546e7a;margin-bottom:6px;display:flex;gap:6px;flex-wrap:wrap">
-      <span style="background:#1e2d45;padding:2px 6px;border-radius:4px">🟢 Sopra MM50</span>
-      <span style="background:#1e2d45;padding:2px 6px;border-radius:4px">🟢 Sopra MM200</span>
-      <span style="background:#1e2d45;padding:2px 6px;border-radius:4px">🟡 Misto</span>
-      <span style="background:#1e2d45;padding:2px 6px;border-radius:4px">🔴 Sotto entrambe</span>
-      <span style="margin-left:auto;background:#ffd700;color:#07090f;padding:2px 6px;border-radius:4px;font-weight:700">⚙ Colonne ▾</span>
-    </div>
-    <table style="width:100%;border-collapse:collapse;font-size:9px;min-width:560px">
-      <thead>
-        <tr style="border-bottom:2px solid #1e2d45">
-          <th style="color:#ffd700;padding:4px 6px;text-align:left;font-size:8px">Nome ↕</th>
-          <th style="color:#546e7a;padding:4px 5px;text-align:right;font-size:8px">Prezzo</th>
-          <th style="color:#ffd700;padding:4px 5px;text-align:right;font-size:8px">Oggi ↓</th>
-          <th style="color:#546e7a;padding:4px 5px;text-align:right;font-size:8px">YTD €</th>
-          <th style="color:#546e7a;padding:4px 5px;text-align:right;font-size:8px">30g</th>
-          <th style="color:#546e7a;padding:4px 5px;text-align:right;font-size:8px">Trend</th>
-          <th style="color:#546e7a;padding:4px 5px;text-align:right;font-size:8px">MM</th>
-          <th style="color:#546e7a;padding:4px 5px;text-align:right;font-size:8px">Score</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr style="border-bottom:1px solid rgba(255,255,255,.04)">
-          <td style="color:#c5d8f0;font-weight:700;padding:4px 6px">NVIDIA (NVDA)</td>
-          <td style="text-align:right;color:#8fa8c8;padding:4px 5px">847,60</td>
-          <td style="text-align:right;color:#66bb6a;font-weight:700;padding:4px 5px">+2,10%</td>
-          <td style="text-align:right;color:#66bb6a;padding:4px 5px">+22,4%</td>
-          <td style="text-align:right;color:#66bb6a;padding:4px 5px">+12,8%</td>
-          <td style="text-align:right;font-family:monospace;color:#66bb6a;padding:4px 5px;font-size:8px">▁▂▄▅▇█</td>
-          <td style="text-align:right;padding:4px 5px">🟢</td>
-          <td style="text-align:right;color:#66bb6a;font-weight:800;padding:4px 5px">91</td>
-        </tr>
-        <tr style="border-bottom:1px solid rgba(255,255,255,.04)">
-          <td style="color:#c5d8f0;font-weight:700;padding:4px 6px">Oro / Gold</td>
-          <td style="text-align:right;color:#8fa8c8;padding:4px 5px">2.345,00</td>
-          <td style="text-align:right;color:#66bb6a;font-weight:700;padding:4px 5px">+1,20%</td>
-          <td style="text-align:right;color:#66bb6a;padding:4px 5px">+15,3%</td>
-          <td style="text-align:right;color:#66bb6a;padding:4px 5px">+8,2%</td>
-          <td style="text-align:right;font-family:monospace;color:#66bb6a;padding:4px 5px;font-size:8px">▂▃▅▆█▇</td>
-          <td style="text-align:right;padding:4px 5px">🟢</td>
-          <td style="text-align:right;color:#66bb6a;font-weight:800;padding:4px 5px">88</td>
-        </tr>
-        <tr style="border-bottom:1px solid rgba(255,255,255,.04)">
-          <td style="color:#c5d8f0;font-weight:700;padding:4px 6px">S&amp;P 500</td>
-          <td style="text-align:right;color:#8fa8c8;padding:4px 5px">5.321,40</td>
-          <td style="text-align:right;color:#66bb6a;font-weight:700;padding:4px 5px">+0,84%</td>
-          <td style="text-align:right;color:#66bb6a;padding:4px 5px">+7,2%</td>
-          <td style="text-align:right;color:#66bb6a;padding:4px 5px">+3,4%</td>
-          <td style="text-align:right;font-family:monospace;color:#66bb6a;padding:4px 5px;font-size:8px">▃▄▅▅▆█</td>
-          <td style="text-align:right;padding:4px 5px">🟢</td>
-          <td style="text-align:right;color:#66bb6a;font-weight:800;padding:4px 5px">73</td>
-        </tr>
-        <tr style="border-bottom:1px solid rgba(255,255,255,.04)">
-          <td style="color:#c5d8f0;font-weight:700;padding:4px 6px">FTSE MIB</td>
-          <td style="text-align:right;color:#8fa8c8;padding:4px 5px">36.240,00</td>
-          <td style="text-align:right;color:#ef9a9a;font-weight:700;padding:4px 5px">−0,32%</td>
-          <td style="text-align:right;color:#66bb6a;padding:4px 5px">+8,1%</td>
-          <td style="text-align:right;color:#66bb6a;padding:4px 5px">+2,1%</td>
-          <td style="text-align:right;font-family:monospace;color:#8fa8c8;padding:4px 5px;font-size:8px">▄▅▆▅▄▅</td>
-          <td style="text-align:right;padding:4px 5px">🟢</td>
-          <td style="text-align:right;color:#8fa8c8;font-weight:800;padding:4px 5px">65</td>
-        </tr>
-        <tr>
-          <td style="color:#c5d8f0;font-weight:700;padding:4px 6px">EUR/USD</td>
-          <td style="text-align:right;color:#8fa8c8;padding:4px 5px">1,0821</td>
-          <td style="text-align:right;color:#ef9a9a;font-weight:700;padding:4px 5px">−0,15%</td>
-          <td style="text-align:right;color:#ef9a9a;padding:4px 5px">−1,2%</td>
-          <td style="text-align:right;color:#8fa8c8;padding:4px 5px">+0,8%</td>
-          <td style="text-align:right;font-family:monospace;color:#ef9a9a;padding:4px 5px;font-size:8px">█▆▄▃▂▃</td>
-          <td style="text-align:right;padding:4px 5px">🔴</td>
-          <td style="text-align:right;color:#ef9a9a;font-weight:800;padding:4px 5px">38</td>
-        </tr>
-      </tbody>
-    </table>
-    <div style="margin-top:10px;background:#07090f;border-radius:6px;padding:8px 10px;border:1px solid #1e2d45">
-      <div style="font-size:9px;font-weight:800;color:#ffd700;margin-bottom:6px">🔍 SCREENING AVANZATO</div>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <select style="background:#1e2d45;border:1px solid #263040;color:#8fa8c8;padding:3px 6px;border-radius:4px;font-size:9px"><option>YTD €</option></select>
-        <select style="background:#1e2d45;border:1px solid #263040;color:#8fa8c8;padding:3px 6px;border-radius:4px;font-size:9px"><option>&gt;</option></select>
-        <input type="text" value="10" style="background:#1e2d45;border:1px solid #263040;color:#e8f0fe;padding:3px 6px;border-radius:4px;font-size:9px;width:40px">
-        <span style="font-size:9px;color:#546e7a">AND</span>
-        <select style="background:#1e2d45;border:1px solid #263040;color:#8fa8c8;padding:3px 6px;border-radius:4px;font-size:9px"><option>Score</option></select>
-        <select style="background:#1e2d45;border:1px solid #263040;color:#8fa8c8;padding:3px 6px;border-radius:4px;font-size:9px"><option>&gt;</option></select>
-        <input type="text" value="60" style="background:#1e2d45;border:1px solid #263040;color:#e8f0fe;padding:3px 6px;border-radius:4px;font-size:9px;width:40px">
-        <span style="background:#ffd700;color:#07090f;padding:3px 10px;border-radius:4px;font-size:9px;font-weight:800">▶ Applica</span>
-        <span style="color:#ef9a9a;font-size:9px">↺ Reset</span>
-      </div>
-    </div>
-  </div>
+  <p>La tabella è il <strong>centro operativo</strong> della dashboard. Mostra tutti gli strumenti con performance su più orizzonti temporali, indicatori tecnici e segnali operativi. Cliccare su una riga apre la scheda dettaglio dell'asset.</p>
   <h3>4.1 Colonne disponibili</h3>
   <table class="feat-table avoid-break">
     <thead><tr><th>Colonna</th><th>Descrizione</th></tr></thead>
     <tbody>
-      <tr><td><strong>Nome</strong></td><td>Nome completo, cliccabile per aprire la scheda dettaglio</td></tr>
-      <tr><td><strong>Valore Attuale</strong></td><td>Prezzo corrente aggiornato</td></tr>
+      <tr><td><strong>Nome</strong></td><td>Nome completo — cliccabile per aprire la scheda dettaglio</td></tr>
+      <tr><td><strong>Valore Attuale</strong></td><td>Prezzo corrente aggiornato in tempo reale</td></tr>
       <tr><td><strong>Var. % Giornaliera</strong></td><td>Variazione rispetto alla chiusura precedente</td></tr>
       <tr><td><strong>YTD Locale / YTD €</strong></td><td>Rendimento dall'inizio anno — in valuta locale o convertito in Euro</td></tr>
       <tr><td><strong>7 / 30 / 60 / 90 giorni</strong></td><td>Performance su orizzonti brevi e medi</td></tr>
       <tr><td><strong>Trend (Sparkline)</strong></td><td>Mini-grafico degli ultimi 30 giorni (▁▂▄▆█)</td></tr>
       <tr><td><strong>MM 50/200</strong></td><td>Posizione rispetto alle medie mobili — 🟢 rialzista, 🟡 misto, 🔴 ribassista</td></tr>
-      <tr><td><strong>Score</strong></td><td>Punteggio composito di momentum 0–100 (sopra 60 = forte, sotto 40 = debole)</td></tr>
+      <tr><td><strong>Score</strong></td><td>Punteggio momentum composito 0–100 (≥70 = forte, ≤30 = debole)</td></tr>
+      <tr><td><strong>Segnale Operativo</strong></td><td>Pill direzionale + forza (🔥⚠️❄️) + tipo + eventuale avviso contro trend</td></tr>
     </tbody>
   </table>
   <h3>4.2 Filtri, ordinamento e screening</h3>
-  <p>I pulsanti nella barra superiore filtrano istantaneamente per categoria. Cliccando sull'intestazione di qualsiasi colonna si ordina in modo crescente/decrescente. Il pannello <strong>🔍 Screening</strong> permette filtri personalizzati combinabili (AND logico): es. <em>YTD € &gt; 10% E Score &gt; 60</em>.</p>
+  <p>I pulsanti nella barra superiore filtrano per categoria. Cliccando l'intestazione di qualsiasi colonna si ordina crescente/decrescente. Il pannello <strong>🔍 Screening</strong> permette filtri personalizzati combinabili (AND logico): es. <em>YTD € &gt; 10% AND Score &gt; 60</em>.</p>
   <div class="box box-info avoid-break">
-    <div class="box-title">💡 Market Breadth</div>
-    <p>Il pannello <strong>📊 Market Breadth</strong> mostra la % di strumenti sopra/sotto MM50 e MM200 — un termometro della salute complessiva del mercato. Clicca su una barra per filtrare la tabella.</p>
+    <div class="box-title">💡 Hover su riga</div>
+    <p>Passando il mouse su una riga appare un <strong>bordo dorato verticale</strong> a sinistra — segnale visivo che la riga è selezionabile. Clicca per aprire la scheda completa dell'asset.</p>
   </div>
 </div>
 </div>
@@ -498,67 +438,18 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
   <div class="section-badge">Sezione 5</div>
   <div class="section-num">05</div>
   <h2>Liste Preferiti — 3 Watchlist Indipendenti</h2>
-  <p>Monitor Mercati offre <strong>tre watchlist indipendenti</strong>, ciascuna con colore distintivo, per organizzare il monitoraggio per cliente, strategia o categoria. I nomi sono <strong>completamente personalizzabili</strong>.</p>
-  <div class="mockup avoid-break">
-    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
-      <span class="db-pill gold act">⭐ Portafoglio Core</span>
-      <span style="font-size:9px;color:#ffd700;cursor:pointer">✏</span>
-      <span class="db-pill blue">★ Obbligazionario</span>
-      <span style="font-size:9px;color:#64b5f6;cursor:pointer">✏</span>
-      <span class="db-pill pink">★ Watch List</span>
-      <span style="font-size:9px;color:#ef9a9a;cursor:pointer">✏</span>
-      <span style="font-size:9px;color:#546e7a;font-style:italic;margin-left:4px">← clicca ✏ per rinominare</span>
-    </div>
-    <table class="wl-table">
-      <thead><tr><th>★1 ★2 ★3</th><th>Nome</th><th style="text-align:right">Prezzo</th><th style="text-align:right">Oggi %</th><th style="text-align:right">YTD €</th></tr></thead>
-      <tbody>
-        <tr>
-          <td><span style="color:#ffd700;font-size:11px">★</span><span style="color:#546e7a;font-size:11px">☆</span><span style="color:#546e7a;font-size:11px">☆</span></td>
-          <td>S&amp;P 500</td><td style="text-align:right">5.321,40</td>
-          <td style="text-align:right;color:#66bb6a">+0,84%</td><td style="text-align:right;color:#66bb6a">+7,2%</td>
-        </tr>
-        <tr>
-          <td><span style="color:#ffd700;font-size:11px">★</span><span style="color:#64b5f6;font-size:11px">★</span><span style="color:#546e7a;font-size:11px">☆</span></td>
-          <td>Oro / Gold</td><td style="text-align:right">2.345,00</td>
-          <td style="text-align:right;color:#66bb6a">+1,20%</td><td style="text-align:right;color:#66bb6a">+15,3%</td>
-        </tr>
-        <tr>
-          <td><span style="color:#546e7a;font-size:11px">☆</span><span style="color:#64b5f6;font-size:11px">★</span><span style="color:#546e7a;font-size:11px">☆</span></td>
-          <td>AGGH (ETF Bond)</td><td style="text-align:right">11,42</td>
-          <td style="text-align:right;color:#ef9a9a">−0,12%</td><td style="text-align:right;color:#66bb6a">+2,1%</td>
-        </tr>
-        <tr>
-          <td><span style="color:#546e7a;font-size:11px">☆</span><span style="color:#546e7a;font-size:11px">☆</span><span style="color:#ef9a9a;font-size:11px">★</span></td>
-          <td>VIX</td><td style="text-align:right">18,40</td>
-          <td style="text-align:right;color:#66bb6a">−2,10%</td><td style="text-align:right;color:#ef9a9a">−8,4%</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <p>Market Compass offre <strong>tre watchlist indipendenti</strong>, ciascuna con colore distintivo. I nomi sono <strong>completamente personalizzabili</strong> tramite il pulsante ✏ accanto a ciascuna lista.</p>
   <table class="feat-table avoid-break">
     <thead><tr><th>Lista</th><th>Colore</th><th>Utilizzo tipico</th></tr></thead>
     <tbody>
       <tr><td><strong>Lista 1</strong> (default: Preferiti)</td><td><span class="tag" style="background:rgba(255,215,0,.2);color:#92400e">● Oro</span></td><td>Portafoglio principale, strumenti core da monitorare</td></tr>
-      <tr><td><strong>Lista 2</strong> (default: Lista 2)</td><td><span class="tag" style="background:rgba(100,181,246,.2);color:#1d4ed8">● Blu</span></td><td>Secondo portafoglio, candidati, obbligazionario</td></tr>
-      <tr><td><strong>Lista 3</strong> (default: Lista 3)</td><td><span class="tag" style="background:rgba(239,154,154,.2);color:#9f1239">● Rosa</span></td><td>Terzo portafoglio, watch-list secondaria</td></tr>
+      <tr><td><strong>Lista 2</strong></td><td><span class="tag" style="background:rgba(100,181,246,.2);color:#1d4ed8">● Blu</span></td><td>Secondo portafoglio, candidati, obbligazionario</td></tr>
+      <tr><td><strong>Lista 3</strong></td><td><span class="tag" style="background:rgba(239,154,154,.2);color:#9f1239">● Rosa</span></td><td>Terzo portafoglio, watch-list secondaria</td></tr>
     </tbody>
   </table>
-  <h3>Come aggiungere uno strumento</h3>
-  <ol class="steps avoid-break">
-    <li><div>Individua lo strumento nella tabella</div></li>
-    <li><div>Nella colonna stelle, clicca la <strong>stella del colore desiderato</strong>: ★ dorata (Lista 1), ★ blu (Lista 2), ★ rosa (Lista 3)</div></li>
-    <li><div>La stella si illumina per confermare. Clicca di nuovo per rimuovere</div></li>
-    <li><div>Usa il pulsante filtro corrispondente in cima per visualizzare solo quella lista</div></li>
-  </ol>
-  <h3>Come rinominare una lista</h3>
-  <ol class="steps avoid-break">
-    <li><div>Clicca il piccolo <strong>✏</strong> accanto al pulsante della lista</div></li>
-    <li><div>Inserisci il nuovo nome nel campo che appare (es. "Portafoglio Core", "Cliente Bianchi", "Bond IT")</div></li>
-    <li><div>Conferma — il nome si aggiorna ovunque (tabella e grafici) e viene salvato nel browser</div></li>
-  </ol>
   <div class="box box-tip avoid-break">
     <div class="box-title">✅ Persistenza automatica</div>
-    <p>Le watchlist, i nomi personalizzati e le preferenze vengono salvati nel browser (localStorage) e rimangono dopo chiusura e riapertura, senza login o account.</p>
+    <p>Le watchlist, i nomi personalizzati e le preferenze vengono salvati nel browser (localStorage) e rimangono dopo chiusura e riapertura — senza login o account.</p>
   </div>
 </div>
 </div>
@@ -569,70 +460,12 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
   <div class="section-badge">Sezione 6</div>
   <div class="section-num">06</div>
   <h2>Scheda Strumento — Analisi Dettagliata</h2>
-  <p>Cliccando su qualsiasi riga si apre la <strong>scheda dettaglio</strong> dello strumento, che raccoglie in un'unica vista tutte le informazioni di analisi disponibili.</p>
-  <div class="modal-card avoid-break">
-    <div class="modal-hdr">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div>
-          <div class="modal-name">APPLE INC. (AAPL) &nbsp;<span style="font-size:10px;font-weight:400;color:#546e7a">🇺🇸 Titoli USA</span></div>
-          <div class="modal-price">$195,82 &nbsp;<span style="font-size:13px;color:#66bb6a">▲ +1,34%</span></div>
-          <div class="modal-perf">
-            <span>YTD: <strong style="color:#66bb6a">+8,2%</strong></span>
-            <span>30g: <strong style="color:#66bb6a">+4,1%</strong></span>
-            <span>1A: <strong style="color:#66bb6a">+12,8%</strong></span>
-            <span>52W: <strong style="color:#8fa8c8">164–199</strong></span>
-          </div>
-        </div>
-        <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end">
-          <span style="font-size:9px;background:#ffd700;color:#07090f;padding:2px 8px;border-radius:4px;font-weight:800">📄 PDF</span>
-          <span style="font-size:9px;color:#64b5f6">TradingView ↗</span>
-          <span style="font-size:9px;color:#64b5f6">JustETF ↗</span>
-        </div>
-      </div>
-    </div>
-    <div class="modal-body">
-      <div class="modal-periods">
-        <span class="modal-period">1M</span><span class="modal-period">3M</span>
-        <span class="modal-period act">YTD</span><span class="modal-period">1A</span>
-        <span class="modal-period">2A</span><span class="modal-period">3A</span><span class="modal-period">5A</span><span class="modal-period">Max</span>
-        <span style="margin-left:8px;font-size:9px;background:#1e2d45;padding:3px 8px;border-radius:5px;color:#8fa8c8">RSI 14</span>
-        <span style="font-size:9px;background:#1e2d45;padding:3px 8px;border-radius:5px;color:#8fa8c8">Bollinger</span>
-      </div>
-      <div class="chart-ph">── ── ──╮╭─╮ ╭╮ ╭─────────────╮ &nbsp;&nbsp; ▲ GRAFICO TECNICO INTERATTIVO</div>
-      <div class="fund-grid">
-        <div class="fund-item"><div class="fund-label">P/E Trailing</div><div class="fund-val">28,4x</div></div>
-        <div class="fund-item"><div class="fund-label">P/E Forward</div><div class="fund-val">24,1x</div></div>
-        <div class="fund-item"><div class="fund-label">Dividendo</div><div class="fund-val">0,52%</div></div>
-        <div class="fund-item"><div class="fund-label">Market Cap</div><div class="fund-val">$2,95T</div></div>
-        <div class="fund-item"><div class="fund-label">Beta</div><div class="fund-val">1,24</div></div>
-        <div class="fund-item"><div class="fund-label">Price/Book</div><div class="fund-val">41,2x</div></div>
-      </div>
-      <div style="font-size:9px;color:#546e7a;margin-top:10px;margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.5px">Performance Mensile Storica</div>
-      <table class="perf-table">
-        <thead><tr><th>Gen</th><th>Feb</th><th>Mar</th><th>Apr</th><th>Mag</th><th>Giu</th><th>Lug</th><th>Ago</th><th>Set</th><th>Ott</th><th>Nov</th><th>Dic</th></tr></thead>
-        <tbody>
-          <tr>
-            <td style="background:rgba(239,154,154,.25);color:#ef9a9a">−2,1</td>
-            <td style="background:rgba(102,187,106,.2);color:#66bb6a">+3,8</td>
-            <td style="background:rgba(102,187,106,.15);color:#66bb6a">+1,2</td>
-            <td style="background:rgba(239,154,154,.2);color:#ef9a9a">−0,8</td>
-            <td style="background:rgba(102,187,106,.3);color:#66bb6a">+5,1</td>
-            <td style="background:rgba(102,187,106,.2);color:#66bb6a">+2,4</td>
-            <td style="background:rgba(102,187,106,.35);color:#66bb6a">+6,8</td>
-            <td style="background:rgba(239,154,154,.15);color:#ef9a9a">−1,4</td>
-            <td style="background:rgba(239,154,154,.25);color:#ef9a9a">−3,2</td>
-            <td style="background:rgba(102,187,106,.25);color:#66bb6a">+4,2</td>
-            <td style="background:rgba(102,187,106,.3);color:#66bb6a">+5,6</td>
-            <td style="background:rgba(102,187,106,.15);color:#66bb6a">+1,8</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
+  <p>Cliccando su qualsiasi riga si apre la <strong>scheda dettaglio</strong> dello strumento con tutte le informazioni disponibili in un'unica vista. Nella scheda compare anche la <strong>spiegazione completa del segnale operativo</strong> (sezione 7).</p>
   <table class="feat-table avoid-break">
     <thead><tr><th>Sezione</th><th>Contenuto</th></tr></thead>
     <tbody>
-      <tr><td><strong>Grafico tecnico</strong></td><td>Candlestick o linea su 1M, 3M, YTD, 1A, 2A, 3A, 5A, Max — RSI 14 e Bollinger attivabili</td></tr>
+      <tr><td><strong>Segnale Operativo</strong></td><td>Pill direzione, tipo segnale, Convinzione (Alta/Media/Bassa), le 3 condizioni (✅/❌), barre forza</td></tr>
+      <tr><td><strong>Grafico tecnico</strong></td><td>Candlestick su 1M, 3M, YTD, 1A, 2A, 3A, 5A, Max — RSI 14 e Bollinger attivabili</td></tr>
       <tr><td><strong>Fondamentali</strong></td><td>P/E trailing/forward, P/B, dividendo, market cap, beta, 52W H/L, volume</td></tr>
       <tr><td><strong>Performance storica</strong></td><td>Tabella mese per mese degli ultimi anni con verde/rosso cromatico</td></tr>
       <tr><td><strong>Stagionalità</strong></td><td>Andamento medio stagionale 5–10 anni — mesi forti e deboli storicamente</td></tr>
@@ -643,391 +476,468 @@ hr{border:none;border-top:1px solid #e2e8f0;margin:24px 0}
 </div>
 </div>
 
-<!-- 7. HEATMAP -->
+<!-- 7. SEGNALI OPERATIVI -->
 <div class="container">
 <div class="section page-break">
   <div class="section-badge">Sezione 7</div>
   <div class="section-num">07</div>
-  <h2>Heatmap — Visualizzazione Cromatica delle Performance</h2>
+  <h2>Segnali Operativi</h2>
+  <p>Il sistema di Segnali Operativi è il <strong>cuore analitico</strong> di Market Compass. Ogni asset riceve un segnale direzionale con forza, tipo e contesto macro — non semplici indicatori tecnici isolati, ma una lettura integrata del mercato.</p>
+
+  <div class="box box-signal avoid-break">
+    <div class="box-title">📐 La logica in sintesi</div>
+    <p>Per ogni asset: <strong>1 pill direzionale</strong> (Accumula / Riduci / Mantieni / Neutro / Cautela) + <strong>forza</strong> (🔥 Forte / ⚠️ Medio / ❄️ Debole) basata su 3 condizioni verificate simultaneamente + eventuale <strong>tipo di segnale</strong> (Breakout, Reversal, Distribuzione…) nel dettaglio.</p>
+  </div>
+
+  <!-- 7.1 BIAS -->
+  <h3>7.1 Bias di Mercato — LONG / SHORT / NEUTRAL</h3>
+  <p>La <strong>striscia colorata</strong> subito sopra la tabella mostra la direzione dominante del mercato nel filtro attivo. È l'elemento più visibile della dashboard — progettato per essere letto in un secondo.</p>
+
+  <div class="bias-strip bias-long avoid-break">
+    <div>
+      <div class="bias-meta">Bias</div>
+      <div class="bias-label">LONG</div>
+    </div>
+    <div class="bias-div"></div>
+    <div>
+      <div style="font-size:9px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">Distribuzione</div>
+      <div style="display:flex;gap:14px;align-items:center">
+        <span style="font-size:18px;font-weight:900;color:#fff">▲ 18</span>
+        <span style="font-size:18px;font-weight:900;color:rgba(255,255,255,.6)">▼ 4</span>
+        <span style="font-size:13px;color:rgba(255,255,255,.3)">— 12</span>
+      </div>
+    </div>
+    <div class="bias-div"></div>
+    <div style="font-size:10px;color:rgba(255,255,255,.8)">📈 TOP BUY &nbsp;<strong>🔥 NVIDIA &nbsp;·&nbsp; 🔥 Oro &nbsp;·&nbsp; ⚠️ Apple</strong></div>
+  </div>
+
+  <div style="display:flex;gap:12px;margin:12px 0;flex-wrap:wrap" class="avoid-break">
+    <div class="bias-strip bias-long" style="flex:1;min-width:160px;padding:10px 16px">
+      <div><div class="bias-meta">Bias</div><div class="bias-label" style="font-size:28px">LONG</div></div>
+      <div style="font-size:10px;color:rgba(255,255,255,.7)">Rialzista: più BUY che SELL, mercato favorevole</div>
+    </div>
+    <div class="bias-strip bias-short" style="flex:1;min-width:160px;padding:10px 16px">
+      <div><div class="bias-meta">Bias</div><div class="bias-label" style="font-size:28px">SHORT</div></div>
+      <div style="font-size:10px;color:rgba(255,255,255,.7)">Ribassista: pressione SELL dominante, risk-off</div>
+    </div>
+    <div class="bias-strip bias-neutral" style="flex:1;min-width:160px;padding:10px 16px">
+      <div><div class="bias-meta">Bias</div><div class="bias-label" style="font-size:28px">NEUTRAL</div></div>
+      <div style="font-size:10px;color:rgba(255,255,255,.7)">Equilibrio: nessuna direzione prevalente</div>
+    </div>
+  </div>
+
+  <p>Il bias <strong>cambia in base al filtro attivo</strong>: selezionando "ETF Az." mostra il bias solo per gli ETF azionari. Selezionando "Lista 1" mostra il bias del tuo portafoglio. La striscia mostra anche i top 3 segnali BUY e SELL correnti.</p>
+
+  <!-- 7.2 FORZA -->
+  <h3>7.2 Forza del Segnale — 🔥 ⚠️ ❄️</h3>
+  <p>Ogni segnale ha una <strong>forza</strong> che misura quante delle 3 condizioni tecniche sono soddisfatte <em>contemporaneamente</em>. La stessa logica si applica ovunque: tabella, scheda dettaglio e popup ranking.</p>
+
+  <table class="feat-table avoid-break">
+    <thead><tr><th>Icona</th><th>Forza</th><th>Condizioni</th><th>Significato operativo</th></tr></thead>
+    <tbody>
+      <tr><td style="font-size:18px">🔥</td><td><strong class="str-forte">Forte</strong></td><td>3/3</td><td>Trend + Momentum + Macro tutti allineati. Alta convinzione — il momento è favorevole su tutti i fronti.</td></tr>
+      <tr><td style="font-size:18px">⚠️</td><td><strong class="str-medio">Medio</strong></td><td>2/3</td><td>Due condizioni soddisfatte. Segnale presente ma con riserve — una dimensione non supporta la direzione.</td></tr>
+      <tr><td style="font-size:18px">❄️</td><td><strong class="str-debole">Debole</strong></td><td>1/3</td><td>Solo una condizione soddisfatta. Segnale tecnico debole — preferibile attendere ulteriori conferme.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Le 3 condizioni nel dettaglio</h3>
+  <div class="mockup avoid-break">
+    <div class="cond-row">
+      <span style="font-size:15px">✅</span>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#e8f0fe;margin-bottom:2px">1. Trend</div>
+        <div style="font-size:10px;color:#8fa8c8">I periodi 7/30/60/90 giorni sono <strong style="color:#c5d8f0">coerenti con la direzione del segnale</strong>. Per un BUY: almeno la maggior parte dei periodi deve essere positiva. Per un SELL: periodi prevalentemente negativi.</div>
+      </div>
+    </div>
+    <div class="cond-row">
+      <span style="font-size:15px">✅</span>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#e8f0fe;margin-bottom:2px">2. Momentum</div>
+        <div style="font-size:10px;color:#8fa8c8">Lo score è <strong style="color:#c5d8f0">robusto</strong> (≥65 per BUY, ≤35 per SELL) e la posizione rispetto alla MM200 è coerente con la direzione (sopra MM200 per BUY, sotto per SELL).</div>
+      </div>
+    </div>
+    <div class="cond-row">
+      <span style="font-size:15px">✅</span>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#e8f0fe;margin-bottom:2px">3. Allineamento Macro</div>
+        <div style="font-size:10px;color:#8fa8c8">Il <strong style="color:#c5d8f0">regime di mercato</strong> (VIX + ampiezza di mercato + SP500 vs MM200) supporta la direzione. Un BUY in regime avverso non supera questa condizione.</div>
+      </div>
+    </div>
+  </div>
+
+  <p>Nella scheda strumento (cliccando sull'asset) le 3 condizioni appaiono con ✅/❌ e dettagli numerici: score corrente, posizione vs MM200, livello VIX, regime.</p>
+
+  <!-- 7.3 TIPI DI SEGNALE -->
+  <h3>7.3 Tipi di Segnale</h3>
+  <p>Oltre alla pill direzionale, ogni asset mostra il <strong>tipo di segnale</strong> nella scheda dettaglio — indica la <em>natura</em> del movimento in corso.</p>
+
+  <table class="feat-table avoid-break">
+    <thead><tr><th colspan="2">Segnali BUY</th></tr></thead>
+    <tbody>
+      <tr><td><span class="sig-pill sig-buy">Breakout</span></td><td>Tutti i periodi positivi + sopra MM50 e MM200. Il prezzo ha rotto al rialzo con forza strutturale. Il segnale più solido.</td></tr>
+      <tr><td><span class="sig-pill sig-buy">Reversal</span></td><td>Breve termine positivo ma medio termine ancora negativo. Recupero in atto da un ribasso precedente — da monitorare.</td></tr>
+      <tr><td><span class="sig-pill sig-buy">Trend</span></td><td>Momentum positivo su più periodi. Rialzo confermato senza accelerazione estrema — il tipo più comune in trend.</td></tr>
+    </tbody>
+  </table>
+  <table class="feat-table avoid-break">
+    <thead><tr><th colspan="2">Segnali SELL</th></tr></thead>
+    <tbody>
+      <tr><td><span class="sig-pill sig-sell">Distribuzione</span></td><td>Tutti i periodi negativi + sotto MM200. Fase di scarico strutturale — il segnale ribassista più forte.</td></tr>
+      <tr><td><span class="sig-pill sig-sell">Inversione</span></td><td>Breve termine negativo ma medio termine ancora positivo. Inversione della tendenza in corso.</td></tr>
+      <tr><td><span class="sig-pill sig-sell">Ribasso</span></td><td>Momentum negativo su più periodi. Calo confermato senza accelerazione estrema.</td></tr>
+    </tbody>
+  </table>
+  <table class="feat-table avoid-break">
+    <thead><tr><th colspan="2">Segnali Neutri</th></tr></thead>
+    <tbody>
+      <tr><td><span class="sig-pill sig-hold">Consolidamento</span></td><td>Segnale Hold: prezzo in pausa dopo un movimento, nessuna direzione chiara. Mantieni posizione.</td></tr>
+      <tr><td><span class="sig-pill sig-caution">Cautela</span></td><td>Momentum in indebolimento: non è ancora SELL ma il trend perde forza. Alleggerire o aspettare.</td></tr>
+      <tr><td><span class="sig-pill sig-neutral">Neutro</span></td><td>Score 42–57: nessun segnale direzionale chiaro in questo momento.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 7.4 CONTRO TREND -->
+  <h3>7.4 Contro Trend — Feature operativa</h3>
+  <p>Quando la <strong>direzione di un asset è opposta al regime globale</strong> (es. segnale BUY in un mercato avverso), appare un badge speciale. Non è un errore — è un'<strong>informazione operativa</strong> sulla natura del setup.</p>
+
+  <div class="mockup avoid-break">
+    <div style="margin-bottom:10px">
+      <div style="font-size:9px;color:#8fa8c8;margin-bottom:6px">Esempi di badge contro trend in tabella e scheda:</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="sig-pill sig-buy" style="font-size:10px">⚠️ 🟢 Accumula</span>
+          <span style="font-size:11px;font-weight:700;color:#ff9800;background:rgba(255,152,0,.15);border:1px solid rgba(255,152,0,.4);padding:2px 10px;border-radius:6px">⚡ Setup speculativo</span>
+          <span style="font-size:10px;color:#8fa8c8">Segnale Medio (2/3) in regime avverso — opportunità calcolata</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="sig-pill sig-buy" style="font-size:10px">❄️ 🟢 Accumula</span>
+          <span style="font-size:11px;font-weight:700;color:#ef5350;background:rgba(239,83,80,.15);border:1px solid rgba(239,83,80,.4);padding:2px 10px;border-radius:6px">⚡ Contro trend — rischio alto</span>
+          <span style="font-size:10px;color:#8fa8c8">Segnale Debole (1/3) in regime avverso — massima cautela</span>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:#546e7a;padding-top:8px;border-top:1px solid rgba(255,255,255,.06)">I segnali 🔥 Forti (3/3) non vengono mai penalizzati — hanno abbastanza conferme tecniche da prescindere dal regime.</div>
+  </div>
+
+  <table class="feat-table avoid-break">
+    <thead><tr><th>Badge</th><th>Quando appare</th><th>Interpretazione operativa</th></tr></thead>
+    <tbody>
+      <tr><td style="color:#ff9800;font-weight:700">⚡ Setup speculativo</td><td>Segnale Medio (2/3) contro il regime</td><td>Opportunità con consapevolezza del rischio macro. Possibile operare in riduzione di size.</td></tr>
+      <tr><td style="color:#ef5350;font-weight:700">⚡ Contro trend — rischio alto</td><td>Segnale Debole (1/3) contro il regime</td><td>Massima cautela. Il setup tecnico non ha il supporto né del mercato né del regime. Preferibile attendere.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 7.5 REGIME -->
+  <h3>7.5 Regime di Mercato — stabilizzato</h3>
+  <p>Il regime è la <strong>fotografia macro del mercato</strong> usata internamente per validare i segnali. È composto da 3 componenti, ognuna vale 1 punto:</p>
+
+  <table class="feat-table avoid-break">
+    <thead><tr><th>Componente</th><th>Criterio</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td><strong>VIX</strong></td><td>Media 5 letture &lt; 18 → +1 pt</td><td>Media degli ultimi 5 valori: picchi intraday non spostano il regime</td></tr>
+      <tr><td><strong>Ampiezza (Breadth)</strong></td><td>Media 5 letture &gt; 55% asset sopra MM200 → +1 pt</td><td>Breadth smoothata: non basta un giorno buono per far salire il regime</td></tr>
+      <tr><td><strong>S&P 500 vs MM200</strong></td><td>S&P 500 sopra media mobile 200 → +1 pt</td><td>Dato già stabile per natura — la MM200 si muove lentamente</td></tr>
+    </tbody>
+  </table>
+
+  <p>Il punteggio (0–3) viene ulteriormente <strong>stabilizzato</strong>: cambia solo se almeno 2 delle ultime 3 letture consecutive concordano, oppure se raggiunge un estremo assoluto (0 o 3). In pratica, il regime non cambia più di 1–2 volte a settimana.</p>
+
+  <div class="box box-info avoid-break">
+    <div class="box-title">💡 Perché il regime è stabile</div>
+    <p>I mercati moderni hanno molta rumorosità intraday. Un VIX che sale da 17 a 21 in un'ora non cambia la struttura del mercato. La doppia stabilizzazione (media 5gg + 2/3 conferme consecutive) filtra questi movimenti e dà un regime che riflette la condizione reale, non il tick corrente.</p>
+  </div>
+
+  <!-- 7.6 TOP SEGNALI -->
+  <h3>7.6 Popup Top Segnali — filtro categorie e PDF</h3>
+  <p>Il pulsante <strong>🎯</strong> nella colonna "Segnale Operativo" apre il popup di ranking con tutti i segnali BUY e SELL ordinati per forza e score.</p>
+
+  <div class="mockup avoid-break" style="padding:0;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid #1e2d45;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:11px;font-weight:800;color:#ffd700;letter-spacing:.6px;text-transform:uppercase">🎯 Segnali Operativi</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="font-size:10px;color:#ffd700;background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.4);padding:3px 10px;border-radius:8px;font-weight:700">⬇ PDF</span>
+        <span style="color:#546e7a;font-size:16px;cursor:pointer">✕</span>
+      </div>
+    </div>
+    <div style="display:flex;border-bottom:2px solid #1e2d45">
+      <div style="flex:1;padding:8px;text-align:center;background:rgba(76,175,80,.15);color:#4caf50;font-weight:800;font-size:11px;border-bottom:2px solid #4caf50">📈 BUY <span style="background:#4caf50;color:#000;border-radius:10px;padding:0 5px;font-size:10px">18</span></div>
+      <div style="flex:1;padding:8px;text-align:center;color:#546e7a;font-weight:800;font-size:11px">📉 SELL <span style="background:#1e2d45;color:#546e7a;border-radius:10px;padding:0 5px;font-size:10px">4</span></div>
+    </div>
+    <!-- Category filter bar -->
+    <div style="display:flex;gap:5px;padding:8px 12px;overflow-x:auto;border-bottom:1px solid #1e2d45">
+      <span style="flex-shrink:0;font-size:10px;font-weight:800;padding:3px 11px;border-radius:20px;border:1px solid #ffd700;background:rgba(255,215,0,.18);color:#ffd700">Tutti</span>
+      <span style="flex-shrink:0;font-size:10px;font-weight:600;padding:3px 11px;border-radius:20px;border:1px solid #1e2d45;color:#546e7a">INDICI USA <span style="opacity:.55;font-size:9px">5</span></span>
+      <span style="flex-shrink:0;font-size:10px;font-weight:600;padding:3px 11px;border-radius:20px;border:1px solid #1e2d45;color:#546e7a">ETF AZ. MASTER <span style="opacity:.55;font-size:9px">4</span></span>
+      <span style="flex-shrink:0;font-size:10px;font-weight:600;padding:3px 11px;border-radius:20px;border:1px solid #1e2d45;color:#546e7a">TITOLI USA <span style="opacity:.55;font-size:9px">6</span></span>
+      <span style="flex-shrink:0;font-size:10px;font-weight:600;padding:3px 11px;border-radius:20px;border:1px solid #1e2d45;color:#546e7a">MATERIA PRIMA <span style="opacity:.55;font-size:9px">3</span></span>
+    </div>
+    <div style="padding:8px 0">
+      <table style="width:100%;border-collapse:collapse;font-size:10px">
+        <tbody>
+          <tr style="border-bottom:1px solid rgba(255,255,255,.05)">
+            <td style="padding:5px 8px;font-size:13px;text-align:center">🔥</td>
+            <td style="padding:5px 8px;font-weight:700;color:#e8f0fe">NVIDIA (NVDA)</td>
+            <td style="padding:5px 8px;font-size:9px;color:#546e7a">TITOLI USA</td>
+            <td style="padding:5px 8px;text-align:center;color:#ff6f00;font-weight:900">91</td>
+            <td style="padding:5px 8px;text-align:right"><span style="background:rgba(76,175,80,.2);color:#4caf50;border:1px solid rgba(76,175,80,.5);padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700">🟢 Accumula</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,.05);background:rgba(255,255,255,.02)">
+            <td style="padding:5px 8px;font-size:13px;text-align:center">🔥</td>
+            <td style="padding:5px 8px;font-weight:700;color:#e8f0fe">Oro / Gold</td>
+            <td style="padding:5px 8px;font-size:9px;color:#546e7a">MATERIA PRIMA</td>
+            <td style="padding:5px 8px;text-align:center;color:#ff6f00;font-weight:900">88</td>
+            <td style="padding:5px 8px;text-align:right"><span style="background:rgba(76,175,80,.2);color:#4caf50;border:1px solid rgba(76,175,80,.5);padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700">🟢 Accumula</span></td>
+          </tr>
+          <tr>
+            <td style="padding:5px 8px;font-size:13px;text-align:center">⚠️</td>
+            <td style="padding:5px 8px;font-weight:700;color:#e8f0fe">S&amp;P 500</td>
+            <td style="padding:5px 8px;font-size:9px;color:#546e7a">INDICI USA</td>
+            <td style="padding:5px 8px;text-align:center;color:#ffc107;font-weight:900">73</td>
+            <td style="padding:5px 8px;text-align:right"><span style="background:rgba(76,175,80,.2);color:#4caf50;border:1px solid rgba(76,175,80,.5);padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700">🟢 Accumula</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>Come usare il popup</h3>
+  <ol class="steps avoid-break">
+    <li><div>Clicca <strong>🎯</strong> nell'intestazione della colonna Segnale Operativo per aprire il popup</div></li>
+    <li><div>Usa i tab <strong>📈 BUY / 📉 SELL</strong> per passare tra i segnali rialzisti e ribassisti</div></li>
+    <li><div>Usa la <strong>barra chips categorie</strong> per filtrare per categoria (es. "TITOLI USA", "ETF AZ. MASTER")</div></li>
+    <li><div>Clicca <strong>⬇ PDF</strong> per esportare la vista corrente (tab + categoria) come PDF stampabile</div></li>
+    <li><div>Clicca su qualsiasi asset per aprirne la scheda dettaglio</div></li>
+  </ol>
+
+  <div class="box box-tip avoid-break">
+    <div class="box-title">✅ PDF rispetta i filtri</div>
+    <p>Il PDF generato dal popup rispecchia esattamente la selezione attiva: se sei su "SELL → ETF AZ. MASTER", il PDF mostra solo quei segnali, con header, data e market score. Utile per report cliente o analisi di categoria.</p>
+  </div>
+</div>
+</div>
+
+<!-- 8. HEATMAP -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 8</div>
+  <div class="section-num">08</div>
+  <h2>Heatmap — Visualizzazione Cromatica</h2>
   <p>La heatmap è la vista più immediata per identificare a colpo d'occhio migliori e peggiori performer. Ogni strumento è un riquadro colorato in base alla performance selezionata.</p>
   <div class="mockup avoid-break">
-    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
-      <span class="db-pill act">Oggi</span><span class="db-pill">YTD €</span><span class="db-pill">7g</span>
-      <span class="db-pill">30g</span><span class="db-pill">1 Anno</span>
-      <span style="width:1px;height:16px;background:#1e2d45;margin:0 4px;flex-shrink:0"></span>
-      <span class="db-pill" style="background:rgba(255,215,0,.1);border-color:rgba(255,215,0,.3);color:#ffd700">↓ Migliori</span>
-      <span class="db-pill" style="background:rgba(255,215,0,.1);border-color:rgba(255,215,0,.3);color:#ffd700">↑ Peggiori</span>
-      <span class="db-pill act">↕ Default</span>
-    </div>
     <div class="hm-grid">
       <div class="hm-cat">📈 INDICI AZIONARI</div>
       <div class="hm-tile" style="background:#1b5e20;color:#a5d6a7">Nikkei<br>+1,20%</div>
       <div class="hm-tile" style="background:#2e7d32;color:#c8e6c9">S&amp;P 500<br>+0,84%</div>
       <div class="hm-tile" style="background:#388e3c;color:#dcedc8">DAX<br>+0,61%</div>
-      <div class="hm-tile" style="background:#388e3c;color:#dcedc8">MSCI W.<br>+0,72%</div>
       <div class="hm-tile" style="background:#c62828;color:#ffcdd2">FTSE MIB<br>−0,32%</div>
       <div class="hm-tile" style="background:#b71c1c;color:#ffcdd2">HSI<br>−1,80%</div>
       <div class="hm-cat">🥇 MATERIE PRIME</div>
       <div class="hm-tile" style="background:#1b5e20;color:#a5d6a7">Oro<br>+1,20%</div>
-      <div class="hm-tile" style="background:#388e3c;color:#dcedc8">Argento<br>+0,82%</div>
       <div class="hm-tile" style="background:#263238;color:#607d8b">Grano<br>+0,04%</div>
       <div class="hm-tile" style="background:#c62828;color:#ffcdd2">Petrolio<br>−0,42%</div>
-      <div class="hm-tile" style="background:#b71c1c;color:#ffcdd2">Gas Nat.<br>−2,10%</div>
-      <div class="hm-cat">💱 VALUTE</div>
-      <div class="hm-tile" style="background:#263238;color:#607d8b">GBP/USD<br>+0,08%</div>
-      <div class="hm-tile" style="background:#c62828;color:#ffcdd2">EUR/USD<br>−0,15%</div>
-      <div class="hm-tile" style="background:#b71c1c;color:#ffcdd2">USD/JPY<br>−0,84%</div>
-    </div>
-    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid #1e2d45;align-items:center">
-      <span style="font-size:8px;color:#546e7a;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-right:4px">Legenda:</span>
-      <span style="background:#7b1c1c;color:#ef9a9a;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700">&lt; −5%</span>
-      <span style="background:#b71c1c;color:#ffcdd2;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700">−2% → −5%</span>
-      <span style="background:#c62828;color:#ffcdd2;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700">−0,5% → −2%</span>
-      <span style="background:#263238;color:#607d8b;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700">≈ 0</span>
-      <span style="background:#388e3c;color:#dcedc8;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700">+0,5% → +2%</span>
-      <span style="background:#2e7d32;color:#c8e6c9;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700">+2% → +5%</span>
-      <span style="background:#1b5e20;color:#a5d6a7;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700">&gt; +5%</span>
     </div>
   </div>
   <h3>Metriche disponibili</h3>
   <div class="chips avoid-break">
-    <span class="chip chip-gold">Oggi</span><span class="chip">YTD €</span><span class="chip">YTD Locale</span>
-    <span class="chip">7 Giorni</span><span class="chip">30 Giorni</span><span class="chip">60 Giorni</span>
-    <span class="chip">90 Giorni</span><span class="chip">6 Mesi</span><span class="chip">1 Anno</span>
-    <span class="chip">2 Anni</span><span class="chip">3 Anni</span><span class="chip">5 Anni</span>
-  </div>
-  <div class="box box-tip avoid-break">
-    <div class="box-title">✅ Come usare la heatmap</div>
-    <p>• <strong>"Oggi"</strong> → panoramica immediata della seduta in corso<br>
-    • <strong>"YTD €"</strong> → performance da inizio anno in euro<br>
-    • <strong>"1 Anno"</strong> → confronto di lungo periodo<br>
-    • <strong>↓ Migliori / ↑ Peggiori</strong> → ordina all'interno di ogni categoria<br>
-    • Clicca su qualsiasi riquadro per aprire la scheda dettaglio</p>
+    <span class="chip chip-gold">Oggi</span><span class="chip">YTD €</span><span class="chip">7 Giorni</span>
+    <span class="chip">30 Giorni</span><span class="chip">60 Giorni</span><span class="chip">90 Giorni</span>
+    <span class="chip">6 Mesi</span><span class="chip">1 Anno</span><span class="chip">2 Anni</span><span class="chip">3 Anni</span><span class="chip">5 Anni</span>
   </div>
 </div>
 </div>
 
-<!-- 8. CORRELAZIONE -->
-<div class="container">
-<div class="section page-break">
-  <div class="section-badge">Sezione 8</div>
-  <div class="section-num">08</div>
-  <h2>Matrice di Correlazione</h2>
-  <p>La matrice misura il coefficiente di Pearson tra tutti gli strumenti di un gruppo, permettendo di valutare la <strong>diversificazione effettiva</strong> del portafoglio.</p>
-  <div class="mockup avoid-break">
-    <div style="display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
-      <span class="db-pill act">📊 Sintesi</span><span class="db-pill">🌍 Asset Globale</span>
-      <span class="db-pill">ETF Az.</span><span class="db-pill">Titoli IT</span>
-      <span style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap">
-        <span class="db-pill act">1 Anno</span><span class="db-pill">3 Mesi</span><span class="db-pill">2 Anni</span>
-        <span style="background:#ffd700;color:#07090f;padding:2px 10px;border-radius:4px;font-size:9px;font-weight:800">Calcola ↻</span>
-        <span style="background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.3);color:#ffd700;padding:2px 10px;border-radius:4px;font-size:9px;font-weight:800">🖨 PDF</span>
-      </span>
-    </div>
-    <div class="corr-wrap">
-      <table class="corr-table">
-        <thead>
-          <tr><th></th><th>S&amp;P 500</th><th>Oro</th><th>BTC</th><th>EUR/USD</th><th>Agg Bond</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <th style="color:#8fa8c8;text-align:right;padding:5px 8px;font-size:9px">S&amp;P 500</th>
-            <td style="background:rgba(46,125,50,.85);color:#fff">1,00</td>
-            <td style="background:rgba(46,125,50,.12);color:#a5d6a7">0,12</td>
-            <td style="background:rgba(46,125,50,.35);color:#c8e6c9">0,45</td>
-            <td style="background:rgba(183,28,28,.2);color:#ef9a9a">−0,23</td>
-            <td style="background:rgba(46,125,50,.1);color:#a5d6a7">0,18</td>
-          </tr>
-          <tr>
-            <th style="color:#8fa8c8;text-align:right;padding:5px 8px;font-size:9px">Oro</th>
-            <td style="background:rgba(46,125,50,.12);color:#a5d6a7">0,12</td>
-            <td style="background:rgba(46,125,50,.85);color:#fff">1,00</td>
-            <td style="background:rgba(46,125,50,.25);color:#c8e6c9">0,38</td>
-            <td style="background:rgba(183,28,28,.12);color:#ef9a9a">−0,15</td>
-            <td style="background:rgba(46,125,50,.3);color:#c8e6c9">0,42</td>
-          </tr>
-          <tr>
-            <th style="color:#8fa8c8;text-align:right;padding:5px 8px;font-size:9px">BTC</th>
-            <td style="background:rgba(46,125,50,.35);color:#c8e6c9">0,45</td>
-            <td style="background:rgba(46,125,50,.25);color:#c8e6c9">0,38</td>
-            <td style="background:rgba(46,125,50,.85);color:#fff">1,00</td>
-            <td style="background:rgba(183,28,28,.1);color:#ef9a9a">−0,12</td>
-            <td style="background:rgba(46,125,50,.06);color:#8fa8c8">0,08</td>
-          </tr>
-          <tr>
-            <th style="color:#8fa8c8;text-align:right;padding:5px 8px;font-size:9px">EUR/USD</th>
-            <td style="background:rgba(183,28,28,.2);color:#ef9a9a">−0,23</td>
-            <td style="background:rgba(183,28,28,.12);color:#ef9a9a">−0,15</td>
-            <td style="background:rgba(183,28,28,.1);color:#ef9a9a">−0,12</td>
-            <td style="background:rgba(46,125,50,.85);color:#fff">1,00</td>
-            <td style="background:rgba(46,125,50,.22);color:#c8e6c9">0,35</td>
-          </tr>
-          <tr>
-            <th style="color:#8fa8c8;text-align:right;padding:5px 8px;font-size:9px">Agg Bond</th>
-            <td style="background:rgba(46,125,50,.1);color:#a5d6a7">0,18</td>
-            <td style="background:rgba(46,125,50,.3);color:#c8e6c9">0,42</td>
-            <td style="background:rgba(46,125,50,.06);color:#8fa8c8">0,08</td>
-            <td style="background:rgba(46,125,50,.22);color:#c8e6c9">0,35</td>
-            <td style="background:rgba(46,125,50,.85);color:#fff">1,00</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;font-size:8px">
-      <span style="background:rgba(183,28,28,.7);color:#fff;padding:1px 6px;border-radius:3px">−1,00 inversa perfetta</span>
-      <span style="background:rgba(183,28,28,.25);color:#ef9a9a;padding:1px 6px;border-radius:3px">−0,3 / −0,7 hedging</span>
-      <span style="background:#263238;color:#607d8b;padding:1px 6px;border-radius:3px">≈ 0 decorrelato</span>
-      <span style="background:rgba(46,125,50,.35);color:#c8e6c9;padding:1px 6px;border-radius:3px">+0,3 / +0,7 moderata</span>
-      <span style="background:rgba(46,125,50,.85);color:#fff;padding:1px 6px;border-radius:3px">+1,00 positiva perfetta</span>
-    </div>
-  </div>
-  <ol class="steps avoid-break">
-    <li><div>Seleziona il <strong>gruppo di strumenti</strong> (Sintesi, ETF Azionari, Titoli IT, ecc.)</div></li>
-    <li><div>Scegli il <strong>periodo</strong>: 3 Mesi, 1 Anno, 2 Anni, 3 Anni</div></li>
-    <li><div>Clicca <strong>Calcola ↻</strong> — la matrice viene elaborata in pochi secondi</div></li>
-    <li><div>Esporta in PDF con <strong>🖨 PDF</strong> (auto-scalato per A4 senza tagliare asset)</div></li>
-  </ol>
-  <div class="box box-info avoid-break">
-    <div class="box-title">📌 Applicazione pratica</div>
-    <p>Strumenti con bassa o negativa correlazione riducono il rischio complessivo del portafoglio a parità di rendimento atteso. L'oro mostra tipicamente bassa correlazione con le azioni, rendendolo un efficace diversificatore.</p>
-  </div>
-</div>
-</div>
-
-<!-- 9. SCATTER -->
+<!-- 9. CORRELAZIONE -->
 <div class="container">
 <div class="section page-break">
   <div class="section-badge">Sezione 9</div>
   <div class="section-num">09</div>
-  <h2>Momentum — Vista Scatter</h2>
-  <p>Visualizza il <strong>ranking degli strumenti per forza del momentum</strong> come barre orizzontali con scala 0–100. Permette di identificare rapidamente i trend più forti e più deboli.</p>
+  <h2>Matrice di Correlazione</h2>
+  <p>La matrice misura il coefficiente di Pearson tra tutti gli strumenti di un gruppo, permettendo di valutare la <strong>diversificazione effettiva</strong> del portafoglio e identificare asset ridondanti o di copertura.</p>
   <div class="mockup avoid-break">
-    <div style="display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
-      <span class="db-pill act">📊 Sintesi</span><span class="db-pill">Indici Az.</span>
-      <span class="db-pill">ETF Az.</span><span class="db-pill">Titoli USA</span><span class="db-pill">Big Cap IT</span>
-      <span style="margin-left:auto"><span style="background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.3);color:#ffd700;padding:2px 10px;border-radius:4px;font-size:9px;font-weight:800">🖨 PDF</span></span>
+    <div class="corr-wrap">
+      <table class="corr-table">
+        <thead><tr><th></th><th>S&amp;P 500</th><th>Oro</th><th>EUR/USD</th><th>Agg Bond</th></tr></thead>
+        <tbody>
+          <tr><th style="color:#8fa8c8;text-align:right;padding:5px 8px;font-size:9px">S&amp;P 500</th>
+            <td style="background:rgba(46,125,50,.85);color:#fff">1,00</td>
+            <td style="background:rgba(46,125,50,.12);color:#a5d6a7">0,12</td>
+            <td style="background:rgba(183,28,28,.2);color:#ef9a9a">−0,23</td>
+            <td style="background:rgba(46,125,50,.1);color:#a5d6a7">0,18</td></tr>
+          <tr><th style="color:#8fa8c8;text-align:right;padding:5px 8px;font-size:9px">Oro</th>
+            <td style="background:rgba(46,125,50,.12);color:#a5d6a7">0,12</td>
+            <td style="background:rgba(46,125,50,.85);color:#fff">1,00</td>
+            <td style="background:rgba(183,28,28,.12);color:#ef9a9a">−0,15</td>
+            <td style="background:rgba(46,125,50,.3);color:#c8e6c9">0,42</td></tr>
+        </tbody>
+      </table>
     </div>
-    <div class="mom-list">
-      <div class="mom-row"><span class="mom-name">NVIDIA</span><div class="mom-bar-wrap"><div class="mom-bar" style="width:91%;background:linear-gradient(90deg,#1b5e20,#4caf50)"></div></div><span class="mom-val" style="color:#4caf50">91</span></div>
-      <div class="mom-row"><span class="mom-name">Oro / Gold</span><div class="mom-bar-wrap"><div class="mom-bar" style="width:88%;background:linear-gradient(90deg,#1b5e20,#4caf50)"></div></div><span class="mom-val" style="color:#4caf50">88</span></div>
-      <div class="mom-row"><span class="mom-name">S&amp;P 500</span><div class="mom-bar-wrap"><div class="mom-bar" style="width:73%;background:linear-gradient(90deg,#2e7d32,#66bb6a)"></div></div><span class="mom-val" style="color:#66bb6a">73</span></div>
-      <div class="mom-row"><span class="mom-name">MSCI World</span><div class="mom-bar-wrap"><div class="mom-bar" style="width:68%;background:linear-gradient(90deg,#2e7d32,#66bb6a)"></div></div><span class="mom-val" style="color:#66bb6a">68</span></div>
-      <div class="mom-row"><span class="mom-name">FTSE MIB</span><div class="mom-bar-wrap"><div class="mom-bar" style="width:65%;background:linear-gradient(90deg,#2e7d32,#66bb6a)"></div></div><span class="mom-val" style="color:#66bb6a">65</span></div>
-      <div class="mom-row"><span class="mom-name">Apple</span><div class="mom-bar-wrap"><div class="mom-bar" style="width:55%;background:#546e7a"></div></div><span class="mom-val" style="color:#8fa8c8">55</span></div>
-      <div class="mom-row"><span class="mom-name">ENI</span><div class="mom-bar-wrap"><div class="mom-bar" style="width:48%;background:#546e7a"></div></div><span class="mom-val" style="color:#8fa8c8">48</span></div>
-      <div class="mom-row"><span class="mom-name">EUR/USD</span><div class="mom-bar-wrap"><div class="mom-bar" style="width:38%;background:linear-gradient(90deg,#b71c1c,#ef5350)"></div></div><span class="mom-val" style="color:#ef9a9a">38</span></div>
-      <div class="mom-row"><span class="mom-name">Gas Naturale</span><div class="mom-bar-wrap"><div class="mom-bar" style="width:22%;background:linear-gradient(90deg,#7b1c1c,#b71c1c)"></div></div><span class="mom-val" style="color:#ef9a9a">22</span></div>
-    </div>
-    <div style="display:flex;gap:12px;margin-top:8px;font-size:8px;border-top:1px solid #1e2d45;padding-top:6px">
-      <span style="color:#4caf50">● 70–100 Trend forte</span>
-      <span style="color:#8fa8c8">● 30–70 Neutro</span>
-      <span style="color:#ef9a9a">● 0–30 Debolezza</span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;font-size:8px">
+      <span style="background:rgba(183,28,28,.7);color:#fff;padding:1px 6px;border-radius:3px">−1,00 inversa</span>
+      <span style="background:#263238;color:#607d8b;padding:1px 6px;border-radius:3px">≈ 0 decorrelato</span>
+      <span style="background:rgba(46,125,50,.7);color:#fff;padding:1px 6px;border-radius:3px">+1,00 perfetta</span>
     </div>
   </div>
-  <table class="feat-table avoid-break">
-    <thead><tr><th>Score</th><th>Segnale</th><th>Interpretazione</th></tr></thead>
-    <tbody>
-      <tr><td><strong>70–100</strong></td><td>🟢 Forte rialzo</td><td>Trend positivo su più orizzonti, sovraperformance vs benchmark</td></tr>
-      <tr><td><strong>50–70</strong></td><td>🟡 Moderatamente positivo</td><td>Trend positivo ma non uniforme su tutti i periodi</td></tr>
-      <tr><td><strong>30–50</strong></td><td>🟡 Neutro</td><td>Segnali contrastanti, assenza di trend chiaro</td></tr>
-      <tr><td><strong>0–30</strong></td><td>🔴 Trend negativo</td><td>Sottoperformance persistente, debolezza tecnica</td></tr>
-    </tbody>
-  </table>
+  <div class="box box-info avoid-break">
+    <div class="box-title">💡 Come leggere la matrice</div>
+    <p>• <strong>Rosso (negativo)</strong>: gli asset si muovono in direzioni opposte — utili per la copertura<br>
+    • <strong>Verde (positivo)</strong>: si muovono assieme — aggiungere entrambi non diversifica<br>
+    • <strong>Grigio (≈0)</strong>: nessuna correlazione — massima diversificazione</p>
+  </div>
 </div>
 </div>
 
-<!-- 10. MACRO -->
+<!-- 10. SCATTER -->
 <div class="container">
 <div class="section page-break">
   <div class="section-badge">Sezione 10</div>
   <div class="section-num">10</div>
-  <h2>Sezione Macro — Dati Macroeconomici</h2>
-  <p>Raccoglie in un'unica vista il contesto macroeconomico aggiornato, essenziale per interpretare i movimenti di mercato e posizionare il portafoglio.</p>
-  <div class="mockup avoid-break" style="padding:12px">
-    <div class="macro-panels">
-      <div class="macro-panel">
-        <div class="macro-panel-hdr">📈 INFLAZIONE LIVE</div>
-        <div class="macro-row-item"><span class="macro-flag">🇺🇸</span><span class="macro-lbl">CPI USA</span><span class="macro-val hi">3,2%</span><span class="macro-date">Mar 2026</span></div>
-        <div class="macro-row-item"><span class="macro-flag">🇺🇸</span><span class="macro-lbl">Core CPI</span><span class="macro-val hi">3,8%</span><span class="macro-date">Mar 2026</span></div>
-        <div class="macro-row-item"><span class="macro-flag">🇪🇺</span><span class="macro-lbl">HICP Eurozona</span><span class="macro-val neu">2,2%</span><span class="macro-date">Mar 2026</span></div>
-        <div class="macro-row-item"><span class="macro-flag">🇩🇪</span><span class="macro-lbl">Germania</span><span class="macro-val neu">2,3%</span><span class="macro-date">Mar 2026</span></div>
-        <div class="macro-row-item"><span class="macro-flag">🇮🇹</span><span class="macro-lbl">Italia</span><span class="macro-val lo">1,6%</span><span class="macro-date">Mar 2026</span></div>
-        <div class="macro-row-item"><span class="macro-flag">🇫🇷</span><span class="macro-lbl">Francia</span><span class="macro-val lo">1,8%</span><span class="macro-date">Mar 2026</span></div>
-        <div class="macro-row-item"><span class="macro-flag">🇪🇸</span><span class="macro-lbl">Spagna</span><span class="macro-val neu">2,4%</span><span class="macro-date">Mar 2026</span></div>
+  <h2>Scatter / Momentum</h2>
+  <p>Il tab Scatter mostra tutti gli strumenti su un piano cartesiano <strong>Momentum vs Forza Relativa</strong>, permettendo di identificare visivamente i leader di mercato e gli asset in fase di debolezza.</p>
+  <div class="mockup avoid-break">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div style="background:#07090f;border-radius:8px;padding:10px;border:1px solid #1e2d45;text-align:center">
+        <div style="font-size:9px;color:#4caf50;font-weight:700;margin-bottom:4px">▲ LEADERSHIP</div>
+        <div style="font-size:9px;color:#8fa8c8">Alta forza relativa + alto momentum — asset da mantenere/accumulare</div>
       </div>
-      <div class="macro-panel">
-        <div class="macro-panel-hdr">🏦 TASSI LIVE + RENDIMENTI</div>
-        <div class="macro-row-item"><span class="macro-flag">🇪🇺</span><span class="macro-lbl">DFR (BCE)</span><span class="macro-val neu">2,25%</span><span class="macro-date">Jun 25</span></div>
-        <div class="macro-row-item"><span class="macro-flag">🇪🇺</span><span class="macro-lbl">MRR (BCE)</span><span class="macro-val neu">2,40%</span><span class="macro-date">Jun 25</span></div>
-        <div class="macro-row-item"><span class="macro-flag">🇬🇧</span><span class="macro-lbl">BOE Bank Rate</span><span class="macro-val hi">4,25%</span><span class="macro-date">Mar 26</span></div>
-        <div style="height:1px;background:#1e2d45;margin:2px 0"></div>
-        <div class="macro-row-item"><span class="macro-flag">🇺🇸</span><span class="macro-lbl">US Treasury 10Y</span><span class="macro-val hi">4,42%</span></div>
-        <div class="macro-row-item"><span class="macro-flag">🇩🇪</span><span class="macro-lbl">Bund DE 10Y</span><span class="macro-val neu">2,51%</span></div>
-        <div class="macro-row-item"><span class="macro-flag">🇮🇹</span><span class="macro-lbl">BTP IT 10Y <span style="font-size:8px;color:#546e7a">(+127bp)</span></span><span class="macro-val hi">3,78%</span></div>
-        <div class="macro-row-item"><span class="macro-flag">🇬🇧</span><span class="macro-lbl">Gilt UK 10Y</span><span class="macro-val hi">4,28%</span></div>
+      <div style="background:#07090f;border-radius:8px;padding:10px;border:1px solid #1e2d45;text-align:center">
+        <div style="font-size:9px;color:#ffc107;font-weight:700;margin-bottom:4px">→ MIGLIORAMENTO</div>
+        <div style="font-size:9px;color:#8fa8c8">Momentum in miglioramento — potenziali candidati BUY nelle prossime settimane</div>
+      </div>
+      <div style="background:#07090f;border-radius:8px;padding:10px;border:1px solid #1e2d45;text-align:center">
+        <div style="font-size:9px;color:#ff9800;font-weight:700;margin-bottom:4px">← INDEBOLIMENTO</div>
+        <div style="font-size:9px;color:#8fa8c8">Forza relativa in calo — monitorare per possibile riduzione</div>
+      </div>
+      <div style="background:#07090f;border-radius:8px;padding:10px;border:1px solid #1e2d45;text-align:center">
+        <div style="font-size:9px;color:#ef5350;font-weight:700;margin-bottom:4px">▼ DEBOLEZZA</div>
+        <div style="font-size:9px;color:#8fa8c8">Bassa forza relativa + basso momentum — asset da evitare o ridurre</div>
       </div>
     </div>
-  </div>
-  <table class="feat-table avoid-break">
-    <thead><tr><th>Pannello</th><th>Contenuto</th><th>Fonte</th></tr></thead>
-    <tbody>
-      <tr><td><strong>Inflazione Live</strong></td><td>CPI USA, Core CPI, HICP Eurozona, DE, IT, FR, ES</td><td>BLS (USA), BCE (UE) — aggiorn. ogni 30 min</td></tr>
-      <tr><td><strong>Tassi Ufficiali Live</strong></td><td>DFR e MRR (BCE), Bank Rate (BOE)</td><td>ECB Data Warehouse, Bank of England</td></tr>
-      <tr><td><strong>Rendimenti Governativi</strong></td><td>Curve 3M/2Y/5Y/10Y/30Y per USA, DE, IT, FR, ES, UK, JP, CA</td><td>Yahoo Finance, ECB, BOE, MOF Japan, BoC</td></tr>
-      <tr><td><strong>Banche Centrali</strong></td><td>Fed, BCE, BOE, BOJ — tasso corrente, tendenza, prossima riunione</td><td>Curato post-meeting</td></tr>
-      <tr><td><strong>Calendario Economico</strong></td><td>Prossimi dati macro rilevanti con countdown al rilascio</td><td>Database interno</td></tr>
-    </tbody>
-  </table>
-  <div class="box box-warn avoid-break">
-    <div class="box-title">⚠ Frequenza pubblicazione inflazione</div>
-    <p>I dati CPI/HICP vengono pubblicati mensilmente con 2–4 settimane di ritardo. La dashboard mostra sempre l'ultima lettura ufficiale disponibile con la data di riferimento esplicita.</p>
   </div>
 </div>
 </div>
 
-<!-- 11. NEWS -->
+<!-- 11. MACRO -->
 <div class="container">
 <div class="section page-break">
   <div class="section-badge">Sezione 11</div>
   <div class="section-num">11</div>
-  <h2>News Feed — Notizie in Tempo Reale</h2>
-  <p>Aggrega notizie finanziarie da più fonti con <strong>analisi automatica del sentiment</strong> per ogni articolo.</p>
-  <div class="mockup avoid-break">
-    <div class="news-ticker">📈 S&amp;P 500 5.321,40 +0,84% &nbsp;|&nbsp; 🥇 Oro 2.345,00 +1,20% &nbsp;|&nbsp; DAX 18.340 +0,61% &nbsp;|&nbsp; EUR/USD 1,0821 −0,15% &nbsp;|&nbsp; Nikkei 39.420 +1,18% &nbsp;|&nbsp; BTC 68.240 +2,34%</div>
-    <div style="display:flex;gap:6px;margin-bottom:10px;align-items:center">
-      <input type="text" placeholder="🔍 Cerca notizie..." style="background:#0d1220;border:1px solid #1e2d45;color:#8fa8c8;padding:4px 10px;border-radius:6px;font-size:9px;flex:1">
-      <span style="background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.3);color:#ffd700;padding:3px 10px;border-radius:4px;font-size:9px;font-weight:800">🖨 PDF</span>
+  <h2>Sezione Macro — Dati Macroeconomici</h2>
+  <p>Il tab Macro raccoglie i principali dati macroeconomici globali, aggiornati automaticamente. È il contesto in cui leggere i segnali operativi.</p>
+  <div class="macro-panels avoid-break">
+    <div class="macro-panel">
+      <div class="macro-panel-hdr">🏦 Tassi Ufficiali</div>
+      <div class="macro-row-item"><span class="macro-lbl">🇺🇸 Fed Funds</span><span class="macro-val hi">5,25%</span></div>
+      <div class="macro-row-item"><span class="macro-lbl">🇪🇺 BCE</span><span class="macro-val hi">4,50%</span></div>
+      <div class="macro-row-item"><span class="macro-lbl">🇬🇧 BoE</span><span class="macro-val hi">5,25%</span></div>
     </div>
-    <div class="news-card">
-      <div class="news-dot" style="background:#22c55e"></div>
-      <div class="news-body">
-        <div class="news-title">Goldman Sachs alza il target per S&amp;P 500 a 5.800 punti entro fine anno</div>
-        <div class="news-meta">Reuters &nbsp;·&nbsp; 12 min fa &nbsp;·&nbsp; <span style="color:#22c55e">● Positivo</span></div>
-      </div>
-      <div class="news-action">Leggi →</div>
+    <div class="macro-panel">
+      <div class="macro-panel-hdr">📈 Rendimenti 10Y</div>
+      <div class="macro-row-item"><span class="macro-lbl">🇺🇸 Treasury</span><span class="macro-val hi">4,32%</span></div>
+      <div class="macro-row-item"><span class="macro-lbl">🇩🇪 Bund</span><span class="macro-val hi">2,48%</span></div>
+      <div class="macro-row-item"><span class="macro-lbl">🇮🇹 BTP</span><span class="macro-val hi">3,85%</span></div>
     </div>
-    <div class="news-card">
-      <div class="news-dot" style="background:#ef4444"></div>
-      <div class="news-body">
-        <div class="news-title">BCE avverte: l'inflazione rimane sopra il target nel 2026</div>
-        <div class="news-meta">Bloomberg &nbsp;·&nbsp; 45 min fa &nbsp;·&nbsp; <span style="color:#ef4444">● Negativo</span></div>
-      </div>
-      <div class="news-action">Leggi →</div>
-    </div>
-    <div class="news-card">
-      <div class="news-dot" style="background:#9ca3af"></div>
-      <div class="news-body">
-        <div class="news-title">Oro raggiunge nuovo massimo storico oltre quota 2.400 dollari l'oncia</div>
-        <div class="news-meta">ANSA &nbsp;·&nbsp; 1 ora fa &nbsp;·&nbsp; <span style="color:#9ca3af">● Neutro</span></div>
-      </div>
-      <div class="news-action">Leggi →</div>
-    </div>
-    <div class="news-card">
-      <div class="news-dot" style="background:#22c55e"></div>
-      <div class="news-body">
-        <div class="news-title">NVIDIA: ricavi Q1 2026 battono le stime del 18%, guidance rialzata</div>
-        <div class="news-meta">Wall Street Journal &nbsp;·&nbsp; 2 ore fa &nbsp;·&nbsp; <span style="color:#22c55e">● Positivo</span></div>
-      </div>
-      <div class="news-action">Leggi →</div>
+    <div class="macro-panel">
+      <div class="macro-panel-hdr">💹 Inflazione</div>
+      <div class="macro-row-item"><span class="macro-lbl">🇺🇸 CPI YoY</span><span class="macro-val hi">3,4%</span></div>
+      <div class="macro-row-item"><span class="macro-lbl">🇪🇺 HICP</span><span class="macro-val hi">2,6%</span></div>
+      <div class="macro-row-item"><span class="macro-lbl">🇬🇧 CPI</span><span class="macro-val hi">3,2%</span></div>
     </div>
   </div>
-  <ul>
-    <li><strong>Ticker scorrevole</strong>: barra in cima con prezzi live dei principali indici e asset</li>
-    <li><strong>Sentiment automatico</strong>: <span style="color:#22c55e">● verde</span> positivo, <span style="color:#ef4444">● rosso</span> negativo, <span style="color:#9ca3af">● grigio</span> neutro</li>
-    <li><strong>Ricerca</strong>: filtra per parola chiave nel titolo</li>
-    <li><strong>Aggiornamento automatico</strong>: ogni 10 minuti</li>
-    <li><strong>News strumento-specifiche</strong>: dalla scheda dettaglio, il tab News mostra solo le notizie di quell'asset</li>
-    <li><strong>Export PDF</strong>: esporta il feed corrente in formato stampabile</li>
-  </ul>
 </div>
 </div>
 
-<!-- 12. EXPORT PDF -->
+<!-- 12. NEWS -->
 <div class="container">
 <div class="section page-break">
   <div class="section-badge">Sezione 12</div>
   <div class="section-num">12</div>
-  <h2>Esportazione PDF</h2>
-  <p>Ogni sezione della dashboard può essere esportata in <strong>PDF professionale</strong> con un singolo click.</p>
-  <table class="feat-table avoid-break">
-    <thead><tr><th>Sezione</th><th>Pulsante</th><th>Contenuto esportato</th></tr></thead>
-    <tbody>
-      <tr><td><strong>Scheda strumento</strong></td><td>📄 PDF (in alto nel modal)</td><td>Grafico, fondamentali, performance mensile, news specifiche</td></tr>
-      <tr><td><strong>Matrice di correlazione</strong></td><td>🖨 PDF (sezione Correlazione)</td><td>Matrice completa auto-scalata per A4 — nessun asset tagliato</td></tr>
-      <tr><td><strong>Vista Scatter/Momentum</strong></td><td>🖨 PDF (sezione Scatter)</td><td>Ranking per momentum del gruppo selezionato</td></tr>
-      <tr><td><strong>News Feed</strong></td><td>🖨 PDF (sezione News)</td><td>Feed notizie corrente con indicatori di sentiment</td></tr>
-    </tbody>
-  </table>
-  <div class="box box-tip avoid-break">
-    <div class="box-title">✅ Per PDF ottimali</div>
-    <p>Usa <strong>Google Chrome</strong> o <strong>Microsoft Edge</strong>. Nella finestra di stampa: "Salva come PDF", margini "Minimi", abilita <strong>"Grafica di sfondo"</strong> per preservare i colori. La matrice di correlazione si auto-scala automaticamente per contenere tutti gli asset in un foglio A4.</p>
+  <h2>News Feed — Notizie in Tempo Reale</h2>
+  <p>Il tab News aggrega notizie finanziarie in tempo reale da fonti internazionali, con classificazione automatica per <strong>sentiment</strong> (positivo/negativo/neutro) e categoria tematica.</p>
+  <div class="mockup avoid-break">
+    <div class="news-card">
+      <div class="news-dot" style="background:#4caf50"></div>
+      <div class="news-body">
+        <div class="news-title">Fed mantiene i tassi stabili, segnala possibili tagli nel 2025</div>
+        <div class="news-meta">Reuters · 2h fa · <span style="color:#4caf50">● Positivo</span> · Politica Monetaria</div>
+      </div>
+    </div>
+    <div class="news-card">
+      <div class="news-dot" style="background:#ef5350"></div>
+      <div class="news-body">
+        <div class="news-title">Petrolio in calo per timori sulla domanda cinese</div>
+        <div class="news-meta">Bloomberg · 4h fa · <span style="color:#ef5350">● Negativo</span> · Materie Prime</div>
+      </div>
+    </div>
   </div>
+  <p>Le notizie si aggiornano automaticamente insieme ai prezzi. È possibile filtrare per categoria (Azionario, Macro, Valute, Commodity) e esportare il feed in PDF per i report.</p>
 </div>
 </div>
 
-<!-- 13. FONTI -->
+<!-- 13. EXPORT PDF -->
 <div class="container">
 <div class="section page-break">
   <div class="section-badge">Sezione 13</div>
   <div class="section-num">13</div>
-  <h2>Fonti Dati e Aggiornamento</h2>
-  <p>Monitor Mercati si interfaccia con fonti dati ufficiali e riconosciute a livello internazionale. Tutti i dati vengono recuperati automaticamente senza intervento manuale.</p>
+  <h2>Esportazione PDF</h2>
+  <p>Ogni sezione di Market Compass è esportabile in PDF con un click. I PDF sono ottimizzati per stampa A4 e presentazione cliente.</p>
   <table class="feat-table avoid-break">
-    <thead><tr><th>Dato</th><th>Fonte</th><th>Aggiornamento</th><th>Stato</th></tr></thead>
+    <thead><tr><th>Sezione</th><th>Come esportare</th><th>Contenuto PDF</th></tr></thead>
     <tbody>
-      <tr><td>Prezzi, variazioni, fondamentali</td><td>Yahoo Finance</td><td>Ogni 10 min</td><td><span class="tag tag-live">● Live</span></td></tr>
-      <tr><td>Rendimenti Treasury USA</td><td>Yahoo Finance (^IRX, ^TNX…)</td><td>Ogni 15 min</td><td><span class="tag tag-live">● Live</span></td></tr>
-      <tr><td>Rendimenti Bund / Eurozona</td><td>ECB AAA Yield Curve API</td><td>Ogni 15 min</td><td><span class="tag tag-live">● Live</span></td></tr>
-      <tr><td>Rendimenti Gilt UK</td><td>Bank of England Stats API</td><td>Ogni 15 min</td><td><span class="tag tag-live">● Live</span></td></tr>
-      <tr><td>Rendimenti JGB Giappone</td><td>Ministry of Finance Japan</td><td>Ogni 15 min</td><td><span class="tag tag-live">● Live</span></td></tr>
-      <tr><td>Rendimenti Canada</td><td>Bank of Canada Valet API</td><td>Ogni 15 min</td><td><span class="tag tag-live">● Live</span></td></tr>
-      <tr><td>Inflazione USA (CPI / Core CPI)</td><td>Bureau of Labor Statistics (BLS)</td><td>Mensile</td><td><span class="tag tag-live">● Live</span></td></tr>
-      <tr><td>Inflazione Eurozona / UE (HICP)</td><td>Banca Centrale Europea (ECB)</td><td>Mensile</td><td><span class="tag tag-live">● Live</span></td></tr>
-      <tr><td>Tassi BCE (DFR, MRR)</td><td>ECB Statistical Data Warehouse</td><td>A ogni variazione</td><td><span class="tag tag-live">● Live</span></td></tr>
-      <tr><td>Tasso BOE</td><td>Bank of England Database</td><td>A ogni variazione</td><td><span class="tag tag-live">● Live</span></td></tr>
-      <tr><td>News finanziarie</td><td>Feed RSS aggregati internazionali</td><td>Ogni 10 min</td><td><span class="tag tag-live">● Live</span></td></tr>
-      <tr><td>Tassi Fed e BOJ</td><td>Aggiornamento manuale post-meeting</td><td>4–8 volte/anno</td><td><span class="tag tag-static">Curato</span></td></tr>
-      <tr><td>Rendimenti paesi UE (spread)</td><td>Bund DE live + spread storico</td><td>In tempo reale (stima)</td><td><span class="tag tag-calc">Derivato</span></td></tr>
+      <tr><td><strong>Segnali Operativi</strong></td><td>Pulsante <strong>⬇ PDF</strong> nel popup 🎯</td><td>Lista segnali filtrata (BUY/SELL + categoria), score, forza, note contro trend, market score</td></tr>
+      <tr><td><strong>Scheda Strumento</strong></td><td>Pulsante <strong>📄 PDF</strong> nella scheda</td><td>Grafico tecnico, fondamentali, performance storica, segnale operativo</td></tr>
+      <tr><td><strong>Correlazione</strong></td><td>Pulsante <strong>🖨 PDF</strong> nel tab</td><td>Matrice completa con legenda cromatica</td></tr>
+      <tr><td><strong>News</strong></td><td>Pulsante PDF nel tab News</td><td>Feed notizie della categoria selezionata con timestamp</td></tr>
+      <tr><td><strong>Questo Manuale</strong></td><td>Pulsante <strong>🖨 Esporta PDF</strong> in alto</td><td>Manuale completo in formato A4 ottimizzato per stampa</td></tr>
     </tbody>
   </table>
-  <div class="box box-info avoid-break">
-    <div class="box-title">🔄 Caching e performance</div>
-    <p>I dati vengono memorizzati in cache server-side: <strong>5 min</strong> per i prezzi, <strong>15 min</strong> per i rendimenti, <strong>30 min</strong> per i dati macro, <strong>1 ora</strong> per i fondamentali. La cache si aggiorna automaticamente alla scadenza per garantire dati sempre freschi.</p>
-  </div>
 </div>
 </div>
 
-<!-- 14. NOTE LEGALI -->
+<!-- 14. FONTI DATI -->
 <div class="container">
 <div class="section page-break">
   <div class="section-badge">Sezione 14</div>
   <div class="section-num">14</div>
-  <h2>Note Legali e Disclaimer</h2>
+  <h2>Fonti Dati e Aggiornamento</h2>
+  <table class="feat-table avoid-break">
+    <thead><tr><th>Dato</th><th>Fonte</th><th>Frequenza</th></tr></thead>
+    <tbody>
+      <tr><td>Prezzi e performance</td><td>Yahoo Finance (yfinance)</td><td>Ogni 10 minuti durante sessioni di mercato</td></tr>
+      <tr><td>Fondamentali (P/E, P/B, beta…)</td><td>Yahoo Finance</td><td>Giornaliero</td></tr>
+      <tr><td>Media mobile 50/200</td><td>Calcolata su serie storica Yahoo Finance</td><td>Aggiornata ad ogni refresh prezzi</td></tr>
+      <tr><td>News finanziarie</td><td>Yahoo Finance News, RSS internazionali</td><td>Ogni 10 minuti</td></tr>
+      <tr><td>Dati macro (tassi, inflazione)</td><td>FRED, fonti BCE/Fed, Yahoo Finance</td><td>Giornaliero / al release ufficiale</td></tr>
+      <tr><td>VIX e volatilità</td><td>Yahoo Finance (^VIX)</td><td>Ogni 10 minuti</td></tr>
+    </tbody>
+  </table>
   <div class="box box-warn avoid-break">
-    <div class="box-title">⚠ Avviso importante</div>
-    <p>Le informazioni, i dati e le analisi contenuti in Monitor Mercati sono forniti <strong>esclusivamente a scopo informativo e didattico</strong> e non costituiscono in alcun modo consulenza finanziaria, raccomandazione di investimento, offerta o sollecitazione all'acquisto o alla vendita di strumenti finanziari.</p>
+    <div class="box-title">⚠️ Orari di mercato</div>
+    <p>I prezzi si aggiornano solo durante l'orario di apertura dei mercati di riferimento. Fuori orario, i dati mostrati si riferiscono all'ultima chiusura disponibile. Il countdown in alto indica il prossimo refresh.</p>
   </div>
-  <h3>Limitazioni</h3>
-  <ul>
-    <li>I dati di mercato possono presentare ritardi, imprecisioni o interruzioni temporanee legate alle fonti esterne</li>
-    <li>Le performance storiche non sono indicative di rendimenti futuri</li>
-    <li>Le analisi tecniche e i punteggi di momentum sono strumenti di supporto e non garantiscono risultati</li>
-    <li>I dati fondamentali sono recuperati da Yahoo Finance e possono non essere sempre accurati o completi</li>
-    <li>I tassi di inflazione mostrano l'ultima lettura ufficiale disponibile, che può riferirsi al mese precedente</li>
-  </ul>
-  <h3>Responsabilità</h3>
-  <p>L'utilizzo della dashboard è a esclusiva responsabilità dell'utente. Non si assume alcuna responsabilità per decisioni di investimento prese sulla base dei dati visualizzati.</p>
-  <h3>Dati personali</h3>
-  <p>Monitor Mercati non raccoglie, trasmette o elabora dati personali. Le watchlist, i nomi personalizzati e le note personali sono salvati esclusivamente nel browser locale (localStorage) e non vengono mai trasmessi a server esterni.</p>
+</div>
+</div>
+
+<!-- 15. NOTE LEGALI -->
+<div class="container">
+<div class="section page-break">
+  <div class="section-badge">Sezione 15</div>
+  <div class="section-num">15</div>
+  <h2>Note Legali</h2>
+  <div class="box box-warn avoid-break">
+    <div class="box-title">⚠️ Disclaimer importante</div>
+    <p><strong>Market Compass è uno strumento di analisi tecnica e informazione finanziaria.</strong> I segnali operativi, il bias di mercato e tutti gli indicatori presenti sono basati su algoritmi di momentum e analisi tecnica dei prezzi storici.</p>
+    <p>Le informazioni fornite <strong>non costituiscono consulenza finanziaria, raccomandazione di investimento o sollecitazione all'acquisto/vendita di strumenti finanziari</strong>.</p>
+    <p>I mercati finanziari comportano rischi significativi. Le performance passate non garantiscono risultati futuri. Consultare sempre un consulente finanziario qualificato prima di prendere decisioni di investimento.</p>
+  </div>
 </div>
 </div>
 
 <div class="footer-disclaimer">
   <div class="container">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-      <div><strong style="color:#1a2332;font-size:13px">📊 Monitor Mercati</strong> — Dashboard Professionale di Analisi Finanziaria<br>Manuale Utente v2.0 · Aprile 2026</div>
-      <div style="text-align:right">I dati sono forniti a scopo informativo.<br>Non costituiscono consulenza finanziaria.</div>
-    </div>
+    <strong>🧭 Market Compass</strong> — La direzione dei mercati, in un attimo<br>
+    Versione 3.0 · Aprile 2026<br>
+    Manuale redatto per uso interno. Dati a scopo informativo — non costituisce consulenza finanziaria.
   </div>
 </div>
 
