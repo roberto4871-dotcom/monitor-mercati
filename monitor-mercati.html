@@ -2569,14 +2569,6 @@ function computeAssetSignal(row) {
       score = Math.max(0, score - 5);
       detail += ' · Sotto MM50, sopra MM200 (correzione)';
     }
-    // ── Feature 5: % distanza da MM200 ──────────────────
-    if (row._pctFromMA200 !== null && row._pctFromMA200 !== undefined) {
-      const pct = row._pctFromMA200;
-      detail += ` · MM200: ${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`;
-      if (pct > 20)       tags.push({label:`📈 +${pct.toFixed(0)}% MM200`, color:'#ff9800'});
-      else if (pct > 10)  tags.push({label:`↑ +${pct.toFixed(0)}% MM200`,  color:'#ffc107'});
-      else if (pct < -10) tags.push({label:`⚠ ${pct.toFixed(0)}% MM200`,   color:'#ef5350'});
-    }
   }
 
   // ── Feature 6: Yield Curve per bond a lunga duration ──
