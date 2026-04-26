@@ -3506,8 +3506,8 @@ function showSignalLegend(btn) {
     position:'fixed', zIndex:'9999',
     background:'var(--bg2)', border:'1px solid var(--border)',
     borderRadius:'12px', padding:'18px 20px',
-    boxShadow:'0 8px 40px rgba(0,0,0,.6)', width:'440px', maxWidth:'96vw',
-    maxHeight:'80vh', overflowY:'auto',
+    boxShadow:'0 8px 40px rgba(0,0,0,.6)', width:'480px', maxWidth:'96vw',
+    maxHeight:'85vh', overflowY:'auto', paddingBottom:'20px',
   });
 
   const mkPill = (label, color) =>
@@ -3625,9 +3625,11 @@ function showSignalLegend(btn) {
       </div>
     </div>
 
-    <div style="margin-top:10px;padding:6px 12px;background:rgba(255,152,0,.08);border-radius:8px;border-left:3px solid rgba(255,152,0,.4)">
-      <div style="font-size:10px;color:var(--text3);line-height:1.6">
-        <b style="color:#ff9800">⚠️ contro mercato</b> — appare sotto il segnale quando la direzione dell'asset è opposta al regime globale. Solo su segnali Medio/Debole: i segnali Forti mantengono la priorità.
+    <div style="margin-top:10px;padding:10px 14px;background:rgba(255,152,0,.08);border-radius:8px;border-left:3px solid rgba(255,152,0,.5)">
+      <div style="font-size:11px;font-weight:700;color:#ff9800;margin-bottom:4px">⚠️ contro mercato</div>
+      <div style="font-size:10px;color:var(--text2);line-height:1.65">
+        Appare sotto il segnale quando la <b>direzione dell'asset è opposta al regime globale</b> (es. segnale BUY ma mercato Avverso).<br>
+        Visibile solo su segnali <b>Medio o Debole</b>: i segnali 🔥 Forti mantengono piena priorità e non vengono penalizzati.
       </div>
     </div>
 
