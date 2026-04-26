@@ -2329,17 +2329,16 @@ function computeTrendConsistency(row) {
   const pos = vals.filter(v => v > 0).length;
   const neg = vals.filter(v => v < 0).length;
   if (pos === vals.length) {
-    // Tutti positivi: è accelerante se il breve termine è più forte del lungo (annualizzato)?
     const accel = (row.p7 !== null && row.p30 !== null) ? (row.p7 * 4 > row.p30) : true;
-    return accel ? {label:'↑↑ Trend accelerante', color:'#4caf50'} : {label:'↑ Trend positivo', color:'#8bc34a'};
+    return accel ? {label:'↑↑ Rialzo su tutti i periodi', color:'#4caf50'} : {label:'↑ Rialzo in rallentamento', color:'#8bc34a'};
   }
   if (neg === vals.length) {
     const accel = (row.p7 !== null && row.p30 !== null) ? (row.p7 * 4 < row.p30) : true;
-    return accel ? {label:'↓↓ Debolezza diffusa', color:'#ef5350'} : {label:'↓ Trend negativo', color:'#ff9800'};
+    return accel ? {label:'↓↓ Ribasso su tutti i periodi', color:'#ef5350'} : {label:'↓ Ribasso in rallentamento', color:'#ff9800'};
   }
-  if (pos > neg) return {label:'↔ Misto (bias +)', color:'#ffc107'};
-  if (neg > pos) return {label:'↔ Misto (bias −)', color:'#ff7043'};
-  return {label:'↔ Nessuna direzione', color:'#78909c'};
+  if (pos > neg) return {label:'↗ Recupero in corso', color:'#ffc107'};
+  if (neg > pos) return {label:'↘ Pressione ribassista', color:'#ff7043'};
+  return {label:'→ Laterale', color:'#78909c'};
 }
 
 // Feature 3: Livello VIX da rows in tempo reale
