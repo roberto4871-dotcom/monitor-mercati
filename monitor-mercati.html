@@ -259,6 +259,13 @@ td.ora{color:#64b5f6;font-size:10px}
 .regime-badge.risk-off{background:rgba(244,67,54,.15);color:#f44336;border-color:rgba(244,67,54,.4)}
 .regime-badge.crisis{background:rgba(183,28,28,.25);color:#ef9a9a;border-color:rgba(183,28,28,.5)}
 
+/* ── REGIME STRIP ──────────────────────────────────── */
+.rs-comp{display:flex;flex-direction:column;gap:3px;min-width:120px;flex:1}
+.rs-comp-label{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.rs-comp-bar-wrap{background:var(--bg3);border-radius:3px;height:5px;overflow:hidden;width:100%}
+.rs-comp-bar{height:5px;border-radius:3px;width:0;transition:width .5s}
+.rs-comp-val{font-size:10px;font-weight:700;color:var(--text2)}
+
 /* ── MODAL TABS ─────────────────────────────────── */
 .modal-tabs{display:flex;background:var(--bg3);border-bottom:2px solid var(--border);padding:0 8px;flex-shrink:0;overflow-x:auto;scrollbar-width:none}
 .modal-tabs::-webkit-scrollbar{display:none}
@@ -801,6 +808,34 @@ body.light .cal-item{background:var(--bg3)}
     <button class="btn-refresh" onclick="applyScreening()">Applica</button>
     <button class="filter-btn" onclick="resetScreening()" style="color:var(--red)">✕ Reset</button>
     <span id="screen-result"></span>
+  </div>
+
+  <!-- ── Market Regime Score Strip ── -->
+  <div id="regime-strip" style="display:none;background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 16px;flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:10px;flex:0 0 auto">
+        <span style="font-size:9px;font-weight:800;letter-spacing:.8px;color:var(--text3);text-transform:uppercase">🧭 Market Regime</span>
+        <span id="rs-score-num" style="font-size:22px;font-weight:900;line-height:1">—</span>
+        <span id="rs-score-label" style="font-size:13px;font-weight:700;padding:3px 10px;border-radius:10px;border:1px solid">—</span>
+      </div>
+      <div style="flex:1;display:flex;gap:12px;flex-wrap:wrap;min-width:0">
+        <div class="rs-comp" id="rs-c-vix">
+          <div class="rs-comp-label">📊 VIX Score</div>
+          <div class="rs-comp-bar-wrap"><div class="rs-comp-bar" id="rs-bar-vix"></div></div>
+          <div class="rs-comp-val" id="rs-val-vix">—</div>
+        </div>
+        <div class="rs-comp" id="rs-c-breadth">
+          <div class="rs-comp-label">🌐 Breadth MM200</div>
+          <div class="rs-comp-bar-wrap"><div class="rs-comp-bar" id="rs-bar-breadth"></div></div>
+          <div class="rs-comp-val" id="rs-val-breadth">—</div>
+        </div>
+        <div class="rs-comp" id="rs-c-mom">
+          <div class="rs-comp-label">📈 Momentum</div>
+          <div class="rs-comp-bar-wrap"><div class="rs-comp-bar" id="rs-bar-mom"></div></div>
+          <div class="rs-comp-val" id="rs-val-mom">—</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ── Market Breadth Panel ── -->
@@ -2697,7 +2732,10 @@ function computeRegimeScore() {
   else if (score >= 25) { cls = 'risk-off';   icon = '🔴'; txt = 'Risk-Off'; }
   else                  { cls = 'crisis';     icon = '⛔'; txt = 'Crisi'; }
 
-  // Aggiorna badge nell'header
+  const colors = {expansion:'#4caf50', neutral:'#ffc107', transition:'#ff9800', 'risk-off':'#f44336', crisis:'#ef9a9a'};
+  const color = colors[cls] || 'var(--accent)';
+
+  // Aggiorna badge nell'header (piccolo, discreto)
   const badge = document.getElementById('regime-score-badge');
   if (badge) {
     badge.className = `regime-badge ${cls}`;
@@ -2707,6 +2745,30 @@ function computeRegimeScore() {
     badge.title = [`Market Regime Score: ${score}/100`, vixFmt, brdFmt, momFmt].filter(Boolean).join('\n');
     badge.innerHTML = `${icon} Regime <b>${score}</b> — ${txt}`;
     badge.style.display = 'inline-flex';
+  }
+
+  // Aggiorna strip grande sopra la tabella
+  const strip = document.getElementById('regime-strip');
+  if (strip) {
+    strip.style.display = 'flex';
+    const scoreNum   = document.getElementById('rs-score-num');
+    const scoreLabel = document.getElementById('rs-score-label');
+    if (scoreNum)   { scoreNum.textContent = score; scoreNum.style.color = color; }
+    if (scoreLabel) {
+      scoreLabel.textContent = `${icon} ${txt}`;
+      scoreLabel.style.color = color;
+      scoreLabel.style.background = color + '22';
+      scoreLabel.style.borderColor = color + '66';
+    }
+    const setComp = (barId, valId, val) => {
+      const bar = document.getElementById(barId);
+      const valEl = document.getElementById(valId);
+      if (bar)   { bar.style.width = (val !== null ? Math.round(val) : 0) + '%'; bar.style.background = color; }
+      if (valEl) { valEl.textContent = val !== null ? Math.round(val) + '/100' : '—'; }
+    };
+    setComp('rs-bar-vix',    'rs-val-vix',    vixScore);
+    setComp('rs-bar-breadth','rs-val-breadth', breadthScore);
+    setComp('rs-bar-mom',    'rs-val-mom',     momScore);
   }
 
   // Aggiorna card nel tab Macro
