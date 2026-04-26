@@ -3024,55 +3024,93 @@ function showSignalLegend(btn) {
        <div style="display:flex;flex-wrap:wrap;gap:4px">${signals}</div>
      </div>`;
 
+  const mkTag = (label, color, desc) =>
+    `<div style="display:flex;align-items:baseline;gap:8px;padding:3px 0">
+       <span style="background:${color}18;color:${color};border:1px solid ${color}44;font-size:9px;font-weight:700;padding:1px 7px;border-radius:7px;white-space:nowrap;flex-shrink:0">${label}</span>
+       <span style="font-size:10px;color:var(--text3);line-height:1.5">${desc}</span>
+     </div>`;
+
+  const mkSection = (title) =>
+    `<div style="font-size:9px;font-weight:800;color:var(--accent);letter-spacing:.9px;text-transform:uppercase;margin:14px 0 6px;padding-top:12px;border-top:1px solid var(--border)">${title}</div>`;
+
   popup.innerHTML =
-    `<div style="font-size:10px;font-weight:800;color:var(--accent);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px">📊 Logica Segnali Operativi</div>
+    `<div style="font-size:10px;font-weight:800;color:var(--accent);letter-spacing:.8px;text-transform:uppercase;margin-bottom:2px">📊 Logica Segnali Operativi</div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:12px">Ogni asset riceve una pill principale + tag di contesto (max 2 visibili)</div>
 
-    ${mkRow('📈 Indici Azionari &amp; ETF Azionari',
-      'Score = momentum composito (p7 15% + p30 25% + p60 30% + p90 30%). Normalizzato 0–100 su range storici per periodo.',
-      mkPill('🟢 Accumula','#4caf50')+' score ≥ 70 &nbsp;'+
+    ${mkSection('— PILL PRINCIPALE — uguale per tutti gli asset —')}
+
+    ${mkRow('📈 Indici &amp; ETF Azionari',
+      'Momentum composito: p7 (15%) + p30 (25%) + p60 (30%) + p90 (30%), normalizzato 0–100. Per azioni aggiunge forza relativa vs benchmark.',
+      mkPill('🟢 Accumula','#4caf50')+' ≥70 &nbsp;'+
       mkPill('🔵 Mantieni','#29b6f6')+' 58–69 &nbsp;'+
       mkPill('⚪ Neutro','#78909c')+' 42–57 &nbsp;'+
       mkPill('🟡 Cautela','#ffc107')+' 30–41 &nbsp;'+
-      mkPill('🔴 Riduci','#ef5350')+' &lt; 30'
+      mkPill('🔴 Riduci','#ef5350')+' &lt;30'
     )}
 
-    ${mkRow('📊 Titoli Singoli (Azioni)',
-      'Score = momentum 70% + forza relativa vs benchmark 30% (RS normalizzata su ±20%). <b>Bonus +5</b> se sopra MM50 e MM200. <b>Penalità −10</b> se sotto entrambe. <b>−5</b> se sotto solo MM50.',
-      mkPill('🟢 Accumula','#4caf50')+' score ≥ 70 &nbsp;'+
-      mkPill('🔵 Mantieni','#29b6f6')+' 58–69 &nbsp;'+
-      mkPill('⚪ Neutro','#78909c')+' 42–57 &nbsp;'+
-      mkPill('🟡 Cautela','#ffc107')+' 30–41 &nbsp;'+
-      mkPill('🔴 Riduci','#ef5350')+' &lt; 30'
+    ${mkRow('📉 ETF &amp; Indici Obbligazionari',
+      'Momentum di prezzo adattato al contesto tassi: <b>+10</b> se le banche centrali stanno tagliando i tassi (Easing), <b>−15</b> se li stanno alzando (Tightening). Per i bond a lunga duration si considera anche la curva dei rendimenti.',
+      mkPill('🟢 Accumula','#4caf50')+' &nbsp;'+
+      mkPill('🔵 Mantieni','#29b6f6')+' &nbsp;'+
+      mkPill('⚪ Neutro','#78909c')+' &nbsp;'+
+      mkPill('🟡 Cautela','#ffc107')+' &nbsp;'+
+      mkPill('🔴 Riduci','#ef5350')
     )}
 
-    ${mkRow('📉 ETF e Indici Obbligazionari',
-      'Score = momentum di prezzo (i prezzi dei bond si muovono inversamente ai tassi). <b>+10</b> in contesto Easing (maggioranza banche centrali in taglio). <b>−15</b> in contesto Tightening (maggioranza in rialzo). Il rendimento attuale è mostrato nel tooltip.',
-      mkPill('🟢 Accumula','#4caf50')+' score adattato ≥ 70 &nbsp;'+
-      mkPill('🔵 Mantieni','#29b6f6')+' 58–69 &nbsp;'+
-      mkPill('⚪ Neutro','#78909c')+' 42–57 &nbsp;'+
-      mkPill('🟡 Cautela','#ffc107')+' 30–41 &nbsp;'+
-      mkPill('🔴 Riduci','#ef5350')+' &lt; 30'
-    )}
-
-    ${mkRow('💱 Valute &amp; 🛢 Materie Prime',
-      'Score = momentum composito puro. Nessuna forza relativa (non ha benchmark naturale). Stesse soglie degli indici.',
-      mkPill('🟢 Accumula','#4caf50')+' ≥ 70 &nbsp;'+
-      mkPill('🔵 Mantieni','#29b6f6')+' 58–69 &nbsp;'+
-      mkPill('⚪ Neutro','#78909c')+' 42–57 &nbsp;'+
-      mkPill('🟡 Cautela','#ffc107')+' 30–41 &nbsp;'+
-      mkPill('🔴 Riduci','#ef5350')+' &lt; 30'
+    ${mkRow('🛢 Materie Prime',
+      'Momentum composito puro, corretto dalla stagionalità storica del mese in corso (es. oro forte a settembre, petrolio forte in primavera).',
+      mkPill('🟢 Accumula','#4caf50')+' &nbsp;'+
+      mkPill('🔵 Mantieni','#29b6f6')+' &nbsp;'+
+      mkPill('⚪ Neutro','#78909c')+' &nbsp;'+
+      mkPill('🟡 Cautela','#ffc107')+' &nbsp;'+
+      mkPill('🔴 Riduci','#ef5350')
     )}
 
     ${mkRow('😱 Volatilità (VIX)',
-      'Non è un asset acquistabile direttamente — interpretazione del livello assoluto. Basso VIX = mercato tranquillo = favorevole al rischio. Alto VIX = risk-off = difensivi.',
-      mkPill('😌 Bassa Paura','#4caf50')+' VIX &lt; 15 &nbsp;'+
+      'Interpretazione del livello assoluto — non è un asset acquistabile. VIX basso = mercato tranquillo. VIX alto = paura, meglio stare in difensivi.',
+      mkPill('😌 Bassa Paura','#4caf50')+' VIX &lt;15 &nbsp;'+
       mkPill('😐 Normale','#8bc34a')+' 15–20 &nbsp;'+
       mkPill('😟 Elevata','#ffc107')+' 20–25 &nbsp;'+
       mkPill('😨 Alta Paura','#ff9800')+' 25–35 &nbsp;'+
-      mkPill('😱 Crisi','#ef5350')+' &gt; 35'
+      mkPill('😱 Crisi','#ef5350')+' &gt;35'
     )}
 
-    <div style="font-size:9.5px;color:var(--text3);margin-top:10px;line-height:1.6;font-style:italic">
+    ${mkSection('— TAG DI CONTESTO — appaiono sotto la pill —')}
+
+    <div style="font-size:10px;font-weight:700;color:var(--text2);margin-bottom:5px">📐 Andamento del trend (tutti gli asset)</div>
+    ${mkTag('↑↑ Rialzo su tutti i periodi','#4caf50','Rialzo coerente su 7, 30, 60 e 90 giorni — e il breve termine è più forte del lungo (accelerazione)')}
+    ${mkTag('↑ Rialzo in rallentamento','#8bc34a','Tutti i periodi positivi ma il breve termine è meno forte: il rialzo perde slancio')}
+    ${mkTag('↗ Recupero in corso','#ffc107','Più periodi positivi che negativi — segnale di miglioramento ma non ancora uniforme')}
+    ${mkTag('→ Laterale','#78909c','Periodi positivi e negativi in equilibrio: nessuna direzione prevalente')}
+    ${mkTag('↘ Pressione ribassista','#ff7043','Più periodi negativi che positivi — debolezza diffusa ma non ancora generalizzata')}
+    ${mkTag('↓ Ribasso in rallentamento','#ff9800','Tutti i periodi negativi ma il breve termine si sta stabilizzando')}
+    ${mkTag('↓↓ Ribasso su tutti i periodi','#ef5350','Ribasso coerente su tutti gli orizzonti — e il breve termine peggiora più del lungo (accelerazione)')}
+
+    <div style="font-size:10px;font-weight:700;color:var(--text2);margin:10px 0 5px">🌡 VIX — impatto sul segnale azionario</div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:5px">Per azioni e indici equity lo score viene corretto in base al livello del VIX live:</div>
+    ${mkTag('😌 VIX Basso','#4caf50','VIX sotto 15 → +5pt allo score (clima risk-on favorevole)')}
+    ${mkTag('😟 VIX Elevato','#ffc107','VIX 20–25 → −5pt (cautela, incertezza crescente)')}
+    ${mkTag('😨 VIX Alto','#ff9800','VIX 25–35 → −10pt (risk-off, ridurre esposizione)')}
+    ${mkTag('😱 VIX Crisis','#ef5350','VIX sopra 35 → −15pt (mercato in crisi, privilegiare difensivi)')}
+
+    <div style="font-size:10px;font-weight:700;color:var(--text2);margin:10px 0 5px">📏 Distanza dalla Media Mobile 200 (solo azioni)</div>
+    ${mkTag('📈 +20% MM200','#ff9800','Prezzo esteso: più del 20% sopra la MM200 — possibile ipercomprato, rischio correzione')}
+    ${mkTag('↑ +10% MM200','#ffc107','Sopra MM200 del 10%+ — trend solido ma inizia a essere stirato')}
+    ${mkTag('⚠ −10% MM200','#ef5350','Prezzo sotto MM200 di oltre il 10% — debolezza strutturale, attenzione')}
+
+    <div style="font-size:10px;font-weight:700;color:var(--text2);margin:10px 0 5px">📉 Curva dei Rendimenti (bond a lunga duration)</div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:5px">Si applica a: IBGL, EGOV, IBTM, INFL, INFU, XGIN — bond con scadenza lunga, i più sensibili alla forma della curva US:</div>
+    ${mkTag('✓ Curva normale','#4caf50','Spread 10Y−2Y positivo: curva inclinata favorevole ai bond lunghi')}
+    ${mkTag('⚠ Curva piatta','#ffc107','Spread vicino a zero → −6pt (rischio inversione)')}
+    ${mkTag('📉 Curva invertita','#ef5350','Spread 10Y−2Y negativo → −12pt (storicamente negativo per i bond lunghi)')}
+
+    <div style="font-size:10px;font-weight:700;color:var(--text2);margin:10px 0 5px">🌿 Stagionalità (materie prime)</div>
+    ${mkTag('🌱 In stagione','#4caf50','Mese storicamente molto favorevole per questa materia prima (+4pt o più)')}
+    ${mkTag('🌿 Stagione +','#8bc34a','Mese mediamente positivo (+2/+3pt)')}
+    ${mkTag('🍁 Stagione −','#ff9800','Mese mediamente negativo (−2/−3pt)')}
+    ${mkTag('🍂 Fuori stagione','#ef5350','Mese storicamente sfavorevole (−4pt o più)')}
+
+    <div style="font-size:9.5px;color:var(--text3);margin-top:14px;padding-top:10px;border-top:1px solid var(--border);line-height:1.6;font-style:italic">
       ⚠ I segnali sono indicatori tecnici basati su momentum e dati di prezzo. Non costituiscono consulenza finanziaria. Usali come punto di partenza per la tua analisi.
     </div>`;
 
