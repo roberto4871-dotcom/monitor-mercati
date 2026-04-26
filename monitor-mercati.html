@@ -3665,8 +3665,8 @@ function updateBiasStrip() {
     .slice(0,3);
 
   const mkTick = (r) => {
-    const nm = (r.m || r.s);
-    const short = nm.length > 14 ? nm.slice(0,12)+'…' : nm;
+    const nm = r.i || r.m || r.s;
+    const short = nm.length > 20 ? nm.slice(0,18)+'…' : nm;
     return `<span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.9)">${r._signal.icon} ${short}</span>`;
   };
   const buyLine  = topBuy.length  ? topBuy.map(mkTick).join('<span style="color:rgba(255,255,255,.3)"> · </span>') : '<span style="font-size:11px;color:rgba(255,255,255,.4)">—</span>';
