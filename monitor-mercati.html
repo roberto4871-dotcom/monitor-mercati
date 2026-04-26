@@ -1854,7 +1854,9 @@ function fmtCell(col, row) {
       const str = sig ? sig.icon : '';
       if (v === 3) return `<div style="text-align:center"><span style="background:#4caf50;color:#fff;font-weight:900;font-size:11px;padding:3px 12px;border-radius:8px;letter-spacing:.8px;display:inline-block">${str} BUY</span></div>`;
       if (v === 1) return `<div style="text-align:center"><span style="background:#ef5350;color:#fff;font-weight:900;font-size:11px;padding:3px 12px;border-radius:8px;letter-spacing:.8px;display:inline-block">${str} SELL</span></div>`;
-      return `<div style="text-align:center"><span style="background:var(--bg3);color:var(--text3);font-weight:700;font-size:11px;padding:3px 12px;border-radius:8px;letter-spacing:.8px;border:1px solid var(--border);display:inline-block">HOLD</span></div>`;
+      const subLabel = {hold:'Mantieni', neutral:'Neutro', caution:'Cautela'}[sig?.key] || '';
+      const sub = subLabel ? `<span style="font-size:9px;color:var(--text3);font-weight:600;margin-left:4px">${subLabel}</span>` : '';
+      return `<div style="text-align:center;white-space:nowrap"><span style="background:var(--bg3);color:var(--text3);font-weight:700;font-size:11px;padding:3px 10px;border-radius:8px;letter-spacing:.6px;border:1px solid var(--border);display:inline-block">HOLD</span>${sub}</div>`;
     }
     case 'signal': {
       if (!v) return '<span class="na">—</span>';
