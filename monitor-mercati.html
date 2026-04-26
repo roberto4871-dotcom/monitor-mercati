@@ -3640,27 +3640,40 @@ function buildThead() {
   }).join('');
 }
 
-function updateBiasStrip() {
+function updateBiasStrip(visibleRows) {
   const strip = document.getElementById('bias-strip');
   if (!strip) return;
-  const ms = getMarketScore();
-  if (ms === null) { strip.style.display = 'none'; return; }
+  const data = (visibleRows || []).filter(r => r._signal && !r._loading && !r._err);
+  if (!data.length) { strip.style.display = 'none'; return; }
+
+  // Bias calcolato sulle righe visibili: % BUY vs % SELL
+  const nBuy  = data.filter(r => r._signal.key === 'buy').length;
+  const nSell = data.filter(r => r._signal.key === 'reduce').length;
+  const nTot  = data.length;
+  const pctBuy  = nBuy  / nTot;
+  const pctSell = nSell / nTot;
+  const diff = pctBuy - pctSell;
 
   let biasLabel, biasColor, biasIcon;
-  if      (ms >= 60) { biasLabel='LONG';  biasColor='#2e7d32'; biasIcon='🟢'; }
-  else if (ms <= 40) { biasLabel='SHORT'; biasColor='#b71c1c'; biasIcon='🔴'; }
-  else               { biasLabel='NEUTRO';biasColor='#e65100'; biasIcon='🟡'; }
+  if      (diff >  0.05) { biasLabel='LONG';  biasColor='#2e7d32'; biasIcon='🟢'; }
+  else if (diff < -0.05) { biasLabel='SHORT'; biasColor='#b71c1c'; biasIcon='🔴'; }
+  else                   { biasLabel='NEUTRO';biasColor='#e65100'; biasIcon='🟡'; }
 
   let strIcon, strLabel;
-  if      (ms >= 72 || ms <= 28) { strIcon='🔥'; strLabel='Forte';  }
-  else if (ms >= 60 || ms <= 40) { strIcon='⚠️'; strLabel='Medio';  }
-  else                            { strIcon='❄️'; strLabel='Debole'; }
+  const absDiff = Math.abs(diff);
+  if      (absDiff > 0.30) { strIcon='🔥'; strLabel='Forte';  }
+  else if (absDiff > 0.10) { strIcon='⚠️'; strLabel='Medio';  }
+  else                      { strIcon='❄️'; strLabel='Debole'; }
+
+  // Market score rimane globale
+  const ms = getMarketScore();
+  const msStr = ms !== null ? `${ms}/100` : '—';
 
   const strOrd = {strong:3, medium:2, weak:1};
-  const topBuy  = rows.filter(r => r._signal?.key === 'buy'    && !r._loading && !r._err)
+  const topBuy  = data.filter(r => r._signal.key === 'buy')
     .sort((a,b) => (strOrd[b._signal.strength]||0)-(strOrd[a._signal.strength]||0) || (b._signal.rawScore||0)-(a._signal.rawScore||0))
     .slice(0,3);
-  const topSell = rows.filter(r => r._signal?.key === 'reduce' && !r._loading && !r._err)
+  const topSell = data.filter(r => r._signal.key === 'reduce')
     .sort((a,b) => (strOrd[b._signal.strength]||0)-(strOrd[a._signal.strength]||0) || (a._signal.rawScore||0)-(b._signal.rawScore||0))
     .slice(0,3);
 
@@ -3697,7 +3710,7 @@ function updateBiasStrip() {
      <div class="bs-div"></div>
      <div style="flex-shrink:0">
        <div style="font-size:8px;color:rgba(255,255,255,.6);font-weight:700;letter-spacing:1px;text-transform:uppercase">Market Score</div>
-       <div><span style="font-size:20px;font-weight:900;color:#fff">${ms}</span><span style="font-size:10px;color:rgba(255,255,255,.5)">/100</span></div>
+       <div><span style="font-size:20px;font-weight:900;color:#fff">${msStr}</span></div>
      </div>
      <div class="bs-div"></div>
      <div style="flex:1;display:flex;align-items:center;gap:16px;min-width:0;flex-wrap:wrap">
@@ -3718,7 +3731,7 @@ function renderTable() {
   const screened = doScreeningFilter(filtered);
   const sorted   = applySort(screened);
   buildRows(sorted);
-  updateBiasStrip();
+  updateBiasStrip(sorted);
 }
 
 function updateRow(idx) {
