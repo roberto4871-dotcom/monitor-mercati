@@ -770,6 +770,13 @@ body.light .cal-item{background:var(--bg3)}
       <div class="cols-dropdown" id="cols-dropdown" style="display:none"></div>
     </div>
     <button id="btn-sidenews" onclick="toggleSideNews()" style="background:rgba(33,150,243,.15);border:1px solid #2196f3;color:#64b5f6;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .14s" onmouseenter="this.style.background='rgba(33,150,243,.28)'" onmouseleave="if(!this.classList.contains('active'))this.style.background='rgba(33,150,243,.15)'">▶ Feed News</button>
+    <button id="btn-top-signals" onclick="showTopSignals(this)"
+      style="background:linear-gradient(135deg,rgba(76,175,80,.25),rgba(239,83,80,.2));border:1.5px solid rgba(76,175,80,.6);color:#fff;padding:5px 16px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;letter-spacing:.3px;display:flex;align-items:center;gap:6px;transition:all .15s"
+      onmouseenter="this.style.background='linear-gradient(135deg,rgba(76,175,80,.4),rgba(239,83,80,.35))'"
+      onmouseleave="this.style.background='linear-gradient(135deg,rgba(76,175,80,.25),rgba(239,83,80,.2))'">
+      🎯 <span>Segnali Operativi</span>
+      <span id="btn-top-signals-counts" style="font-size:10px;opacity:.8"></span>
+    </button>
     <div class="spacer"></div>
     <button class="btn-refresh" id="btn-refresh">↻ Aggiorna</button>
   </div>
@@ -2277,6 +2284,7 @@ async function loadMA() {
   updateBreadthPanel();
   // Regime globale dipende da _ma200 → aggiorna dopo MA
   updateGlobalRegime();
+  updateTopSignalsBtn();
 }
 
 // ═══════════════════════════════════════════════════
@@ -2703,6 +2711,16 @@ function computeMomentumScores() {
     updateRow(idx);
   });
   updateGlobalRegime();
+  updateTopSignalsBtn();
+}
+
+function updateTopSignalsBtn() {
+  const el = document.getElementById('btn-top-signals-counts');
+  if (!el) return;
+  const nBuy  = rows.filter(r => r._signal?.key === 'buy'    && !r._loading && !r._err).length;
+  const nSell = rows.filter(r => r._signal?.key === 'reduce' && !r._loading && !r._err).length;
+  if (!nBuy && !nSell) { el.textContent = ''; return; }
+  el.innerHTML = `<span style="color:#a5d6a7">▲${nBuy}</span> <span style="color:#ef9a9a">▼${nSell}</span>`;
 }
 
 // ═══════════════════════════════════════════════════
