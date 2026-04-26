@@ -3664,13 +3664,13 @@ function updateBiasStrip() {
     .sort((a,b) => (strOrd[b._signal.strength]||0)-(strOrd[a._signal.strength]||0) || (a._signal.rawScore||0)-(b._signal.rawScore||0))
     .slice(0,3);
 
-  const mkTick = (r) => {
+  const mkTick = (r, color) => {
     const nm = r.i || r.m || r.s;
     const short = nm.length > 20 ? nm.slice(0,18)+'…' : nm;
-    return `<span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.9)">${r._signal.icon} ${short}</span>`;
+    return `<span style="font-size:11px;font-weight:700;color:${color}">${r._signal.icon} ${short}</span>`;
   };
-  const buyLine  = topBuy.length  ? topBuy.map(mkTick).join('<span style="color:rgba(255,255,255,.3)"> · </span>') : '<span style="font-size:11px;color:rgba(255,255,255,.4)">—</span>';
-  const sellLine = topSell.length ? topSell.map(mkTick).join('<span style="color:rgba(255,255,255,.3)"> · </span>') : '<span style="font-size:11px;color:rgba(255,255,255,.4)">—</span>';
+  const buyLine  = topBuy.length  ? topBuy.map(r  => mkTick(r, 'rgba(255,255,255,.95)')).join('<span style="color:rgba(255,255,255,.3)"> · </span>') : '<span style="font-size:11px;color:rgba(255,255,255,.4)">—</span>';
+  const sellLine = topSell.length ? topSell.map(r => mkTick(r, '#ff8a80')).join('<span style="color:rgba(255,255,255,.3)"> · </span>') : '<span style="font-size:11px;color:rgba(255,255,255,.4)">—</span>';
 
   strip.style.background = biasColor;
   strip.style.display    = 'flex';
