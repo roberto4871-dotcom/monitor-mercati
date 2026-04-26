@@ -3606,6 +3606,27 @@ function showSignalLegend(btn) {
     ${mkTag('🍁 Stagione −','#ff9800','Mese mediamente negativo (−2/−3pt)')}
     ${mkTag('🍂 Fuori stagione','#ef5350','Mese storicamente sfavorevole (−4pt o più)')}
 
+    ${mkSection('— TIPO DI SEGNALE — visibile nel modal —')}
+
+    <div style="font-size:10px;color:var(--text3);margin-bottom:8px;line-height:1.6">
+      Ogni asset aperto mostra il <b>tipo di segnale</b> che ha generato la valutazione. Appare accanto alla pill principale nel modal.
+    </div>
+
+    <div style="font-size:10px;font-weight:700;color:#4caf50;margin:6px 0 3px">📈 Segnali BUY</div>
+    ${mkTag('Breakout','#4caf50','Tutti i periodi positivi + sopra MM50 e MM200: il prezzo ha rotto al rialzo con forza strutturale')}
+    ${mkTag('Reversal','#8bc34a','Breve termine positivo ma medio termine ancora negativo: recupero in atto da un ribasso precedente')}
+    ${mkTag('Trend','#29b6f6','Momentum positivo su più periodi: rialzo confermato senza accelerazione estrema')}
+
+    <div style="font-size:10px;font-weight:700;color:#ef5350;margin:8px 0 3px">📉 Segnali SELL</div>
+    ${mkTag('Distribuzione','#ef5350','Tutti i periodi negativi + sotto MM200: il prezzo è in fase di scarico strutturale')}
+    ${mkTag('Inversione','#ff7043','Breve termine negativo ma medio termine ancora positivo: inversione della tendenza in corso')}
+    ${mkTag('Ribasso','#ff9800','Momentum negativo su più periodi: calo confermato senza accelerazione estrema')}
+
+    <div style="font-size:10px;font-weight:700;color:var(--text2);margin:8px 0 3px">⚪ Segnali neutri</div>
+    ${mkTag('Consolidamento','#29b6f6','Segnale Hold: prezzo in fase di pausa dopo un movimento, non chiara direzione')}
+    ${mkTag('Cautela','#ffc107','Momentum in indebolimento: non è ancora SELL ma il trend sta perdendo forza')}
+    ${mkTag('Neutro','#78909c','Score 42–57: nessun segnale direzionale chiaro in questo momento')}
+
     ${mkSection('— FORZA DEL SEGNALE — 🔥 ⚠️ ❄️ —')}
 
     <div style="font-size:10px;color:var(--text3);margin-bottom:8px;line-height:1.6">
