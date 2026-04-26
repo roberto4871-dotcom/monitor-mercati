@@ -6,7 +6,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Monitor Mercati</title>
+<title>Market Compass</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <style>
@@ -709,8 +709,8 @@ body.light .cal-item{background:var(--bg3)}
 
 <div class="header">
   <div>
-    <h1>Monitor Mercati</h1>
-    <p>Dashboard Finanziaria — Dati Live Yahoo Finance</p>
+    <h1>Market Compass</h1>
+    <p>La direzione dei mercati, in un attimo</p>
     <div class="markets-bar" id="markets-bar"></div>
   </div>
 <div class="header-right" style="display:flex;align-items:flex-start;gap:12px">
@@ -1146,7 +1146,7 @@ body.light .cal-item{background:var(--bg3)}
 
 <div class="statusbar">
   <span id="sb-rows">--</span>
-  <span>Monitor Mercati · Auto-refresh 10 min</span>
+  <span>Market Compass · Auto-refresh 10 min</span>
   <span id="sb-status">● --</span>
 </div>
 
@@ -4543,13 +4543,13 @@ function exportChartPDF() {
   <div class="page">
     <div class="hdr">
       <span class="hdr-title">${title}</span>
-      <span class="hdr-meta">Monitor Mercati · ${now}</span>
+      <span class="hdr-meta">Market Compass · ${now}</span>
     </div>
     <div class="kpis">${kpiHtml}</div>
     <div class="chart-wrap">
       ${imgSrc ? `<img src="${imgSrc}" alt="Grafico">` : '<p style="color:#546e7a;font-size:12px">Nessun grafico disponibile.</p>'}
     </div>
-    <div class="footer">Generato da Monitor Mercati — dati a scopo informativo</div>
+    <div class="footer">Generato da Market Compass — dati a scopo informativo</div>
   </div>
   <script>window.onload=()=>setTimeout(()=>window.print(),200)<\/script>
   </body></html>`;
@@ -7000,7 +7000,7 @@ function printNewsTab() {
   const now = new Date().toLocaleString('it-IT');
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Monitor Mercati — News ${catLabel}</title>
+  <title>Market Compass — News ${catLabel}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     @page{size:A4 portrait;margin:12mm 14mm}
@@ -7018,7 +7018,7 @@ function printNewsTab() {
     .footer{margin-top:16px;font-size:8px;color:#aaa;text-align:center;border-top:1px solid #e8edf5;padding-top:6px}
   </style></head><body>
   <div class="hdr">
-    <span class="hdr-title">📰 Monitor Mercati — News: ${catLabel}</span>
+    <span class="hdr-title">📰 Market Compass — News: ${catLabel}</span>
     <span class="hdr-meta">${now} · ${items.length} notizie</span>
   </div>
   ${items.map(it => `<div class="card">
@@ -7029,7 +7029,7 @@ function printNewsTab() {
     <div class="title">${it.link ? `<a href="${it.link}">${it.title}</a>` : it.title}</div>
     ${it.summary ? `<div class="summary">${it.summary}</div>` : ''}
   </div>`).join('')}
-  <div class="footer">Generato da Monitor Mercati — dati a scopo informativo</div>
+  <div class="footer">Generato da Market Compass — dati a scopo informativo</div>
   </body></html>`;
 
   const w = window.open('', '_blank');
@@ -7145,12 +7145,12 @@ function printScatter() {
   <div class="page1">
     <div class="hdr">
       <span class="hdr-title">🎯 Scatter — ${group}</span>
-      <span class="hdr-meta">Monitor Mercati · ${now}</span>
+      <span class="hdr-meta">Market Compass · ${now}</span>
     </div>
     <div class="chart-wrap">
       ${imgSrc ? `<img src="${imgSrc}">` : '<span style="color:#546e7a">Grafico non disponibile</span>'}
     </div>
-    <div class="footer">Generato da Monitor Mercati — dati a scopo informativo</div>
+    <div class="footer">Generato da Market Compass — dati a scopo informativo</div>
   </div>
 
   <div class="page-break"></div>
@@ -7159,7 +7159,7 @@ function printScatter() {
   <div class="page2">
     <div class="hdr">
       <span class="hdr-title">🎯 Riepilogo Quadranti — ${group}</span>
-      <span class="hdr-meta">Monitor Mercati · ${now} · ${instruments.length} strumenti</span>
+      <span class="hdr-meta">Market Compass · ${now} · ${instruments.length} strumenti</span>
     </div>
     <div class="q-grid">
       ${makeBlock('Leader', '✅', Q.leader,   '#4caf50')}
@@ -7167,7 +7167,7 @@ function printScatter() {
       ${makeBlock('Misto', '⚠️', Q.misto,    '#ff9800')}
       ${makeBlock('Evitare', '❌', Q.evitare,  '#ef5350')}
     </div>
-    <div class="footer">Generato da Monitor Mercati — dati a scopo informativo</div>
+    <div class="footer">Generato da Market Compass — dati a scopo informativo</div>
   </div>
 
   <script>window.onload=()=>setTimeout(()=>window.print(),400)<\/script>
@@ -7215,12 +7215,12 @@ function printCorrMatrix() {
   <div class="page">
     <div class="hdr">
       <span class="hdr-title">📐 Correlazione — ${group} · ${period}</span>
-      <span class="hdr-meta">Monitor Mercati · ${now}</span>
+      <span class="hdr-meta">Market Compass · ${now}</span>
     </div>
     <div class="matrix-wrap">
       <div class="matrix-scale" id="ms">${wrap.innerHTML}</div>
     </div>
-    <div class="footer">Generato da Monitor Mercati — dati a scopo informativo</div>
+    <div class="footer">Generato da Market Compass — dati a scopo informativo</div>
   </div>
   <script>
     window.onload = () => {
