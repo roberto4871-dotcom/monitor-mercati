@@ -266,6 +266,13 @@ td.ora{color:#64b5f6;font-size:10px}
 #regime-badge .rg-conds{display:flex;gap:5px;justify-content:center;margin-top:1px}
 #regime-badge .rg-cond{font-size:9px;font-weight:700;padding:1px 5px;border-radius:5px}
 
+/* ── GLOBAL BIAS BADGE ─────────────────────────────── */
+#global-bias-badge{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 18px;border-radius:12px;border:1.5px solid rgba(255,255,255,.15);transition:background .5s,border-color .5s;cursor:default;min-width:120px;text-align:center}
+#global-bias-badge .gb-label{font-size:8px;color:rgba(255,255,255,.45);font-weight:700;letter-spacing:1.2px;text-transform:uppercase}
+#global-bias-badge .gb-bias{font-size:20px;font-weight:900;letter-spacing:.5px;line-height:1.15;transition:color .5s}
+#global-bias-badge .gb-regime{font-size:10px;color:rgba(255,255,255,.55);font-weight:600;margin-top:1px}
+#global-bias-badge .gb-conds{display:flex;gap:4px;justify-content:center;margin-top:2px}
+
 /* ── MODAL TABS ─────────────────────────────────── */
 .modal-tabs{display:flex;background:var(--bg3);border-bottom:2px solid var(--border);padding:0 8px;flex-shrink:0;overflow-x:auto;scrollbar-width:none}
 .modal-tabs::-webkit-scrollbar{display:none}
@@ -702,7 +709,13 @@ body.light .cal-item{background:var(--bg3)}
     <p>Dashboard Finanziaria — Dati Live Yahoo Finance</p>
     <div class="markets-bar" id="markets-bar"></div>
   </div>
-<div class="header-right" style="display:flex;align-items:flex-start;gap:12px">
+  <div id="global-bias-badge" style="background:rgba(0,0,0,.2)">
+    <div class="gb-label">Bias</div>
+    <div class="gb-bias" style="color:rgba(255,255,255,.3)">—</div>
+    <div class="gb-regime"></div>
+    <div class="gb-conds"></div>
+  </div>
+  <div class="header-right" style="display:flex;align-items:flex-start;gap:12px">
     <div>
       <div class="header-datetime" id="hdr-dt">--</div>
       <div class="header-meta" id="hdr-upd">Caricamento in corso…</div>
@@ -1897,8 +1910,12 @@ function fmtCell(col, row) {
       } else if (v.context && !lines.length) {
         lines.push(`<span style="font-size:9px;color:var(--text3);white-space:nowrap;display:block;line-height:1.5">${v.context}</span>`);
       }
-      if (!lines.length) return pill;
-      return `<div style="display:inline-flex;flex-direction:column;align-items:flex-start;gap:1px">${pill}${lines.join('')}</div>`;
+      // Badge contro-regime (solo medio/debole, non forte)
+      const contraBadge = v.contratrend && v.strength !== 'strong'
+        ? `<span style="font-size:9px;color:#ff9800;white-space:nowrap;display:block;line-height:1.5;font-weight:700">⚠️ contro mercato</span>`
+        : '';
+      if (!lines.length && !contraBadge) return pill;
+      return `<div style="display:inline-flex;flex-direction:column;align-items:flex-start;gap:1px">${pill}${contraBadge}${lines.join('')}</div>`;
     }
     case 'rs': {
       if (v === null || v === undefined || isNaN(v)) return '<span class="na">—</span>';
@@ -2276,8 +2293,8 @@ async function loadMA() {
   });
   // Aggiorna il Market Breadth Panel dopo aver caricato tutte le MA
   updateBreadthPanel();
-  // Regime globale dipende da _ma200 → aggiorna dopo MA
-  updateGlobalRegime();
+  // Bias globale dipende da _ma200 → aggiorna dopo MA
+  updateGlobalBias();
   updateTopSignalsBtn();
 }
 
@@ -2385,103 +2402,184 @@ function getMarketScore() {
   return wt > 0 ? Math.round(ws / wt) : null;
 }
 
-// ── REGIME GLOBALE — 🟢 RISK ON / 🟡 NEUTRAL / 🔴 RISK OFF ────────
-// Score: +1 per ogni condizione soddisfatta (VIX<18, breadth>55%, SP500>MM200)
-// 3 → RISK ON  |  2 → NEUTRAL+  |  1 → NEUTRAL−  |  0 → RISK OFF
-function updateGlobalRegime() {
-  const badge = document.getElementById('regime-badge');
-  if (!badge) return;
+// ═══════════════════════════════════════════════════════════════
+//  REGIME + BIAS GLOBALE — punteggio 0–3
+//  VIX<18 (+1)  |  Breadth>55% (+1)  |  SP500>MM200 (+1)
+// ═══════════════════════════════════════════════════════════════
+let _cachedRegimeScore = null;   // raw 0–3, updated by updateGlobalBias()
+let _lastSmoothedRegime = null;  // smoothed, in-memory across fetch cycles
+const REGIME_BUFFER_KEY = 'mm_regime_buf';
 
-  // Componente 1: VIX < 18 → +1
-  const vixRow = rows.find(r => r.a === 'VOLATILITA');
-  const vix    = vixRow?.valore ?? null;
-  const vixPt  = vix !== null ? (vix < 18 ? 1 : 0) : null;
+function computeRegimeScore() {
+  const vixRow  = rows.find(r => r.a === 'VOLATILITA');
+  const vix     = vixRow?.valore ?? null;
+  const vixPt   = vix !== null ? (vix < 18 ? 1 : 0) : null;
 
-  // Componente 2: Breadth > 55% (% asset sopra MM200) → +1
   const maRows  = rows.filter(r => r._ma200 !== null && r._ma200 !== undefined && !r._loading && !r._err);
   const breadth = maRows.length > 0 ? (maRows.filter(r => r._ma200 === true).length / maRows.length * 100) : null;
   const breadthPt = breadth !== null ? (breadth > 55 ? 1 : 0) : null;
 
-  // Componente 3: SP500 sopra MM200 → +1
   const spRow = rows.find(r => r.s === '^GSPC');
-  const spAboveMa200 = spRow?._ma200 ?? null;
-  const spPt = spAboveMa200 !== null ? (spAboveMa200 === true ? 1 : 0) : null;
+  const spPt  = (spRow?._ma200 !== null && spRow?._ma200 !== undefined) ? (spRow._ma200 === true ? 1 : 0) : null;
 
-  // Pillole condizioni visibili inline
-  const mkCond = (pt, lbl) => {
-    const ok = pt === 1;
-    return `<span class="rg-cond" style="background:${ok?'rgba(102,187,106,.2)':'rgba(255,255,255,.07)'};color:${ok?'#66bb6a':'rgba(255,255,255,.3)'}">${ok?'✓':'✗'} ${lbl}</span>`;
-  };
-  const mkDots = () => `<div class="rg-conds">${mkCond(vixPt??0,'VIX')}${mkCond(breadthPt??0,'Ampiezza')}${mkCond(spPt??0,'SP500')}</div>`;
-
-  // Totale (solo componenti disponibili)
   const pts = [vixPt, breadthPt, spPt].filter(v => v !== null);
-  if (!pts.length) {
-    badge.innerHTML = `<div class="rg-title">Mercato</div><div class="rg-icon">⚪</div><div class="rg-label" style="color:rgba(255,255,255,.35)">—</div><div class="rg-conds"></div>`;
-    badge.style.background   = 'rgba(0,0,0,.25)';
-    badge.style.borderColor  = 'rgba(255,255,255,.12)';
+  if (!pts.length) return null;
+  return { score: pts.reduce((s, v) => s + v, 0), vixPt: vixPt ?? 0, breadthPt: breadthPt ?? 0, spPt: spPt ?? 0 };
+}
+
+// Smoothing: cambia solo se 2/3 uguali o punteggio estremo (0 o 3)
+function getSmoothedRegime(rawScore) {
+  if (rawScore === 0 || rawScore === 3) {
+    _lastSmoothedRegime = rawScore;
+    try { localStorage.setItem(REGIME_BUFFER_KEY, JSON.stringify([rawScore, rawScore, rawScore])); } catch {}
+    return rawScore;
+  }
+  let buf = [];
+  try { buf = JSON.parse(localStorage.getItem(REGIME_BUFFER_KEY) || '[]'); } catch {}
+  buf = [...buf.slice(-2), rawScore];
+  try { localStorage.setItem(REGIME_BUFFER_KEY, JSON.stringify(buf)); } catch {}
+  const counts = {};
+  buf.forEach(v => counts[v] = (counts[v] || 0) + 1);
+  let smoothed = _lastSmoothedRegime ?? rawScore;
+  for (const [val, cnt] of Object.entries(counts)) {
+    if (cnt >= 2) { smoothed = parseInt(val); break; }
+  }
+  _lastSmoothedRegime = smoothed;
+  return smoothed;
+}
+
+// BIAS: LONG / SHORT / NEUTRAL
+// LONG  = smoothedRegime 3 E ≥60% segnali BUY
+// SHORT = smoothedRegime 0 E ≥60% segnali SELL
+// NEUTRAL = tutto il resto
+function computeGlobalBias(smoothed) {
+  const signaled = rows.filter(r => r._signal && !r._loading && !r._err);
+  const nTot  = signaled.length;
+  if (!nTot || smoothed === null) return 'NEUTRAL';
+  const nBuy  = signaled.filter(r => r._signal.key === 'buy').length;
+  const nSell = signaled.filter(r => r._signal.key === 'reduce').length;
+  if (smoothed === 3 && nBuy  / nTot >= 0.60) return 'LONG';
+  if (smoothed === 0 && nSell / nTot >= 0.60) return 'SHORT';
+  return 'NEUTRAL';
+}
+
+// Aggiorna il badge nell'header
+function updateGlobalBias() {
+  const badge = document.getElementById('global-bias-badge');
+  if (!badge) return;
+
+  const result = computeRegimeScore();
+  if (!result) {
+    badge.innerHTML = `<div class="gb-label">Bias</div><div class="gb-bias" style="color:rgba(255,255,255,.3)">—</div><div class="gb-regime"></div><div class="gb-conds"></div>`;
+    badge.style.background  = 'rgba(0,0,0,.2)';
+    badge.style.borderColor = 'rgba(255,255,255,.12)';
     return;
   }
-  const total = pts.reduce((s, v) => s + v, 0);
 
-  let icon, label, color, bg;
-  if      (total === 3) { icon='🟢'; label='Favorevole';  color='#66bb6a'; bg='rgba(46,125,50,.35)';  }
-  else if (total === 2) { icon='🟡'; label='Cauto ▲';    color='#ffd54f'; bg='rgba(245,127,23,.25)'; }
-  else if (total === 1) { icon='🟠'; label='Cauto ▼';    color='#ff8a65'; bg='rgba(183,81,0,.25)';   }
-  else                  { icon='🔴'; label='Avverso';    color='#ef5350'; bg='rgba(183,28,28,.35)';  }
+  const { score, vixPt, breadthPt, spPt } = result;
+  _cachedRegimeScore = score;
+  const smoothed = getSmoothedRegime(score);
+  const bias     = computeGlobalBias(smoothed);
 
-  badge.style.background  = bg;
-  badge.style.borderColor = color + '55';
+  const BIAS_CFG = {
+    LONG:    { arrow:'▲', label:'LONG',    color:'#66bb6a', bg:'rgba(27,94,32,.45)',   border:'rgba(102,187,106,.5)' },
+    SHORT:   { arrow:'▼', label:'SHORT',   color:'#ef5350', bg:'rgba(127,0,0,.4)',     border:'rgba(239,83,80,.5)'  },
+    NEUTRAL: { arrow:'→', label:'NEUTRAL', color:'#ffd54f', bg:'rgba(50,50,50,.4)',    border:'rgba(255,213,79,.3)' },
+  };
+  const bc = BIAS_CFG[bias];
+
+  const regLabels = ['Avverso','Cauto ▼','Cauto ▲','Favorevole'];
+  const regLabel  = regLabels[smoothed] ?? '—';
+
+  const mkC = (pt, lbl) =>
+    `<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;background:${pt ? 'rgba(102,187,106,.2)' : 'rgba(255,255,255,.06)'};color:${pt ? '#66bb6a' : 'rgba(255,255,255,.25)'}">
+      ${pt ? '✓' : '✗'} ${lbl}</span>`;
+
+  badge.style.background  = bc.bg;
+  badge.style.borderColor = bc.border;
   badge.innerHTML = `
-    <div class="rg-title">Mercato</div>
-    <div class="rg-icon">${icon}</div>
-    <div class="rg-label" style="color:${color}">${label}</div>
-    ${mkDots()}
+    <div class="gb-label">Bias</div>
+    <div class="gb-bias" style="color:${bc.color}">${bc.arrow} ${bc.label}</div>
+    <div class="gb-regime">${regLabel} <span style="opacity:.45">(${smoothed}/3)</span></div>
+    <div class="gb-conds">${mkC(vixPt,'VIX')}${mkC(breadthPt,'Amp.')}${mkC(spPt,'SP500')}</div>
   `;
 }
 
-// ── FORZA DEL SEGNALE — 🔥 Forte / ⚠️ Medio / ❄️ Debole ──────────
-function computeSignalStrength(key, rawScore, tags, marketScore) {
-  // VIX: forza basata sull'estremo
+// ═══════════════════════════════════════════════════════════════
+//  3 CONDIZIONI — Trend · Momentum · Macro
+//  🔥 = 3/3  |  ⚠️ = 2/3  |  ❄️ = 1/3
+//  Logica identica in tabella, modal e ranking
+// ═══════════════════════════════════════════════════════════════
+function computeSignal3Conditions(row, key, rawScore) {
+  // VIX-speciali: forza basata sull'estremo del livello
   const vixKeys = new Set(['low-fear','normal','elevated','high-fear','crisis']);
   if (vixKeys.has(key)) {
-    if (key === 'low-fear' || key === 'crisis')    return {strength:'strong', icon:'🔥', label:'Forte',  contratrend:false};
-    if (key === 'normal'   || key === 'high-fear') return {strength:'medium', icon:'⚠️', label:'Medio',  contratrend:false};
-    return                                                {strength:'weak',   icon:'❄️', label:'Debole', contratrend:false};
+    const extreme = key === 'low-fear' || key === 'crisis';
+    const mid     = key === 'normal'   || key === 'high-fear';
+    const c = extreme ? {trend:true,  momentum:true,  macro:true}
+            : mid     ? {trend:true,  momentum:false, macro:true}
+            :           {trend:false, momentum:false, macro:true};
+    const n = Object.values(c).filter(Boolean).length;
+    const [str, ico, lbl] = n===3 ? ['strong','🔥','Forte'] : n===2 ? ['medium','⚠️','Medio'] : ['weak','❄️','Debole'];
+    return {strength:str, icon:ico, label:lbl, contratrend:false, conditions:c, conditionCount:n};
   }
-  // Conviction: quanto è lontano dallo score dalla soglia?
-  let conviction = 0;
-  if      (key === 'buy')     conviction = rawScore >= 82 ? 2 : rawScore >= 75 ? 1 : 0;
-  else if (key === 'hold')    conviction = rawScore >= 65 ? 1 : 0;
-  else if (key === 'neutral') conviction = 0;
-  else if (key === 'caution') conviction = rawScore <= 35 ? 1 : 0;
-  else if (key === 'reduce')  conviction = rawScore <= 18 ? 2 : rawScore <= 25 ? 1 : 0;
-  // Allineamento con il mercato
-  let marketBoost = 0, contratrend = false;
-  if (marketScore !== null) {
-    const bullMkt = marketScore >= 60, bearMkt = marketScore <= 40;
-    const bullSig = key === 'buy' || key === 'hold';
-    const bearSig = key === 'reduce' || key === 'caution';
-    if      (bullSig && bullMkt) marketBoost =  2;   // segnale + mercato allineati → forte
-    else if (bullSig && bearMkt) { marketBoost = -2; contratrend = true; } // contro tendenza
-    else if (bearSig && bearMkt) marketBoost =  2;
-    else if (bearSig && bullMkt) { marketBoost = -2; contratrend = true; }
-  }
-  // Allineamento dei tag contesto
-  const posC = new Set(['#4caf50','#8bc34a','#29b6f6']);
-  const negC = new Set(['#ef5350','#ff9800','#ff7043']);
-  const bullSig = key === 'buy' || key === 'hold';
+
+  const bullSig = key === 'buy'    || key === 'hold';
   const bearSig = key === 'reduce' || key === 'caution';
-  let tagSum = 0;
-  (tags || []).forEach(t => {
-    if (bullSig) tagSum += posC.has(t.color) ? 1 : negC.has(t.color) ? -1 : 0;
-    if (bearSig) tagSum += negC.has(t.color) ? 1 : posC.has(t.color) ? -1 : 0;
-  });
-  const tagAdj = tagSum > 0 ? 1 : tagSum < 0 ? -1 : 0;
-  const total = conviction + marketBoost + tagAdj;
-  if (total >= 2)  return {strength:'strong', icon:'🔥', label:'Forte',  contratrend};
-  if (total >= 0)  return {strength:'medium', icon:'⚠️', label:'Medio',  contratrend};
-  return                  {strength:'weak',   icon:'❄️', label:'Debole', contratrend};
+
+  // 1. Trend — consistenza direzionale sui periodi
+  const tc = computeTrendConsistency(row);
+  let trendOk = false;
+  if (tc) {
+    trendOk = (bullSig && tc.label.includes('↑')) || (bearSig && tc.label.includes('↓'));
+  }
+
+  // 2. Momentum — score forte + posizione MM200 coerente
+  let momentumOk = false;
+  if      (bullSig) momentumOk = rawScore >= 65 && row._ma200 !== false;
+  else if (bearSig) momentumOk = rawScore <= 35 && row._ma200 !== true;
+  else              momentumOk = rawScore >= 40 && rawScore <= 60;
+
+  // 3. Macro — regime + VIX allineati (usa cache O(1), non ricalcola)
+  const regScore = _cachedRegimeScore;
+  const vix      = getVixLevel();
+  let macroOk = false;
+  if      (bullSig) macroOk = (regScore !== null && regScore >= 2) || (vix !== null && vix < 20);
+  else if (bearSig) macroOk = (regScore !== null && regScore <= 1) || (vix !== null && vix > 25);
+  else              macroOk = regScore !== null && regScore >= 1 && regScore <= 2;
+
+  const conditions    = { trend: trendOk, momentum: momentumOk, macro: macroOk };
+  const conditionCount = Object.values(conditions).filter(Boolean).length;
+
+  let strength, icon, label;
+  if      (conditionCount === 3) { strength='strong'; icon='🔥'; label='Forte'; }
+  else if (conditionCount === 2) { strength='medium'; icon='⚠️'; label='Medio'; }
+  else                           { strength='weak';   icon='❄️'; label='Debole'; }
+
+  // Contro-regime: segnale direzionale contro regime smoothed
+  const smoothed = _lastSmoothedRegime ?? regScore;
+  const contratrend = smoothed !== null && (
+    (bullSig && smoothed <= 1) || (bearSig && smoothed >= 2)
+  );
+
+  return { strength, icon, label, contratrend, conditions, conditionCount };
+}
+
+// Tipo di segnale per il modal
+function computeSignalType(row, key, tc) {
+  if (key === 'buy') {
+    if (tc?.label.includes('↑↑') && row._ma200 === true && row._ma50 === true) return 'Breakout';
+    if (tc?.label.includes('↗'))  return 'Reversal';
+    return 'Trend';
+  }
+  if (key === 'reduce') {
+    if (tc?.label.includes('↓↓') && row._ma200 === false) return 'Distribuzione';
+    if (tc?.label.includes('↘'))  return 'Inversione';
+    return 'Ribasso';
+  }
+  if (key === 'caution') return 'Cautela';
+  if (key === 'hold')    return 'Consolidamento';
+  return 'Neutro';
 }
 
 // ── CONTESTO DEL SEGNALE — frase che spiega il perché ────────────
@@ -2591,7 +2689,7 @@ function computeAssetSignal(row) {
     const v = row.valore;
     if (!v) return null;
     const mkVix = (rank, key, label, color, desc) => {
-      const st = computeSignalStrength(key, v, [], null);
+      const st = computeSignal3Conditions(row, key, v);
       return {rank, key, label, color, detail:`VIX ${v.toFixed(1)} — ${desc}`, tags:[], rawScore:v, marketScore:null, context:`VIX ${v.toFixed(1)}`, ...st};
     };
     if (v < 15) return mkVix(5,'low-fear', '😌 Bassa Paura','#4caf50','mercato tranquillo, risk-on favorevole');
@@ -2691,7 +2789,7 @@ function computeAssetSignal(row) {
   else                  result = {rank:1, key:'reduce',  label:'🔴 Riduci',    color:'#ef5350'};
 
   const ms  = getMarketScore();
-  const st  = computeSignalStrength(result.key, score, tags, ms);
+  const st  = computeSignal3Conditions(row, result.key, score);
   const ctx = buildSignalContext(row, tags, result.key);
   return {...result, detail, tags, rawScore: score, marketScore: ms, ...st, context: ctx};
 }
@@ -2704,7 +2802,7 @@ function computeMomentumScores() {
     rows[idx]._action   = deriveAction(rows[idx]._signal);
     updateRow(idx);
   });
-  updateGlobalRegime();
+  updateGlobalBias();
   updateTopSignalsBtn();
 }
 
@@ -4742,93 +4840,88 @@ function buildModalSignalHTML(row) {
   const sig = row._signal;
   if (!sig) return '';
 
-  // Mappa chiave → etichetta direzione (label è stato sovrascritto da strength)
   const DIRECTION_LABELS = {
     'buy':'🟢 Accumula','hold':'🔵 Mantieni','neutral':'⚪ Neutro',
     'caution':'🟡 Cautela','reduce':'🔴 Riduci',
     'low-fear':'😌 Bassa Paura','normal':'😐 Normale',
     'elevated':'😟 Elevata','high-fear':'😨 Alta Paura','crisis':'😱 Crisi',
   };
-  const dirLabel  = DIRECTION_LABELS[sig.key] || sig.key;
-  const strColor  = sig.strength==='strong' ? '#ff6f00' : sig.strength==='medium' ? '#ffc107' : '#78909c';
-  const rawScore  = sig.rawScore ?? 50;
+  const dirLabel   = DIRECTION_LABELS[sig.key] || sig.key;
+  const rawScore   = sig.rawScore ?? 50;
+  const conds      = sig.conditions || {};
+  const condCount  = sig.conditionCount ?? Object.values(conds).filter(Boolean).length;
+  const strColor   = sig.strength === 'strong' ? '#ff6f00' : sig.strength === 'medium' ? '#ffc107' : '#78909c';
 
-  // ── Pill principale (direzione) + badge forza ──────────────────
-  const pill = `<span style="background:${sig.color}22;color:${sig.color};border:1px solid ${sig.color}55;font-size:13px;font-weight:900;padding:5px 16px;border-radius:10px;letter-spacing:.3px">${sig.icon} ${dirLabel}</span>`;
-  const bar  = `<div style="display:flex;align-items:center;gap:6px;margin-left:auto">
-      <div style="width:60px;height:5px;border-radius:3px;background:rgba(255,255,255,.08)">
-        <div style="height:5px;border-radius:3px;width:${rawScore}%;background:${sig.color};transition:width .5s"></div>
+  // Tipo di segnale
+  const tc      = computeTrendConsistency(row);
+  const sigType = computeSignalType(row, sig.key, tc);
+
+  // Affidabilità
+  const [relLabel, relColor] = condCount === 3 ? ['Alta','#4caf50'] : condCount === 2 ? ['Media','#ffc107'] : ['Bassa','#ef5350'];
+
+  // Contra-regime (solo medio/debole)
+  const contraHTML = (sig.contratrend && sig.strength !== 'strong')
+    ? `<span style="background:rgba(255,152,0,.15);color:#ff9800;border:1px solid rgba(255,152,0,.4);font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap">⚠️ contro mercato</span>`
+    : '';
+
+  // Pill principale
+  const pill = `<span style="background:${sig.color}22;color:${sig.color};border:1px solid ${sig.color}55;font-size:14px;font-weight:900;padding:5px 18px;border-radius:10px;white-space:nowrap">${dirLabel}</span>`;
+
+  // Riga condizione
+  const mkCondRow = (ok, title, detail) => `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:3px 0">
+      <span style="font-size:13px;flex-shrink:0;line-height:1.3">${ok ? '✅' : '❌'}</span>
+      <div>
+        <span style="font-size:11px;font-weight:700;color:${ok ? 'var(--text)' : 'var(--text3)'}">${title}</span>
+        ${detail ? `<span style="font-size:10px;color:var(--text3);margin-left:6px">${detail}</span>` : ''}
       </div>
-      <span style="font-size:9px;color:var(--text3);font-weight:600;white-space:nowrap">${rawScore}/100</span>
     </div>`;
 
-  // ── Trend ──────────────────────────────────────────────────────
-  const tc = computeTrendConsistency(row);
-  const trendVal = tc
-    ? `<span style="color:${tc.color};font-weight:700;font-size:11px">${tc.label}</span>`
-    : `<span style="color:var(--text3);font-size:11px">—</span>`;
-
-  // ── Posizione vs medie mobili ──────────────────────────────────
-  const maItems = [];
-  if (row._ma200 !== null && row._ma200 !== undefined)
-    maItems.push(row._ma200
-      ? `<span style="color:#4caf50;font-weight:700;font-size:11px">🟢 sopra MM200</span>`
-      : `<span style="color:#ef5350;font-weight:700;font-size:11px">🔴 sotto MM200</span>`);
-  if (row._ma50 !== null && row._ma50 !== undefined)
-    maItems.push(row._ma50
-      ? `<span style="color:#8bc34a;font-size:11px">sopra MM50</span>`
-      : `<span style="color:#ff7043;font-size:11px">sotto MM50</span>`);
-  const posVal = maItems.length
-    ? maItems.join(`<span style="color:var(--text3)"> · </span>`)
-    : `<span style="color:var(--text3);font-size:11px">—</span>`;
-
-  // ── Macro ──────────────────────────────────────────────────────
-  const macroItems = [];
-  const vix = getVixLevel();
-  if (vix !== null) {
-    const vl = vix < 18 ? ['basso','#4caf50'] : vix > 28 ? ['elevato','#ef5350'] : ['moderato','#ffc107'];
-    macroItems.push(`<span style="color:${vl[1]};font-weight:700;font-size:11px">VIX ${vix.toFixed(1)} — ${vl[0]}</span>`);
-  }
-  // Regime globale dal badge
-  const regimeBadge = document.getElementById('regime-badge');
-  const regimeLabel = regimeBadge?.querySelector('.rg-label')?.textContent?.trim();
-  if (regimeLabel && regimeLabel !== '—') {
-    const rc = regimeLabel === 'Favorevole' ? '#66bb6a' : regimeLabel === 'Avverso' ? '#ef5350' : '#ffd54f';
-    macroItems.push(`<span style="color:${rc};font-size:11px">${regimeLabel}</span>`);
-  }
-  // Bond: curva rendimenti
-  const BOND_C = new Set(['INDICE OBBLIGAZIONARIO','ETF OBB. MASTER']);
-  if (BOND_C.has(row.a)) {
-    const spread = getYieldCurveSpread();
-    if (spread !== null) {
-      const yc = spread > 0.5 ? ['curva normale','#4caf50'] : spread < 0 ? ['curva invertita','#ef5350'] : ['curva piatta','#ffc107'];
-      macroItems.push(`<span style="color:${yc[1]};font-size:11px">${yc[0]}</span>`);
+  const trendDetail    = tc ? tc.label : '—';
+  const momentumDetail = `Score ${rawScore}/100${row._ma200 !== null && row._ma200 !== undefined ? ' · ' + (row._ma200 ? 'sopra MM200' : 'sotto MM200') : ''}`;
+  const macroDetail    = (() => {
+    const vix = getVixLevel();
+    const parts = [];
+    if (vix !== null) {
+      const vl = vix < 18 ? 'basso' : vix > 28 ? 'elevato' : 'moderato';
+      parts.push(`VIX ${vix.toFixed(1)} (${vl})`);
     }
-    const cuts  = CB_RATES.filter(c => c.trend === 'cut').length;
-    const hikes = CB_RATES.filter(c => c.trend === 'hike').length;
-    if (cuts > hikes)  macroItems.push(`<span style="color:#4caf50;font-size:11px">banche in taglio</span>`);
-    if (hikes > cuts)  macroItems.push(`<span style="color:#ef5350;font-size:11px">banche in rialzo</span>`);
-  }
-  const macroVal = macroItems.length
-    ? macroItems.join(`<span style="color:var(--text3)"> · </span>`)
-    : `<span style="color:var(--text3);font-size:11px">—</span>`;
+    const reg = _lastSmoothedRegime;
+    if (reg !== null) {
+      const regLabels = ['Avverso','Cauto ▼','Cauto ▲','Favorevole'];
+      parts.push(regLabels[reg] ?? '—');
+    }
+    return parts.join(' · ') || '—';
+  })();
 
-  // ── Griglia strutturata ────────────────────────────────────────
-  const row_ = (lbl, val) => `
-    <div style="display:contents">
-      <span style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;padding:3px 0">${lbl}</span>
-      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:3px 0">${val}</div>
-    </div>`;
+  // Barre forza 3/3
+  const bars = [0,1,2].map(i =>
+    `<div style="width:22px;height:5px;border-radius:3px;background:${i < condCount ? sig.color : 'rgba(255,255,255,.1)'}"></div>`
+  ).join('');
 
   return `
-    <div style="padding:10px 18px 12px;border-bottom:1px solid var(--border);background:${sig.color}08">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-        ${pill}${bar}
+    <div style="padding:12px 18px 14px;border-bottom:1px solid var(--border);background:${sig.color}08">
+      <!-- Riga principale: pill + tipo + affidabilità -->
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        ${pill}
+        <span style="font-size:11px;color:var(--text2);background:rgba(255,255,255,.07);padding:3px 10px;border-radius:6px;font-weight:600">${sigType}</span>
+        ${contraHTML}
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <span style="font-size:10px;color:var(--text3)">Affidabilità</span>
+          <span style="font-size:11px;font-weight:800;color:${relColor}">${relLabel}</span>
+        </div>
       </div>
-      <div style="display:grid;grid-template-columns:65px 1fr;gap:2px 10px;align-items:start">
-        ${row_('Trend',    trendVal)}
-        ${row_('Posizione',posVal)}
-        ${row_('Macro',    macroVal)}
+      <!-- Condizioni attivate -->
+      <div style="background:rgba(255,255,255,.03);border-radius:8px;padding:8px 12px;margin-bottom:8px">
+        <div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.7px;text-transform:uppercase;margin-bottom:4px">Condizioni attivate</div>
+        ${mkCondRow(conds.trend,    'Trend',             trendDetail)}
+        ${mkCondRow(conds.momentum, 'Momentum',          momentumDetail)}
+        ${mkCondRow(conds.macro,    'Allineamento macro', macroDetail)}
+      </div>
+      <!-- Forza 3/3 -->
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:11px;font-weight:700;color:${strColor}">${sig.icon} ${sig.label} — ${condCount}/3 condizioni</span>
+        <div style="display:flex;gap:4px">${bars}</div>
       </div>
     </div>`;
 }
