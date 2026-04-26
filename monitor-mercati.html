@@ -1856,7 +1856,7 @@ function fmtCell(col, row) {
       if (v === 1) return `<div style="text-align:center"><span style="background:#ef5350;color:#fff;font-weight:900;font-size:11px;padding:3px 12px;border-radius:8px;letter-spacing:.8px;display:inline-block">${str} SELL</span></div>`;
       const holdMeta = {
         hold:    {sub:'Mantieni', color:'#29b6f6'},
-        neutral: {sub:'Neutro',   color:'#78909c'},
+        neutral: {sub:'Neutro',   color:'#b0bec5'},
         caution: {sub:'Cautela',  color:'#ffc107'},
       }[sig?.key] || {sub:'', color:'#78909c'};
       const {sub: subLabel, color: hc} = holdMeta;
