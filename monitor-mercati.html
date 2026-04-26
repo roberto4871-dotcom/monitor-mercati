@@ -3660,10 +3660,28 @@ function showSignalLegend(btn) {
 
   document.body.appendChild(popup);
   const rect = btn.getBoundingClientRect();
-  const pw = 440;
+  const pw = 480;
   let left = rect.right - pw;
   if (left < 8) left = 8;
-  popup.style.top  = (rect.bottom + 8) + 'px';
+  if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+
+  // Smart vertical positioning: open above if not enough space below
+  const ph = popup.offsetHeight;
+  const spaceBelow = window.innerHeight - rect.bottom - 12;
+  const spaceAbove = rect.top - 12;
+  let top;
+  if (spaceBelow >= Math.min(ph, window.innerHeight * 0.75)) {
+    top = rect.bottom + 8;
+    popup.style.maxHeight = Math.min(ph, spaceBelow - 4) + 'px';
+  } else if (spaceAbove >= spaceBelow) {
+    const maxH = Math.min(ph, spaceAbove - 4);
+    popup.style.maxHeight = maxH + 'px';
+    top = rect.top - maxH - 8;
+  } else {
+    top = 8;
+    popup.style.maxHeight = (window.innerHeight - 16) + 'px';
+  }
+  popup.style.top  = Math.max(8, top) + 'px';
   popup.style.left = left + 'px';
 
   const close = e => { if (!popup.contains(e.target) && e.target !== btn) { popup.remove(); document.removeEventListener('click', close); } };
