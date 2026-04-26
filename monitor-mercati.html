@@ -1876,7 +1876,10 @@ function fmtCell(col, row) {
         lines.push(`<span style="font-size:9px;color:${v.tags[0].color};white-space:nowrap;display:block;line-height:1.5;font-weight:600">${v.tags[0].label}</span>`);
       }
       if (v.contratrend) {
-        lines.push(`<span style="font-size:9px;color:#ff9800;white-space:nowrap;display:block;line-height:1.5;font-weight:700">⚠ Contro trend mercato</span>`);
+        const bullSig = v.key === 'buy' || v.key === 'hold';
+        const mktDir  = (v.marketScore != null && v.marketScore >= 60) ? 'rialzista' : 'ribassista';
+        const sigDir  = bullSig ? 'BUY in mercato' : 'SELL in mercato';
+        lines.push(`<span style="font-size:9px;color:#ff9800;white-space:nowrap;display:block;line-height:1.5;font-weight:700">⚡ ${sigDir} ${mktDir}</span>`);
       } else if (v.tags && v.tags.length > 1) {
         lines.push(`<span style="font-size:9px;color:${v.tags[1].color};white-space:nowrap;display:block;line-height:1.5;font-weight:600">${v.tags[1].label}</span>`);
       } else if (v.context && !lines.length) {
@@ -4624,8 +4627,10 @@ async function openModal(idx) {
       const tagPills = (sig.tags && sig.tags.length)
         ? sig.tags.map(t => `<span style="font-size:10px;color:${t.color};font-weight:700;background:${t.color}18;border:1px solid ${t.color}44;border-radius:8px;padding:2px 7px;white-space:nowrap">${t.label}</span>`).join('')
         : '';
+      const cBullSig = sig.key === 'buy' || sig.key === 'hold';
+      const cMktDir  = (sig.marketScore != null && sig.marketScore >= 60) ? 'rialzista' : 'ribassista';
       const contra = sig.contratrend
-        ? `<span style="font-size:10px;font-weight:700;color:#ff9800;background:rgba(255,152,0,.12);border:1px solid rgba(255,152,0,.4);border-radius:8px;padding:2px 7px;white-space:nowrap">⚠ Contro trend di mercato</span>` : '';
+        ? `<span style="font-size:10px;font-weight:700;color:#ff9800;background:rgba(255,152,0,.12);border:1px solid rgba(255,152,0,.4);border-radius:8px;padding:2px 7px;white-space:nowrap">⚡ ${cBullSig?'BUY':'SELL'} in mercato ${cMktDir}</span>` : '';
       const ctxTip = sig.context
         ? `<span style="font-size:10px;color:var(--text3);font-style:italic">${sig.context}</span>` : '';
       sigEl.innerHTML = mainPill + tagPills + contra + ctxTip;
