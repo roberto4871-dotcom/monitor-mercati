@@ -3280,16 +3280,20 @@ function showTopSignals(btn) {
       return sd !== 0 ? sd : (a._signal.rawScore||0) - (b._signal.rawScore||0);
     });
 
-  // Riga compatta nella tabella
+  // Riga compatta nella tabella — cliccabile per aprire il grafico
   const mkRow = (r, idx) => {
     const sig = r._signal;
+    const rowIdx = rows.indexOf(r);
     const name = (r.i || r.m || r.s).length > 28 ? (r.i || r.m || r.s).slice(0,26)+'…' : (r.i || r.m || r.s);
     const score = sig.rawScore != null ? Math.round(sig.rawScore) : '—';
     const strColor = sig.strength === 'strong' ? '#ff6f00' : sig.strength === 'medium' ? '#ffc107' : '#78909c';
     const bgAlt = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.025)';
     const contra = sig.contratrend ? `<span title="Contro trend di mercato" style="color:#ff9800;font-size:10px">⚡</span>` : '';
     const ctx = sig.context ? `<div style="font-size:9px;color:var(--text3);line-height:1.3;margin-top:1px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${sig.context}">${sig.context}</div>` : '';
-    return `<tr style="background:${bgAlt}">
+    return `<tr style="background:${bgAlt};cursor:pointer;transition:background .12s"
+        onmouseenter="this.style.background='rgba(255,255,255,.06)'"
+        onmouseleave="this.style.background='${bgAlt}'"
+        onclick="document.getElementById('top-signals-popup')?.remove();openModal(${rowIdx})">
       <td style="padding:6px 8px;font-size:13px;text-align:center;vertical-align:middle">${sig.icon}</td>
       <td style="padding:6px 8px;vertical-align:middle">
         <div style="font-size:11px;font-weight:700;color:var(--text)">${name} ${contra}</div>
