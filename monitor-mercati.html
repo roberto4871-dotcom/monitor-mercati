@@ -2402,10 +2402,18 @@ function updateGlobalRegime() {
   const spAboveMa200 = spRow?._ma200 ?? null;
   const spPt = spAboveMa200 !== null ? (spAboveMa200 === true ? 1 : 0) : null;
 
+  // Pallini condizioni (helper riusabile)
+  const dot = (pt, tip) => `<span title="${tip}" style="font-size:10px;color:${pt===1?'#66bb6a':'rgba(255,255,255,.2)'};line-height:1">●</span>`;
+  const mkDots = () => `<div style="display:flex;gap:3px;justify-content:center;margin-top:2px">
+    ${dot(vixPt??0,    'VIX < 18')}
+    ${dot(breadthPt??0,'Breadth > 55%')}
+    ${dot(spPt??0,     'SP500 > MM200')}
+  </div>`;
+
   // Totale (solo componenti disponibili)
   const pts = [vixPt, breadthPt, spPt].filter(v => v !== null);
   if (!pts.length) {
-    badge.innerHTML = '<div class="rg-title">Regime</div><div class="rg-icon">⚪</div><div class="rg-label" style="color:rgba(255,255,255,.35)">—</div>';
+    badge.innerHTML = `<div class="rg-title">Regime</div><div class="rg-icon">⚪</div><div class="rg-label" style="color:rgba(255,255,255,.35)">—</div>`;
     badge.style.background   = 'rgba(0,0,0,.25)';
     badge.style.borderColor  = 'rgba(255,255,255,.12)';
     return;
@@ -2418,23 +2426,13 @@ function updateGlobalRegime() {
   else if (total === 1) { icon='🟠'; label='NEUTRAL −'; color='#ff8a65'; bg='rgba(183,81,0,.25)';   }
   else                  { icon='🔴'; label='RISK OFF';  color='#ef5350'; bg='rgba(183,28,28,.35)';  }
 
-  // Market Score → FORTE / MEDIO / DEBOLE (numero nascosto, qualità visibile)
-  const ms = getMarketScore();
-  let msLabel='', msColor='';
-  if (ms !== null) {
-    if      (ms >= 65) { msLabel='● Forte';  msColor='#66bb6a'; }
-    else if (ms >= 40) { msLabel='● Medio';  msColor='#ffd54f'; }
-    else               { msLabel='● Debole'; msColor='#ef5350'; }
-  }
-  const msHTML = msLabel ? `<div style="font-size:9px;font-weight:700;color:${msColor};letter-spacing:.3px;margin-top:1px">${msLabel}</div>` : '';
-
   badge.style.background  = bg;
   badge.style.borderColor = color + '55';
   badge.innerHTML = `
     <div class="rg-title">Regime</div>
     <div class="rg-icon">${icon}</div>
     <div class="rg-label" style="color:${color}">${label}</div>
-    ${msHTML}
+    ${mkDots()}
   `;
 }
 
@@ -4729,8 +4727,7 @@ function buildModalSignalHTML(row) {
   const rawScore  = sig.rawScore ?? 50;
 
   // ── Pill principale (direzione) + badge forza ──────────────────
-  const pill = `<span style="background:${sig.color}22;color:${sig.color};border:1px solid ${sig.color}55;font-size:13px;font-weight:900;padding:5px 16px;border-radius:10px;letter-spacing:.3px">${dirLabel}</span>`;
-  const str  = `<span style="color:${strColor};font-size:12px;font-weight:700;padding:4px 10px;border:1px solid ${strColor}44;border-radius:8px;background:${strColor}11">${sig.icon} ${sig.label}</span>`;
+  const pill = `<span style="background:${sig.color}22;color:${sig.color};border:1px solid ${sig.color}55;font-size:13px;font-weight:900;padding:5px 16px;border-radius:10px;letter-spacing:.3px">${sig.icon} ${dirLabel}</span>`;
   const bar  = `<div style="display:flex;align-items:center;gap:6px;margin-left:auto">
       <div style="width:60px;height:5px;border-radius:3px;background:rgba(255,255,255,.08)">
         <div style="height:5px;border-radius:3px;width:${rawScore}%;background:${sig.color};transition:width .5s"></div>
@@ -4799,7 +4796,7 @@ function buildModalSignalHTML(row) {
   return `
     <div style="padding:10px 18px 12px;border-bottom:1px solid var(--border);background:${sig.color}08">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-        ${pill}${str}${bar}
+        ${pill}${bar}
       </div>
       <div style="display:grid;grid-template-columns:65px 1fr;gap:2px 10px;align-items:start">
         ${row_('Trend',    trendVal)}
