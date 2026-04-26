@@ -164,7 +164,7 @@ body.light .mret-zero{background:rgba(0,0,0,.06);color:var(--text3)}
 #cd-bar-wrap{height:3px;background:rgba(255,215,0,.1);flex-shrink:0}
 #cd-bar{height:3px;background:linear-gradient(90deg,var(--accent),#ff9800);width:100%;transition:width 1s linear}
 
-#bias-strip{display:none;align-items:center;gap:20px;padding:12px 22px;flex-shrink:0;border-bottom:3px solid rgba(0,0,0,.25);box-shadow:0 3px 16px rgba(0,0,0,.4);transition:background .4s}
+#bias-strip{display:none;align-items:center;gap:20px;padding:14px 24px;flex-shrink:0;border-bottom:3px solid rgba(0,0,0,.35);box-shadow:0 4px 24px rgba(0,0,0,.55);transition:background .6s,box-shadow .6s}
 #bias-strip .bs-div{width:1px;align-self:stretch;background:rgba(255,255,255,.18);flex-shrink:0}
 .table-wrapper{flex:1;overflow:auto}
 table{width:100%;border-collapse:collapse;font-size:12px}
@@ -174,8 +174,8 @@ thead th.sorted-asc::after{content:' ▲';font-size:9px}
 thead th.sorted-desc::after{content:' ▼';font-size:9px}
 thead th span[onclick]{display:inline-block;transition:transform .15s,opacity .15s}
 thead th span[onclick]:hover{opacity:1!important;transform:scale(1.25)}
-tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
-tbody tr:hover{background:#141e33!important}
+tbody tr{border-bottom:1px solid var(--border);transition:background .12s,box-shadow .12s}
+tbody tr:hover{background:#141e33!important;box-shadow:inset 3px 0 0 var(--accent)}
 .section-header td{background:#101830;color:var(--accent);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:1px;padding:5px 12px;border-top:2px solid var(--border)}
 td{padding:6px 10px;text-align:center;white-space:nowrap;border-right:1px solid rgba(255,255,255,.03)}
 td.left{text-align:left}
@@ -190,6 +190,10 @@ td.ora{color:#64b5f6;font-size:10px}
 .na{color:var(--text3);font-style:italic}
 .loading-cell{color:var(--text3);animation:pulse 1.2s infinite}
 @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.modal-overlay{animation:fadeSlideIn .18s ease-out both}
+.modal{animation:fadeSlideIn .18s ease-out both}
+.filter-btn:active{transform:scale(.96);transition:transform .08s}
 
 /* Charts */
 #tab-charts{flex-direction:column;overflow:hidden}
@@ -1904,10 +1908,12 @@ function fmtCell(col, row) {
       } else if (v.context && !lines.length) {
         lines.push(`<span style="font-size:9px;color:var(--text3);white-space:nowrap;display:block;line-height:1.5">${v.context}</span>`);
       }
-      // Badge contro-regime (solo medio/debole, non forte)
-      const contraBadge = v.contratrend && v.strength !== 'strong'
-        ? `<span style="font-size:9px;color:#ff9800;white-space:nowrap;display:block;line-height:1.5;font-weight:700">⚠️ contro mercato</span>`
-        : '';
+      // Badge contro-regime: feature, non warning
+      let contraBadge = '';
+      if (v.contratrend && v.strength !== 'strong') {
+        const isWeak = v.strength === 'weak';
+        contraBadge = `<span style="font-size:9px;color:${isWeak?'#ef5350':'#ff9800'};white-space:nowrap;display:block;line-height:1.5;font-weight:700">${isWeak?'⚡ Contro trend':'⚡ Setup speculativo'}</span>`;
+      }
       if (!lines.length && !contraBadge) return pill;
       return `<div style="display:inline-flex;flex-direction:column;align-items:flex-start;gap:1px">${pill}${contraBadge}${lines.join('')}</div>`;
     }
@@ -2402,17 +2408,39 @@ function getMarketScore() {
 // ═══════════════════════════════════════════════════════════════
 let _cachedRegimeScore = null;   // raw 0–3, updated by updateGlobalBias()
 let _lastSmoothedRegime = null;  // smoothed, in-memory across fetch cycles
-const REGIME_BUFFER_KEY = 'mm_regime_buf';
+const REGIME_BUFFER_KEY  = 'mm_regime_buf';   // ultimi 3 score 0-3
+const VIX_BUF_KEY        = 'mm_vix_buf';      // ultime 5 letture VIX
+const BREADTH_BUF_KEY    = 'mm_breadth_buf';  // ultime 5 letture breadth %
+
+// Aggiunge value al buffer localStorage (max size valori), restituisce la media
+function _pushAndAvg(key, value, size) {
+  let buf = [];
+  try { buf = JSON.parse(localStorage.getItem(key) || '[]'); } catch {}
+  buf = [...buf.slice(-(size - 1)), value];
+  try { localStorage.setItem(key, JSON.stringify(buf)); } catch {}
+  return buf.reduce((s, v) => s + v, 0) / buf.length;
+}
 
 function computeRegimeScore() {
+  // VIX → media 5 giorni (molto più stabile dei picchi intraday)
   const vixRow  = rows.find(r => r.a === 'VOLATILITA');
   const vix     = vixRow?.valore ?? null;
-  const vixPt   = vix !== null ? (vix < 18 ? 1 : 0) : null;
+  let vixPt = null;
+  if (vix !== null) {
+    const vixAvg = _pushAndAvg(VIX_BUF_KEY, vix, 5);
+    vixPt = vixAvg < 18 ? 1 : 0;
+  }
 
+  // Breadth → media 5 giorni
   const maRows  = rows.filter(r => r._ma200 !== null && r._ma200 !== undefined && !r._loading && !r._err);
-  const breadth = maRows.length > 0 ? (maRows.filter(r => r._ma200 === true).length / maRows.length * 100) : null;
-  const breadthPt = breadth !== null ? (breadth > 55 ? 1 : 0) : null;
+  let breadthPt = null;
+  if (maRows.length > 0) {
+    const breadth    = maRows.filter(r => r._ma200 === true).length / maRows.length * 100;
+    const breadthAvg = _pushAndAvg(BREADTH_BUF_KEY, breadth, 5);
+    breadthPt = breadthAvg > 55 ? 1 : 0;
+  }
 
+  // SP500 vs MM200 — dato già stabile (prezzo vs media 200gg)
   const spRow = rows.find(r => r.s === '^GSPC');
   const spPt  = (spRow?._ma200 !== null && spRow?._ma200 !== undefined) ? (spRow._ma200 === true ? 1 : 0) : null;
 
@@ -2421,7 +2449,7 @@ function computeRegimeScore() {
   return { score: pts.reduce((s, v) => s + v, 0), vixPt: vixPt ?? 0, breadthPt: breadthPt ?? 0, spPt: spPt ?? 0 };
 }
 
-// Smoothing: cambia solo se 2/3 uguali o punteggio estremo (0 o 3)
+// Smoothing: cambia solo se 2/3 letture consecutive concordano, o stato estremo (0 o 3)
 function getSmoothedRegime(rawScore) {
   if (rawScore === 0 || rawScore === 3) {
     _lastSmoothedRegime = rawScore;
@@ -2684,7 +2712,12 @@ function computeAssetSignal(row) {
     if (!v) return null;
     const mkVix = (rank, key, label, color, desc) => {
       const st = computeSignal3Conditions(row, key, v);
-      return {rank, key, label, color, detail:`VIX ${v.toFixed(1)} — ${desc}`, tags:[], rawScore:v, marketScore:null, context:`VIX ${v.toFixed(1)}`, ...st};
+      return {
+        rank, key, label, color, detail:`VIX ${v.toFixed(1)} — ${desc}`,
+        tags:[], rawScore:v, marketScore:null, context:`VIX ${v.toFixed(1)}`,
+        strength: st.strength, icon: st.icon, strengthLabel: st.label,
+        contratrend: st.contratrend, conditions: st.conditions, conditionCount: st.conditionCount,
+      };
     };
     if (v < 15) return mkVix(5,'low-fear', '😌 Bassa Paura','#4caf50','mercato tranquillo, risk-on favorevole');
     if (v < 20) return mkVix(4,'normal',   '😐 Normale',    '#8bc34a','volatilità nella norma');
@@ -2785,7 +2818,12 @@ function computeAssetSignal(row) {
   const ms  = getMarketScore();
   const st  = computeSignal3Conditions(row, result.key, score);
   const ctx = buildSignalContext(row, tags, result.key);
-  return {...result, detail, tags, rawScore: score, marketScore: ms, ...st, context: ctx};
+  // Nota: result.label = '🟢 Accumula' etc. (direzione) — NON sovrascriviamo con st.label (forza)
+  return {
+    ...result, detail, tags, rawScore: score, marketScore: ms, context: ctx,
+    strength: st.strength, icon: st.icon, strengthLabel: st.label,
+    contratrend: st.contratrend, conditions: st.conditions, conditionCount: st.conditionCount,
+  };
 }
 
 function computeMomentumScores() {
@@ -3647,10 +3685,12 @@ function showSignalLegend(btn) {
     </div>
 
     <div style="margin-top:10px;padding:10px 14px;background:rgba(255,152,0,.08);border-radius:8px;border-left:3px solid rgba(255,152,0,.5)">
-      <div style="font-size:11px;font-weight:700;color:#ff9800;margin-bottom:4px">⚠️ contro mercato</div>
-      <div style="font-size:10px;color:var(--text2);line-height:1.65">
-        Appare sotto il segnale quando la <b>direzione dell'asset è opposta al regime globale</b> (es. segnale BUY ma mercato Avverso).<br>
-        Visibile solo su segnali <b>Medio o Debole</b>: i segnali 🔥 Forti mantengono piena priorità e non vengono penalizzati.
+      <div style="font-size:11px;font-weight:700;color:#ff9800;margin-bottom:6px">⚡ Setup speculativo &nbsp;/&nbsp; Contro trend</div>
+      <div style="font-size:10px;color:var(--text2);line-height:1.7">
+        Appare quando la direzione dell'asset è <b>opposta al regime globale</b> (es. BUY ma mercato avverso).<br>
+        <b style="color:#ff9800">⚡ Setup speculativo</b> — segnale Medio (2/3): opportunità con consapevolezza del rischio macro.<br>
+        <b style="color:#ef5350">⚡ Contro trend — rischio alto</b> — segnale Debole (1/3): massima cautela, poca conferma tecnica.<br>
+        I segnali 🔥 Forti (3/3) non vengono mai penalizzati.
       </div>
     </div>
 
@@ -3898,21 +3938,13 @@ function updateBiasStrip(visibleRows) {
   const pctSell = nSell / nTot;
   const diff = pctBuy - pctSell;
 
-  let biasLabel, biasColor, biasIcon;
-  if      (diff >  0.05) { biasLabel='LONG';  biasColor='#2e7d32'; biasIcon='🟢'; }
-  else if (diff < -0.05) { biasLabel='SHORT'; biasColor='#b71c1c'; biasIcon='🔴'; }
-  else                   { biasLabel='NEUTRO';biasColor='#e65100'; biasIcon='🟡'; }
-
-  let strIcon, strLabel;
-  const absDiff = Math.abs(diff);
-  if      (absDiff > 0.30) { strIcon='🔥'; strLabel='Forte';  }
-  else if (absDiff > 0.10) { strIcon='⚠️'; strLabel='Medio';  }
-  else                      { strIcon='❄️'; strLabel='Debole'; }
+  let biasLabel, biasColor, biasArrow;
+  if      (diff >  0.05) { biasLabel='LONG';    biasColor='#1b5e20'; biasArrow='▲'; }
+  else if (diff < -0.05) { biasLabel='SHORT';   biasColor='#7f0000'; biasArrow='▼'; }
+  else                   { biasLabel='NEUTRAL';  biasColor='#bf360c'; biasArrow='→'; }
 
   // Conteggi della vista corrente
   const nHold = data.filter(r => !['buy','reduce'].includes(r._signal.key)).length;
-  const ms = getMarketScore();
-  const msStr = ms !== null ? `${ms}/100` : '—';
 
   const strOrd = {strong:3, medium:2, weak:1};
   const topBuy  = data.filter(r => r._signal.key === 'buy')
@@ -3934,41 +3966,33 @@ function updateBiasStrip(visibleRows) {
     return `<span style="font-size:11px;font-weight:800;color:#fff;background:rgba(239,83,80,.7);padding:1px 7px;border-radius:6px">${r._signal.icon} ${short}</span>`;
   }).join('<span style="color:rgba(255,255,255,.3)"> · </span>') : '<span style="font-size:11px;color:rgba(255,255,255,.4)">—</span>';
 
-  // Contesto regime (smoothed, non reattivo ai filtri — è globale)
-  const regLabels = ['Avverso','Cauto ▼','Cauto ▲','Favorevole'];
-  const regText   = _lastSmoothedRegime !== null
-    ? `Regime: ${regLabels[_lastSmoothedRegime]} · ${_lastSmoothedRegime}/3`
-    : '';
-
   strip.style.background = biasColor;
   strip.style.display    = 'flex';
   strip.innerHTML =
     `<!-- ① BIAS — dominante -->
-     <div style="flex-shrink:0;min-width:110px">
-       <div style="font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:1px">Bias di Mercato</div>
-       <div style="font-size:32px;font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1">${biasLabel}</div>
-       ${regText ? `<div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:2px;font-weight:600">${regText}</div>` : ''}
+     <div style="flex-shrink:0;min-width:130px">
+       <div style="font-size:9px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:0px">Bias</div>
+       <div style="font-size:44px;font-weight:900;color:#fff;letter-spacing:-1px;line-height:1.05">${biasLabel}</div>
      </div>
      <div class="bs-div"></div>
-     <!-- ② Forza + conteggi -->
+     <!-- ② Distribuzione -->
      <div style="flex-shrink:0">
-       <div style="font-size:9px;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px">Forza · Distribuzione</div>
-       <div style="display:flex;align-items:center;gap:10px">
-         <span style="font-size:18px;font-weight:800;color:#fff">${strIcon} ${strLabel}</span>
-         <span style="font-size:12px;font-weight:800;color:#a5d6a7">▲ ${nBuy}</span>
-         <span style="font-size:12px;font-weight:800;color:#ef9a9a">▼ ${nSell}</span>
-         <span style="font-size:11px;color:rgba(255,255,255,.4)">Hold ${nHold}</span>
+       <div style="font-size:9px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">Distribuzione</div>
+       <div style="display:flex;align-items:center;gap:14px">
+         <span style="font-size:20px;font-weight:900;color:#fff">▲ ${nBuy}</span>
+         <span style="font-size:20px;font-weight:900;color:rgba(255,255,255,.65)">▼ ${nSell}</span>
+         <span style="font-size:13px;color:rgba(255,255,255,.35);font-weight:600">— ${nHold}</span>
        </div>
      </div>
      <div class="bs-div"></div>
-     <div class="bs-div"></div>
+     <!-- ③ Top segnali -->
      <div style="flex:1;display:flex;align-items:center;gap:16px;min-width:0;flex-wrap:wrap">
        <div style="display:flex;align-items:center;gap:7px;min-width:0">
-         <span style="font-size:9px;font-weight:800;color:rgba(255,255,255,.7);letter-spacing:.5px;white-space:nowrap">📈 TOP BUY</span>
+         <span style="font-size:9px;font-weight:800;color:rgba(255,255,255,.65);letter-spacing:.5px;white-space:nowrap">📈 TOP BUY</span>
          <div>${buyLine}</div>
        </div>
        <div style="display:flex;align-items:center;gap:7px;min-width:0">
-         <span style="font-size:9px;font-weight:800;color:rgba(255,255,255,.7);letter-spacing:.5px;white-space:nowrap">📉 TOP SELL</span>
+         <span style="font-size:9px;font-weight:800;color:rgba(255,255,255,.65);letter-spacing:.5px;white-space:nowrap">📉 TOP SELL</span>
          <div>${sellLine}</div>
        </div>
      </div>`;
@@ -4919,10 +4943,16 @@ function buildModalSignalHTML(row) {
   // Affidabilità
   const [relLabel, relColor] = condCount === 3 ? ['Alta','#4caf50'] : condCount === 2 ? ['Media','#ffc107'] : ['Bassa','#ef5350'];
 
-  // Contra-regime (solo medio/debole)
-  const contraHTML = (sig.contratrend && sig.strength !== 'strong')
-    ? `<span style="background:rgba(255,152,0,.15);color:#ff9800;border:1px solid rgba(255,152,0,.4);font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;white-space:nowrap">⚠️ contro mercato</span>`
-    : '';
+  // Contra-regime: feature, non warning
+  let contraHTML = '';
+  if (sig.contratrend && sig.strength !== 'strong') {
+    const isWeak = sig.strength === 'weak';
+    const contraColor  = isWeak ? '#ef5350' : '#ff9800';
+    const contraBg     = isWeak ? 'rgba(239,83,80,.15)'  : 'rgba(255,152,0,.15)';
+    const contraBorder = isWeak ? 'rgba(239,83,80,.4)'   : 'rgba(255,152,0,.4)';
+    const contraText   = isWeak ? '⚡ Contro trend — rischio alto' : '⚡ Setup speculativo';
+    contraHTML = `<span style="background:${contraBg};color:${contraColor};border:1px solid ${contraBorder};font-size:10px;font-weight:700;padding:2px 10px;border-radius:6px;white-space:nowrap">${contraText}</span>`;
+  }
 
   // Pill principale
   const pill = `<span style="background:${sig.color}22;color:${sig.color};border:1px solid ${sig.color}55;font-size:14px;font-weight:900;padding:5px 18px;border-radius:10px;white-space:nowrap">${dirLabel}</span>`;
@@ -4980,7 +5010,7 @@ function buildModalSignalHTML(row) {
       </div>
       <!-- Forza 3/3 -->
       <div style="display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:11px;font-weight:700;color:${strColor}">${sig.icon} ${sig.label} — ${condCount}/3 condizioni</span>
+        <span style="font-size:11px;font-weight:700;color:${strColor}">${sig.icon} ${sig.strengthLabel} — ${condCount}/3 condizioni</span>
         <div style="display:flex;gap:4px">${bars}</div>
       </div>
     </div>`;
