@@ -214,12 +214,17 @@ td.ora{color:#64b5f6;font-size:10px}
 .dot-ok{color:var(--green)}.dot-err{color:var(--red)}.dot-loading{color:var(--accent)}
 
 /* Watchlist stars (3 lists) */
-.fav-star,.fav-star2,.fav-star3{background:none;border:none;cursor:pointer;font-size:13px;padding:0 1px;color:#546e7a;transition:color .15s;line-height:1}
+.fav-star,.fav-star2,.fav-star3,.fav-star4,.fav-star5{background:none;border:none;cursor:pointer;font-size:12px;padding:0 1px;color:#546e7a;transition:color .15s;line-height:1}
 .fav-star.on{color:#ffd700}
 .fav-star2.on{color:#64b5f6}
 .fav-star3.on{color:#ef9a9a}
+.fav-star4.on{color:#a5d6a7}
+.fav-star5.on{color:#ce93d8}
 .fav-rename{background:none;border:none;cursor:pointer;font-size:10px;padding:0 2px;color:#546e7a;line-height:1;opacity:.45;transition:opacity .15s;margin-left:-1px;vertical-align:middle}
 .fav-rename:hover{opacity:1;color:var(--accent)}
+
+/* ── SIGNAL PILL ───────────────────────────────────── */
+.sig-pill{font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap;display:inline-block;letter-spacing:.2px}
 
 /* Heatmap */
 #tab-heatmap{padding:16px;overflow-y:auto;flex-direction:column;gap:12px}
@@ -259,12 +264,6 @@ td.ora{color:#64b5f6;font-size:10px}
 .regime-badge.risk-off{background:rgba(244,67,54,.15);color:#f44336;border-color:rgba(244,67,54,.4)}
 .regime-badge.crisis{background:rgba(183,28,28,.25);color:#ef9a9a;border-color:rgba(183,28,28,.5)}
 
-/* ── REGIME STRIP ──────────────────────────────────── */
-.rs-comp{display:flex;flex-direction:column;gap:3px;min-width:120px;flex:1}
-.rs-comp-label{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
-.rs-comp-bar-wrap{background:var(--bg3);border-radius:3px;height:5px;overflow:hidden;width:100%}
-.rs-comp-bar{height:5px;border-radius:3px;width:0;transition:width .5s}
-.rs-comp-val{font-size:10px;font-weight:700;color:var(--text2)}
 
 /* ── MODAL TABS ─────────────────────────────────── */
 .modal-tabs{display:flex;background:var(--bg3);border-bottom:2px solid var(--border);padding:0 8px;flex-shrink:0;overflow-x:auto;scrollbar-width:none}
@@ -751,6 +750,8 @@ body.light .cal-item{background:var(--bg3)}
     <button class="filter-btn" data-filter="favorites" id="fav-filter-1">⭐ Preferiti</button><button class="fav-rename" onclick="renameFav(1)" title="Rinomina">✏</button>
     <button class="filter-btn" data-filter="favorites2" id="fav-filter-2" style="color:#64b5f6;border-color:rgba(100,181,246,.35)">★ Lista 2</button><button class="fav-rename" onclick="renameFav(2)" title="Rinomina" style="color:#64b5f6">✏</button>
     <button class="filter-btn" data-filter="favorites3" id="fav-filter-3" style="color:#ef9a9a;border-color:rgba(239,154,154,.35)">★ Lista 3</button><button class="fav-rename" onclick="renameFav(3)" title="Rinomina" style="color:#ef9a9a">✏</button>
+    <button class="filter-btn" data-filter="favorites4" id="fav-filter-4" style="color:#a5d6a7;border-color:rgba(165,214,167,.35)">★ Lista 4</button><button class="fav-rename" onclick="renameFav(4)" title="Rinomina" style="color:#a5d6a7">✏</button>
+    <button class="filter-btn" data-filter="favorites5" id="fav-filter-5" style="color:#ce93d8;border-color:rgba(206,147,216,.35)">★ Lista 5</button><button class="fav-rename" onclick="renameFav(5)" title="Rinomina" style="color:#ce93d8">✏</button>
     <input class="search-box" id="search-box" placeholder="Cerca…" autocomplete="off">
     <button class="font-btn" id="font-btn-s" onclick="setFontSize('S')">S</button>
     <button class="font-btn active" id="font-btn-m" onclick="setFontSize('M')">M</button>
@@ -810,34 +811,6 @@ body.light .cal-item{background:var(--bg3)}
     <span id="screen-result"></span>
   </div>
 
-  <!-- ── Market Regime Score Strip ── -->
-  <div id="regime-strip" style="display:none;background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 16px;flex-shrink:0">
-    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:10px;flex:0 0 auto">
-        <span style="font-size:9px;font-weight:800;letter-spacing:.8px;color:var(--text3);text-transform:uppercase">🧭 Market Regime</span>
-        <span id="rs-score-num" style="font-size:22px;font-weight:900;line-height:1">—</span>
-        <span id="rs-score-label" style="font-size:13px;font-weight:700;padding:3px 10px;border-radius:10px;border:1px solid">—</span>
-      </div>
-      <div style="flex:1;display:flex;gap:12px;flex-wrap:wrap;min-width:0">
-        <div class="rs-comp" id="rs-c-vix">
-          <div class="rs-comp-label">📊 VIX Score</div>
-          <div class="rs-comp-bar-wrap"><div class="rs-comp-bar" id="rs-bar-vix"></div></div>
-          <div class="rs-comp-val" id="rs-val-vix">—</div>
-        </div>
-        <div class="rs-comp" id="rs-c-breadth">
-          <div class="rs-comp-label">🌐 Breadth MM200</div>
-          <div class="rs-comp-bar-wrap"><div class="rs-comp-bar" id="rs-bar-breadth"></div></div>
-          <div class="rs-comp-val" id="rs-val-breadth">—</div>
-        </div>
-        <div class="rs-comp" id="rs-c-mom">
-          <div class="rs-comp-label">📈 Momentum</div>
-          <div class="rs-comp-bar-wrap"><div class="rs-comp-bar" id="rs-bar-mom"></div></div>
-          <div class="rs-comp-val" id="rs-val-mom">—</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- ── Market Breadth Panel ── -->
   <div id="breadth-panel" style="display:none"></div>
 
@@ -895,6 +868,8 @@ body.light .cal-item{background:var(--bg3)}
         <button class="chart-btn" data-cat="_favorites"  id="chart-fav-1" style="color:#ffd700;border-color:rgba(255,215,0,.35)">⭐ Preferiti</button>
         <button class="chart-btn" data-cat="_favorites2" id="chart-fav-2" style="color:#64b5f6;border-color:rgba(100,181,246,.35)">★ Lista 2</button>
         <button class="chart-btn" data-cat="_favorites3" id="chart-fav-3" style="color:#ef9a9a;border-color:rgba(239,154,154,.35)">★ Lista 3</button>
+        <button class="chart-btn" data-cat="_favorites4" id="chart-fav-4" style="color:#a5d6a7;border-color:rgba(165,214,167,.35)">★ Lista 4</button>
+        <button class="chart-btn" data-cat="_favorites5" id="chart-fav-5" style="color:#ce93d8;border-color:rgba(206,147,216,.35)">★ Lista 5</button>
       </div>
     </div>
     <div class="chart-ctrl-row">
@@ -1688,9 +1663,11 @@ let loading = false;
 let favorites  = new Set(JSON.parse(localStorage.getItem('mm_fav')  || '[]'));
 let favorites2 = new Set(JSON.parse(localStorage.getItem('mm_fav2') || '[]'));
 let favorites3 = new Set(JSON.parse(localStorage.getItem('mm_fav3') || '[]'));
+let favorites4 = new Set(JSON.parse(localStorage.getItem('mm_fav4') || '[]'));
+let favorites5 = new Set(JSON.parse(localStorage.getItem('mm_fav5') || '[]'));
 
 function favName(n) {
-  const defaults = {1:'Preferiti', 2:'Lista 2', 3:'Lista 3'};
+  const defaults = {1:'Preferiti', 2:'Lista 2', 3:'Lista 3', 4:'Lista 4', 5:'Lista 5'};
   const key = n === 1 ? 'mm_fav_name' : `mm_fav${n}_name`;
   return localStorage.getItem(key) || defaults[n];
 }
@@ -1705,19 +1682,14 @@ function renameFav(n) {
   applyFavNames();
 }
 function applyFavNames() {
-  const n1 = favName(1), n2 = favName(2), n3 = favName(3);
-  const f1 = document.getElementById('fav-filter-1');
-  const f2 = document.getElementById('fav-filter-2');
-  const f3 = document.getElementById('fav-filter-3');
-  if (f1) f1.textContent = `⭐ ${n1}`;
-  if (f2) f2.textContent = `★ ${n2}`;
-  if (f3) f3.textContent = `★ ${n3}`;
-  const c1 = document.getElementById('chart-fav-1');
-  const c2 = document.getElementById('chart-fav-2');
-  const c3 = document.getElementById('chart-fav-3');
-  if (c1) c1.textContent = `⭐ ${n1}`;
-  if (c2) c2.textContent = `★ ${n2}`;
-  if (c3) c3.textContent = `★ ${n3}`;
+  [[1,'fav-filter-1','chart-fav-1','⭐'],[2,'fav-filter-2','chart-fav-2','★'],
+   [3,'fav-filter-3','chart-fav-3','★'],[4,'fav-filter-4','chart-fav-4','★'],
+   [5,'fav-filter-5','chart-fav-5','★']].forEach(([n, fid, cid, star]) => {
+    const nm = favName(n);
+    const fb = document.getElementById(fid), cb = document.getElementById(cid);
+    if (fb) fb.textContent = `${star} ${nm}`;
+    if (cb) cb.textContent = `${star} ${nm}`;
+  });
 }
 let heatMetric = 'varAtt';
 let heatSort   = 'none'; // 'none' | 'desc' | 'asc'
@@ -1769,6 +1741,7 @@ const COLS = [
   {key:'p90',      label:'Ultimi\n90 Giorni',    cls:'num',              fmt:'pct'},
   {key:'spark',    label:'Trend',               cls:'spark-col',         fmt:'spark'},
   {key:'ma',       label:'MM\n50/200',          cls:'num ma-col',        fmt:'ma'},
+  {key:'_signal',   label:'Segnale\nOperativo',   cls:'num',               fmt:'signal'},
   {key:'_momentum',label:'Forza del Trend\n0 / 100',   cls:'num',               fmt:'momentum'},
   {key:'_rs',      label:'Forza\nRelativa',     cls:'num',               fmt:'rs'},
   {key:'yld',      label:'Rendimento\n(Yield %)',cls:'num',              fmt:'yld', bondsOnly:true},
@@ -1886,6 +1859,10 @@ function fmtCell(col, row) {
     }
     case 'numS': return fmtS(v);
     case 'yld':  return v !== null && v !== undefined ? `<span class="pos">${fmtN(v,2)}%</span>` : '<span class="na">—</span>';
+    case 'signal': {
+      if (!v) return '<span class="na">—</span>';
+      return `<span class="sig-pill" style="background:${v.color}22;color:${v.color};border:1px solid ${v.color}55" title="${v.detail}">${v.label}</span>`;
+    }
     case 'rs': {
       if (v === null || v === undefined || isNaN(v)) return '<span class="na">—</span>';
       const cls  = v > 0.05 ? 'pos' : v < -0.05 ? 'neg' : 'zero';
@@ -2256,6 +2233,11 @@ async function loadMA() {
       console.warn('[MA] fetch fallita per chunk', start, e);
     }
   }
+  // Ricalcola segnali operativi (le MA influenzano i segnali azionari)
+  rows.forEach((row, idx) => {
+    rows[idx]._signal = computeAssetSignal(rows[idx]);
+    updateRow(idx);
+  });
   // Aggiorna il Market Breadth Panel dopo aver caricato tutte le MA
   updateBreadthPanel();
 }
@@ -2331,10 +2313,73 @@ function momentumScore(row) {
   return baseScore;
 }
 
+// ═══════════════════════════════════════════════════
+//  SEGNALE OPERATIVO PER ASSET — adattato per tipologia
+// ═══════════════════════════════════════════════════
+function computeAssetSignal(row) {
+  const STOCK_CATS = new Set(['TITOLI USA','TITOLI EUROPA','TITOLI IT BIG CAP','SVIZZERA','ULTRABIG']);
+  const BOND_CATS  = new Set(['INDICE OBBLIGAZIONARIO','ETF OBB. MASTER']);
+  const VOL_CATS   = new Set(['VOLATILITA']);
+
+  // ── VOLATILITA: livello assoluto del VIX ──────────────
+  if (VOL_CATS.has(row.a)) {
+    const v = row.valore;
+    if (!v) return null;
+    if (v < 15) return {rank:5, key:'low-fear',  label:'😌 Bassa Paura', color:'#4caf50', detail:`VIX ${v.toFixed(1)} — mercato tranquillo, risk-on favorevole`};
+    if (v < 20) return {rank:4, key:'normal',    label:'😐 Normale',     color:'#8bc34a', detail:`VIX ${v.toFixed(1)} — volatilità nella norma`};
+    if (v < 25) return {rank:3, key:'elevated',  label:'😟 Elevata',     color:'#ffc107', detail:`VIX ${v.toFixed(1)} — incertezza crescente, prudenza`};
+    if (v < 35) return {rank:2, key:'high-fear', label:'😨 Alta Paura',  color:'#ff9800', detail:`VIX ${v.toFixed(1)} — forte risk-off, ridurre esposizione`};
+    return              {rank:1, key:'crisis',    label:'😱 Crisi',        color:'#f44336', detail:`VIX ${v.toFixed(1)} — mercato in crisi, difensivi`};
+  }
+
+  const mom = row._momentum;
+  if (mom === null || mom === undefined || isNaN(mom)) return null;
+
+  let score = mom;
+  let detail = `Momentum: ${Math.round(mom)}/100`;
+
+  // ── TITOLI SINGOLI: già blendato con RS in momentumScore(), aggiusta per MA ──
+  if (STOCK_CATS.has(row.a)) {
+    if (row._rs !== null && row._rs !== undefined && !isNaN(row._rs)) {
+      detail += ` · RS: ${row._rs > 0 ? '+' : ''}${row._rs.toFixed(1)}%`;
+    }
+    if (row._ma50 === false && row._ma200 === false) {
+      score = Math.max(0, score - 10);
+      detail += ' · ⚠ Sotto MM50+MM200';
+    } else if (row._ma50 === true && row._ma200 === true) {
+      score = Math.min(100, score + 5);
+      detail += ' · ✓ Sopra MM50+MM200';
+    } else if (row._ma50 === true && row._ma200 === false) {
+      detail += ' · Sopra MM50, sotto MM200 (rimbalzo?)';
+    } else if (row._ma50 === false && row._ma200 === true) {
+      score = Math.max(0, score - 5);
+      detail += ' · Sotto MM50, sopra MM200 (correzione)';
+    }
+  }
+
+  // ── ETF/INDICI OBBLIGAZIONARI: adatta al contesto tassi ──
+  if (BOND_CATS.has(row.a)) {
+    const cuts  = CB_RATES.filter(c => c.trend === 'cut').length;
+    const hikes = CB_RATES.filter(c => c.trend === 'hike').length;
+    if (hikes > cuts)      { score = Math.max(0,   score - 15); detail += ' · ↑ Tightening — penalizzato'; }
+    else if (cuts > hikes) { score = Math.min(100, score + 10); detail += ' · ↓ Easing — favorevole'; }
+    else                   { detail += ' · → Tassi stabili'; }
+    if (row.yld) detail += ` · Yield: ${row.yld.toFixed(2)}%`;
+  }
+
+  // ── THRESHOLDS finali ──────────────────────────────────
+  if (score >= 70) return {rank:5, key:'buy',     label:'🟢 Accumula',  color:'#4caf50', detail};
+  if (score >= 58) return {rank:4, key:'hold',    label:'🔵 Mantieni',  color:'#29b6f6', detail};
+  if (score >= 42) return {rank:3, key:'neutral', label:'⚪ Neutro',    color:'#78909c', detail};
+  if (score >= 30) return {rank:2, key:'caution', label:'🟡 Cautela',   color:'#ffc107', detail};
+  return                  {rank:1, key:'reduce',  label:'🔴 Riduci',    color:'#ef5350', detail};
+}
+
 function computeMomentumScores() {
   rows.forEach((row, idx) => {
     const score = momentumScore(row);
     rows[idx]._momentum = score;
+    rows[idx]._signal   = computeAssetSignal(rows[idx]);
     updateRow(idx);
   });
 }
@@ -2633,7 +2678,7 @@ function updateBreadthPanel() {
 
   // Etichetta filtro corrente
   const filterLabels = {
-    'all':'Tutti gli strumenti', 'favorites':favName(1), 'favorites2':favName(2), 'favorites3':favName(3),
+    'all':'Tutti gli strumenti', 'favorites':favName(1), 'favorites2':favName(2), 'favorites3':favName(3), 'favorites4':favName(4), 'favorites5':favName(5),
     'INDICE AZIONARIO':'Indici Azionari', 'INDICE OBBLIGAZIONARIO':'Indici Obbligazionari',
     'MATERIA PRIMA':'Materie Prime', 'VALUTA':'Valute', 'VOLATILITA':'Volatilità',
     'TITOLI EUROPA':'Titoli Europa', 'TITOLI IT BIG CAP':'Big Cap IT', 'TITOLI USA':'Titoli USA',
@@ -2747,30 +2792,6 @@ function computeRegimeScore() {
     badge.style.display = 'inline-flex';
   }
 
-  // Aggiorna strip grande sopra la tabella
-  const strip = document.getElementById('regime-strip');
-  if (strip) {
-    strip.style.display = 'flex';
-    const scoreNum   = document.getElementById('rs-score-num');
-    const scoreLabel = document.getElementById('rs-score-label');
-    if (scoreNum)   { scoreNum.textContent = score; scoreNum.style.color = color; }
-    if (scoreLabel) {
-      scoreLabel.textContent = `${icon} ${txt}`;
-      scoreLabel.style.color = color;
-      scoreLabel.style.background = color + '22';
-      scoreLabel.style.borderColor = color + '66';
-    }
-    const setComp = (barId, valId, val) => {
-      const bar = document.getElementById(barId);
-      const valEl = document.getElementById(valId);
-      if (bar)   { bar.style.width = (val !== null ? Math.round(val) : 0) + '%'; bar.style.background = color; }
-      if (valEl) { valEl.textContent = val !== null ? Math.round(val) + '/100' : '—'; }
-    };
-    setComp('rs-bar-vix',    'rs-val-vix',    vixScore);
-    setComp('rs-bar-breadth','rs-val-breadth', breadthScore);
-    setComp('rs-bar-mom',    'rs-val-mom',     momScore);
-  }
-
   // Aggiorna card nel tab Macro
   const card = document.getElementById('regime-score-card');
   if (card) renderRegimeCard(card, score, vixScore, breadthScore, momScore, cls, icon, txt, vixRow?.valore);
@@ -2876,6 +2897,94 @@ function showMaLegend(btn) {
       document.removeEventListener('click', close);
     }
   };
+  setTimeout(() => document.addEventListener('click', close), 50);
+}
+
+function showSignalLegend(btn) {
+  const existing = document.getElementById('signal-legend-popup');
+  if (existing) { existing.remove(); return; }
+
+  const popup = document.createElement('div');
+  popup.id = 'signal-legend-popup';
+  Object.assign(popup.style, {
+    position:'fixed', zIndex:'9999',
+    background:'var(--bg2)', border:'1px solid var(--border)',
+    borderRadius:'12px', padding:'18px 20px',
+    boxShadow:'0 8px 40px rgba(0,0,0,.6)', width:'440px', maxWidth:'96vw',
+    maxHeight:'80vh', overflowY:'auto',
+  });
+
+  const mkPill = (label, color) =>
+    `<span style="background:${color}22;color:${color};border:1px solid ${color}55;font-size:10px;font-weight:700;padding:1px 7px;border-radius:7px;white-space:nowrap">${label}</span>`;
+
+  const mkRow = (type, logic, signals) =>
+    `<div style="padding:9px 0;border-bottom:1px solid var(--border)">
+       <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:4px">${type}</div>
+       <div style="font-size:10px;color:var(--text3);line-height:1.6;margin-bottom:5px">${logic}</div>
+       <div style="display:flex;flex-wrap:wrap;gap:4px">${signals}</div>
+     </div>`;
+
+  popup.innerHTML =
+    `<div style="font-size:10px;font-weight:800;color:var(--accent);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px">📊 Logica Segnali Operativi</div>
+
+    ${mkRow('📈 Indici Azionari &amp; ETF Azionari',
+      'Score = momentum composito (p7 15% + p30 25% + p60 30% + p90 30%). Normalizzato 0–100 su range storici per periodo.',
+      mkPill('🟢 Accumula','#4caf50')+' score ≥ 70 &nbsp;'+
+      mkPill('🔵 Mantieni','#29b6f6')+' 58–69 &nbsp;'+
+      mkPill('⚪ Neutro','#78909c')+' 42–57 &nbsp;'+
+      mkPill('🟡 Cautela','#ffc107')+' 30–41 &nbsp;'+
+      mkPill('🔴 Riduci','#ef5350')+' &lt; 30'
+    )}
+
+    ${mkRow('📊 Titoli Singoli (Azioni)',
+      'Score = momentum 70% + forza relativa vs benchmark 30% (RS normalizzata su ±20%). <b>Bonus +5</b> se sopra MM50 e MM200. <b>Penalità −10</b> se sotto entrambe. <b>−5</b> se sotto solo MM50.',
+      mkPill('🟢 Accumula','#4caf50')+' score ≥ 70 &nbsp;'+
+      mkPill('🔵 Mantieni','#29b6f6')+' 58–69 &nbsp;'+
+      mkPill('⚪ Neutro','#78909c')+' 42–57 &nbsp;'+
+      mkPill('🟡 Cautela','#ffc107')+' 30–41 &nbsp;'+
+      mkPill('🔴 Riduci','#ef5350')+' &lt; 30'
+    )}
+
+    ${mkRow('📉 ETF e Indici Obbligazionari',
+      'Score = momentum di prezzo (i prezzi dei bond si muovono inversamente ai tassi). <b>+10</b> in contesto Easing (maggioranza banche centrali in taglio). <b>−15</b> in contesto Tightening (maggioranza in rialzo). Il rendimento attuale è mostrato nel tooltip.',
+      mkPill('🟢 Accumula','#4caf50')+' score adattato ≥ 70 &nbsp;'+
+      mkPill('🔵 Mantieni','#29b6f6')+' 58–69 &nbsp;'+
+      mkPill('⚪ Neutro','#78909c')+' 42–57 &nbsp;'+
+      mkPill('🟡 Cautela','#ffc107')+' 30–41 &nbsp;'+
+      mkPill('🔴 Riduci','#ef5350')+' &lt; 30'
+    )}
+
+    ${mkRow('💱 Valute &amp; 🛢 Materie Prime',
+      'Score = momentum composito puro. Nessuna forza relativa (non ha benchmark naturale). Stesse soglie degli indici.',
+      mkPill('🟢 Accumula','#4caf50')+' ≥ 70 &nbsp;'+
+      mkPill('🔵 Mantieni','#29b6f6')+' 58–69 &nbsp;'+
+      mkPill('⚪ Neutro','#78909c')+' 42–57 &nbsp;'+
+      mkPill('🟡 Cautela','#ffc107')+' 30–41 &nbsp;'+
+      mkPill('🔴 Riduci','#ef5350')+' &lt; 30'
+    )}
+
+    ${mkRow('😱 Volatilità (VIX)',
+      'Non è un asset acquistabile direttamente — interpretazione del livello assoluto. Basso VIX = mercato tranquillo = favorevole al rischio. Alto VIX = risk-off = difensivi.',
+      mkPill('😌 Bassa Paura','#4caf50')+' VIX &lt; 15 &nbsp;'+
+      mkPill('😐 Normale','#8bc34a')+' 15–20 &nbsp;'+
+      mkPill('😟 Elevata','#ffc107')+' 20–25 &nbsp;'+
+      mkPill('😨 Alta Paura','#ff9800')+' 25–35 &nbsp;'+
+      mkPill('😱 Crisi','#ef5350')+' &gt; 35'
+    )}
+
+    <div style="font-size:9.5px;color:var(--text3);margin-top:10px;line-height:1.6;font-style:italic">
+      ⚠ I segnali sono indicatori tecnici basati su momentum e dati di prezzo. Non costituiscono consulenza finanziaria. Usali come punto di partenza per la tua analisi.
+    </div>`;
+
+  document.body.appendChild(popup);
+  const rect = btn.getBoundingClientRect();
+  const pw = 440;
+  let left = rect.right - pw;
+  if (left < 8) left = 8;
+  popup.style.top  = (rect.bottom + 8) + 'px';
+  popup.style.left = left + 'px';
+
+  const close = e => { if (!popup.contains(e.target) && e.target !== btn) { popup.remove(); document.removeEventListener('click', close); } };
   setTimeout(() => document.addEventListener('click', close), 50);
 }
 
@@ -3045,16 +3154,20 @@ function _starTd(sym) {
   const s1 = favorites.has(sym)  ? 'on' : '';
   const s2 = favorites2.has(sym) ? 'on' : '';
   const s3 = favorites3.has(sym) ? 'on' : '';
+  const s4 = favorites4.has(sym) ? 'on' : '';
+  const s5 = favorites5.has(sym) ? 'on' : '';
   return `<td style="padding:0 2px;white-space:nowrap;text-align:center">` +
-    `<button class="fav-star ${s1}"  onclick="event.stopPropagation();toggleFavorite('${sym}',1)">★</button>` +
-    `<button class="fav-star2 ${s2}" onclick="event.stopPropagation();toggleFavorite('${sym}',2)">★</button>` +
-    `<button class="fav-star3 ${s3}" onclick="event.stopPropagation();toggleFavorite('${sym}',3)">★</button>` +
+    `<button class="fav-star ${s1}"  onclick="event.stopPropagation();toggleFavorite('${sym}',1)" title="${favName(1)}">★</button>` +
+    `<button class="fav-star2 ${s2}" onclick="event.stopPropagation();toggleFavorite('${sym}',2)" title="${favName(2)}">★</button>` +
+    `<button class="fav-star3 ${s3}" onclick="event.stopPropagation();toggleFavorite('${sym}',3)" title="${favName(3)}">★</button>` +
+    `<button class="fav-star4 ${s4}" onclick="event.stopPropagation();toggleFavorite('${sym}',4)" title="${favName(4)}">★</button>` +
+    `<button class="fav-star5 ${s5}" onclick="event.stopPropagation();toggleFavorite('${sym}',5)" title="${favName(5)}">★</button>` +
     `</td>`;
 }
 
 function toggleFavorite(sym, n) {
-  const _sets = [null, favorites, favorites2, favorites3];
-  const _keys = [null, 'mm_fav', 'mm_fav2', 'mm_fav3'];
+  const _sets = [null, favorites, favorites2, favorites3, favorites4, favorites5];
+  const _keys = [null, 'mm_fav', 'mm_fav2', 'mm_fav3', 'mm_fav4', 'mm_fav5'];
   const fav = _sets[n] || favorites;
   const key = _keys[n] || 'mm_fav';
   if (fav.has(sym)) fav.delete(sym); else fav.add(sym);
@@ -3064,7 +3177,7 @@ function toggleFavorite(sym, n) {
 
 function buildThead() {
   const tr = document.getElementById('thead-row');
-  const starTh = `<th style="width:52px;text-align:center;padding:0 2px"><span style="color:#ffd700">★</span><span style="color:#64b5f6">★</span><span style="color:#ef9a9a">★</span></th>`;
+  const starTh = `<th style="width:80px;text-align:center;padding:0 2px"><span style="color:#ffd700">★</span><span style="color:#64b5f6">★</span><span style="color:#ef9a9a">★</span><span style="color:#a5d6a7">★</span><span style="color:#ce93d8">★</span></th>`;
   tr.innerHTML = starTh + COLS.map(c => {
     const cls = sortCol === c.key ? (sortDir===1 ? 'sorted-asc':'sorted-desc') : '';
     return `<th class="${cls}" onclick="doSort('${c.key}')">${c.label.replace('\n','<br>')}</th>`;
@@ -3199,6 +3312,8 @@ function applyFilters(data) {
                    activeFilter === 'favorites'  ? favorites.has(r.s)  :
                    activeFilter === 'favorites2' ? favorites2.has(r.s) :
                    activeFilter === 'favorites3' ? favorites3.has(r.s) :
+                   activeFilter === 'favorites4' ? favorites4.has(r.s) :
+                   activeFilter === 'favorites5' ? favorites5.has(r.s) :
                    r.a === activeFilter;
     const sMatch = !q || (r.m||'').toLowerCase().includes(q) ||
                          (r.i||'').toLowerCase().includes(q) ||
@@ -3220,6 +3335,7 @@ function applySort(data) {
     if (av === null) return 1;
     if (bv === null) return -1;
     if (typeof av === 'number') return (av - bv) * sortDir;
+    if (typeof av === 'object' && av?.rank !== undefined) return ((av.rank||0) - (bv?.rank||0)) * sortDir;
     return String(av).localeCompare(String(bv),'it') * sortDir;
   });
 }
@@ -3282,6 +3398,8 @@ function renderCharts() {
     if (chartCat === '_favorites')  return favorites.has(r.s);
     if (chartCat === '_favorites2') return favorites2.has(r.s);
     if (chartCat === '_favorites3') return favorites3.has(r.s);
+    if (chartCat === '_favorites4') return favorites4.has(r.s);
+    if (chartCat === '_favorites5') return favorites5.has(r.s);
     if (chartCat.startsWith('_')) {
       const sg = SPECIAL_GROUPS[chartCat];
       return sg ? sg.has(r.s) : false;
@@ -3336,7 +3454,7 @@ function renderCharts() {
   const meta = METRIC_META[metric] || { label: metric };
   const catLabel = {
     '_sintesi':'Sintesi','_asset_globale':'Asset Globale','_indici':'Indici',
-    '_favorites':favName(1),'_favorites2':favName(2),'_favorites3':favName(3)
+    '_favorites':favName(1),'_favorites2':favName(2),'_favorites3':favName(3),'_favorites4':favName(4),'_favorites5':favName(5)
   }[chartCat] || chartCat;
   document.getElementById('chart-main-title').textContent =
     `${meta.label} — ${catLabel}`;
@@ -4408,7 +4526,7 @@ function setFontSize(size) {
 // ═══════════════════════════════════════════════════
 //  FEATURE 3: COLONNE NASCONDIBILI
 // ═══════════════════════════════════════════════════
-const HIDEABLE_KEYS = new Set(['valore','varAtt','fine2025','ytdLocal','ytdEur','p7','p30','p60','p90','spark','ma','_momentum','_rs','yld']);
+const HIDEABLE_KEYS = new Set(['valore','varAtt','fine2025','ytdLocal','ytdEur','p7','p30','p60','p90','spark','ma','_signal','_momentum','_rs','yld']);
 let hiddenCols = new Set(JSON.parse(localStorage.getItem('mm_hidden_cols') || '[]'));
 
 function buildColsDropdown() {
@@ -4446,10 +4564,12 @@ const _origBuildThead = buildThead;
 buildThead = function() {
   const tr = document.getElementById('thead-row');
   const visibleCols = COLS.filter(c => !hiddenCols.has(c.key));
-  const starTh = `<th style="width:52px;text-align:center;padding:0 2px"><span style="color:#ffd700">★</span><span style="color:#64b5f6">★</span><span style="color:#ef9a9a">★</span></th>`;
+  const starTh = `<th style="width:80px;text-align:center;padding:0 2px"><span style="color:#ffd700">★</span><span style="color:#64b5f6">★</span><span style="color:#ef9a9a">★</span><span style="color:#a5d6a7">★</span><span style="color:#ce93d8">★</span></th>`;
   tr.innerHTML = starTh + visibleCols.map(c => {
     const cls = sortCol === c.key ? (sortDir===1 ? 'sorted-asc':'sorted-desc') : '';
-    const lbl = c.key === 'ma'
+    const lbl = c.key === '_signal'
+      ? `Segnale<br>Operativo&thinsp;<span onclick="event.stopPropagation();showSignalLegend(this)" title="Come funzionano i segnali operativi" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span>`
+      : c.key === 'ma'
       ? `MM<br>50/200&thinsp;<span onclick="event.stopPropagation();showMaLegend(this)" title="Legenda" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span>`
       : c.key === '_momentum'
       ? `Forza del Trend<br>0 / 100&thinsp;<span onclick="event.stopPropagation();showMomentumLegend(this)" title="Come funziona la Forza del Trend" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span><span onclick="event.stopPropagation();showMomentumSortMenu(this)" title="Ordina" style="cursor:pointer;font-size:14px;opacity:.95;vertical-align:middle;user-select:none;margin-left:3px">${sortCol==='_momentum'?(sortDir===1?'↑':'↓'):'⇅'}</span>`
