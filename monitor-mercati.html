@@ -747,7 +747,7 @@ body.light .cal-item{background:var(--bg3)}
     <button class="filter-btn" data-filter="SVIZZERA">Svizzera</button>
     <button class="filter-btn" data-filter="ETF INDICI">ETF Indici</button>
     <button class="filter-btn" data-filter="ETF SETTORIALE">ETF Settoriali</button>
-    <button class="filter-btn" data-filter="favorites" id="fav-filter-1">⭐ Preferiti</button><button class="fav-rename" onclick="renameFav(1)" title="Rinomina">✏</button>
+    <button class="filter-btn" data-filter="favorites" id="fav-filter-1">★ Lista 1</button><button class="fav-rename" onclick="renameFav(1)" title="Rinomina">✏</button>
     <button class="filter-btn" data-filter="favorites2" id="fav-filter-2" style="color:#64b5f6;border-color:rgba(100,181,246,.35)">★ Lista 2</button><button class="fav-rename" onclick="renameFav(2)" title="Rinomina" style="color:#64b5f6">✏</button>
     <button class="filter-btn" data-filter="favorites3" id="fav-filter-3" style="color:#ef9a9a;border-color:rgba(239,154,154,.35)">★ Lista 3</button><button class="fav-rename" onclick="renameFav(3)" title="Rinomina" style="color:#ef9a9a">✏</button>
     <button class="filter-btn" data-filter="favorites4" id="fav-filter-4" style="color:#a5d6a7;border-color:rgba(165,214,167,.35)">★ Lista 4</button><button class="fav-rename" onclick="renameFav(4)" title="Rinomina" style="color:#a5d6a7">✏</button>
@@ -865,7 +865,7 @@ body.light .cal-item{background:var(--bg3)}
         <button class="chart-btn" data-cat="ETF SINGLE COUNTRY">ETF Paese</button>
         <button class="chart-btn" data-cat="ETF INDICI">ETF Indici</button>
         <button class="chart-btn" data-cat="ETF SETTORIALE">ETF Settoriali</button>
-        <button class="chart-btn" data-cat="_favorites"  id="chart-fav-1" style="color:#ffd700;border-color:rgba(255,215,0,.35)">⭐ Preferiti</button>
+        <button class="chart-btn" data-cat="_favorites"  id="chart-fav-1" style="color:#ffd700;border-color:rgba(255,215,0,.35)">★ Lista 1</button>
         <button class="chart-btn" data-cat="_favorites2" id="chart-fav-2" style="color:#64b5f6;border-color:rgba(100,181,246,.35)">★ Lista 2</button>
         <button class="chart-btn" data-cat="_favorites3" id="chart-fav-3" style="color:#ef9a9a;border-color:rgba(239,154,154,.35)">★ Lista 3</button>
         <button class="chart-btn" data-cat="_favorites4" id="chart-fav-4" style="color:#a5d6a7;border-color:rgba(165,214,167,.35)">★ Lista 4</button>
@@ -1653,6 +1653,7 @@ let sortCol = null;
 let sortDir = 1;
 let activeFilter = '_sintesi';
 let maBreadthFilter = null;   // null | 'ma50' | 'ma200' | 'maBoth'
+let signalFilter    = null;   // null | signal key string (es. 'buy','hold','neutral','caution','reduce','low-fear',…)
 let screeningRules = [];      // [{field, op, val}, ...]
 let screeningMA    = '';      // '' | 'above50' | 'below50' | 'above200' | 'below200' | 'bull' | 'bear'
 let rsConfig = JSON.parse(localStorage.getItem('mm_rs_config') || 'null') ||
@@ -1667,7 +1668,7 @@ let favorites4 = new Set(JSON.parse(localStorage.getItem('mm_fav4') || '[]'));
 let favorites5 = new Set(JSON.parse(localStorage.getItem('mm_fav5') || '[]'));
 
 function favName(n) {
-  const defaults = {1:'Preferiti', 2:'Lista 2', 3:'Lista 3', 4:'Lista 4', 5:'Lista 5'};
+  const defaults = {1:'Lista 1', 2:'Lista 2', 3:'Lista 3', 4:'Lista 4', 5:'Lista 5'};
   const key = n === 1 ? 'mm_fav_name' : `mm_fav${n}_name`;
   return localStorage.getItem(key) || defaults[n];
 }
@@ -1682,7 +1683,7 @@ function renameFav(n) {
   applyFavNames();
 }
 function applyFavNames() {
-  [[1,'fav-filter-1','chart-fav-1','⭐'],[2,'fav-filter-2','chart-fav-2','★'],
+  [[1,'fav-filter-1','chart-fav-1','★'],[2,'fav-filter-2','chart-fav-2','★'],
    [3,'fav-filter-3','chart-fav-3','★'],[4,'fav-filter-4','chart-fav-4','★'],
    [5,'fav-filter-5','chart-fav-5','★']].forEach(([n, fid, cid, star]) => {
     const nm = favName(n);
@@ -2900,6 +2901,108 @@ function showMaLegend(btn) {
   setTimeout(() => document.addEventListener('click', close), 50);
 }
 
+function setSignalFilter(key) {
+  signalFilter = key;
+  renderTable();
+  buildThead(); // aggiorna indicatore attivo nell'header
+}
+
+function showSignalFilterMenu(btn) {
+  const existing = document.getElementById('signal-filter-popup');
+  if (existing) { existing.remove(); return; }
+
+  // Conta asset per segnale (su tutti i rows, non solo visibili)
+  const counts = {};
+  rows.forEach(r => {
+    if (r._signal?.key) counts[r._signal.key] = (counts[r._signal.key] || 0) + 1;
+  });
+
+  const ALL_SIGNALS = [
+    {key:'buy',      label:'🟢 Accumula',   color:'#4caf50'},
+    {key:'hold',     label:'🔵 Mantieni',   color:'#29b6f6'},
+    {key:'neutral',  label:'⚪ Neutro',      color:'#78909c'},
+    {key:'caution',  label:'🟡 Cautela',    color:'#ffc107'},
+    {key:'reduce',   label:'🔴 Riduci',     color:'#ef5350'},
+    null, // separatore
+    {key:'low-fear', label:'😌 Bassa Paura',color:'#4caf50'},
+    {key:'normal',   label:'😐 Normale',    color:'#8bc34a'},
+    {key:'elevated', label:'😟 Elevata',    color:'#ffc107'},
+    {key:'high-fear',label:'😨 Alta Paura', color:'#ff9800'},
+    {key:'crisis',   label:'😱 Crisi',      color:'#ef5350'},
+  ];
+
+  const popup = document.createElement('div');
+  popup.id = 'signal-filter-popup';
+  Object.assign(popup.style, {
+    position:'fixed', zIndex:'9999',
+    background:'var(--bg2)', border:'1px solid var(--border)',
+    borderRadius:'10px', padding:'8px 0',
+    boxShadow:'0 8px 32px rgba(0,0,0,.55)', minWidth:'200px',
+  });
+
+  const mkItem = (label, key, color, count) => {
+    const isActive = signalFilter === key;
+    const el = document.createElement('div');
+    Object.assign(el.style, {
+      padding:'7px 14px', cursor:'pointer', fontSize:'12px', fontWeight:'600',
+      display:'flex', alignItems:'center', justifyContent:'space-between', gap:'10px',
+      background: isActive ? (color+'22') : 'transparent',
+      color: isActive ? color : 'var(--text)',
+      borderLeft: isActive ? `3px solid ${color}` : '3px solid transparent',
+    });
+    el.innerHTML = `<span>${label}</span><span style="font-size:10px;font-weight:700;background:var(--bg3);padding:1px 6px;border-radius:8px;color:var(--text3)">${count ?? 0}</span>`;
+    el.addEventListener('mouseenter', () => { if (!isActive) el.style.background = 'rgba(255,255,255,.05)'; });
+    el.addEventListener('mouseleave', () => { if (!isActive) el.style.background = 'transparent'; });
+    el.addEventListener('click', () => { setSignalFilter(key); popup.remove(); document.removeEventListener('click', close); });
+    return el;
+  };
+
+  // Tutti (reset)
+  const allEl = document.createElement('div');
+  Object.assign(allEl.style, {
+    padding:'7px 14px', cursor:'pointer', fontSize:'11px', fontWeight:'700',
+    color: !signalFilter ? 'var(--accent)' : 'var(--text3)',
+    letterSpacing:'.5px', textTransform:'uppercase',
+    borderLeft: !signalFilter ? '3px solid var(--accent)' : '3px solid transparent',
+    background: !signalFilter ? 'rgba(255,215,0,.08)' : 'transparent',
+  });
+  allEl.textContent = 'Tutti i segnali';
+  allEl.addEventListener('click', () => { setSignalFilter(null); popup.remove(); document.removeEventListener('click', close); });
+  popup.appendChild(allEl);
+
+  const sep0 = document.createElement('div');
+  Object.assign(sep0.style, {height:'1px', background:'var(--border)', margin:'4px 0'});
+  popup.appendChild(sep0);
+
+  ALL_SIGNALS.forEach(sig => {
+    if (!sig) {
+      const sep = document.createElement('div');
+      Object.assign(sep.style, {
+        height:'1px', background:'var(--border)', margin:'4px 0',
+      });
+      popup.appendChild(sep);
+      const vixLabel = document.createElement('div');
+      Object.assign(vixLabel.style, {padding:'4px 14px 2px', fontSize:'9px', fontWeight:'700', color:'var(--text3)', letterSpacing:'.6px', textTransform:'uppercase'});
+      vixLabel.textContent = 'VIX / Volatilità';
+      popup.appendChild(vixLabel);
+    } else {
+      popup.appendChild(mkItem(sig.label, sig.key, sig.color, counts[sig.key]));
+    }
+  });
+
+  document.body.appendChild(popup);
+  const rect = btn.getBoundingClientRect();
+  popup.style.top  = (rect.bottom + 6) + 'px';
+  let left = rect.left;
+  if (left + 210 > window.innerWidth) left = window.innerWidth - 215;
+  popup.style.left = Math.max(4, left) + 'px';
+
+  const close = e => {
+    if (!popup.contains(e.target) && e.target !== btn) { popup.remove(); document.removeEventListener('click', close); }
+  };
+  setTimeout(() => document.addEventListener('click', close), 50);
+}
+
 function showSignalLegend(btn) {
   const existing = document.getElementById('signal-legend-popup');
   if (existing) { existing.remove(); return; }
@@ -3177,7 +3280,7 @@ function toggleFavorite(sym, n) {
 
 function buildThead() {
   const tr = document.getElementById('thead-row');
-  const starTh = `<th style="width:80px;text-align:center;padding:0 2px"><span style="color:#ffd700">★</span><span style="color:#64b5f6">★</span><span style="color:#ef9a9a">★</span><span style="color:#a5d6a7">★</span><span style="color:#ce93d8">★</span></th>`;
+  const starTh = `<th style="width:80px;text-align:center;padding:0 2px;font-size:11px"><span style="color:#ffd700">★</span><span style="color:#64b5f6">★</span><span style="color:#ef9a9a">★</span><span style="color:#a5d6a7">★</span><span style="color:#ce93d8">★</span></th>`;
   tr.innerHTML = starTh + COLS.map(c => {
     const cls = sortCol === c.key ? (sortDir===1 ? 'sorted-asc':'sorted-desc') : '';
     return `<th class="${cls}" onclick="doSort('${c.key}')">${c.label.replace('\n','<br>')}</th>`;
@@ -3318,12 +3421,13 @@ function applyFilters(data) {
     const sMatch = !q || (r.m||'').toLowerCase().includes(q) ||
                          (r.i||'').toLowerCase().includes(q) ||
                          (r.a||'').toLowerCase().includes(q);
-    const maMatch = !maBreadthFilter ? true :
-                    maBreadthFilter === 'ma50'   ? r._ma50  === true :
-                    maBreadthFilter === 'ma200'  ? r._ma200 === true :
-                    maBreadthFilter === 'maBoth' ? (r._ma50 === true && r._ma200 === true) :
-                    true;
-    return fMatch && sMatch && maMatch;
+    const maMatch  = !maBreadthFilter ? true :
+                     maBreadthFilter === 'ma50'   ? r._ma50  === true :
+                     maBreadthFilter === 'ma200'  ? r._ma200 === true :
+                     maBreadthFilter === 'maBoth' ? (r._ma50 === true && r._ma200 === true) :
+                     true;
+    const sigMatch = !signalFilter ? true : (r._signal?.key === signalFilter);
+    return fMatch && sMatch && maMatch && sigMatch;
   });
 }
 
@@ -4564,11 +4668,11 @@ const _origBuildThead = buildThead;
 buildThead = function() {
   const tr = document.getElementById('thead-row');
   const visibleCols = COLS.filter(c => !hiddenCols.has(c.key));
-  const starTh = `<th style="width:80px;text-align:center;padding:0 2px"><span style="color:#ffd700">★</span><span style="color:#64b5f6">★</span><span style="color:#ef9a9a">★</span><span style="color:#a5d6a7">★</span><span style="color:#ce93d8">★</span></th>`;
+  const starTh = `<th style="width:80px;text-align:center;padding:0 2px;font-size:11px"><span style="color:#ffd700">★</span><span style="color:#64b5f6">★</span><span style="color:#ef9a9a">★</span><span style="color:#a5d6a7">★</span><span style="color:#ce93d8">★</span></th>`;
   tr.innerHTML = starTh + visibleCols.map(c => {
     const cls = sortCol === c.key ? (sortDir===1 ? 'sorted-asc':'sorted-desc') : '';
     const lbl = c.key === '_signal'
-      ? `Segnale<br>Operativo&thinsp;<span onclick="event.stopPropagation();showSignalLegend(this)" title="Come funzionano i segnali operativi" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span>`
+      ? `Segnale<br>Operativo&thinsp;<span onclick="event.stopPropagation();showSignalLegend(this)" title="Come funzionano i segnali operativi" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span>&thinsp;<span onclick="event.stopPropagation();showSignalFilterMenu(this)" title="Filtra per segnale" style="cursor:pointer;font-size:13px;vertical-align:middle;user-select:none;${signalFilter?'color:var(--accent);font-weight:900':'opacity:.75'}">${signalFilter?'▼●':'▼'}</span>${signalFilter?`&thinsp;<span onclick="event.stopPropagation();setSignalFilter(null)" title="Rimuovi filtro segnale" style="cursor:pointer;font-size:11px;color:var(--red);vertical-align:middle">✕</span>`:''}`
       : c.key === 'ma'
       ? `MM<br>50/200&thinsp;<span onclick="event.stopPropagation();showMaLegend(this)" title="Legenda" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span>`
       : c.key === '_momentum'
