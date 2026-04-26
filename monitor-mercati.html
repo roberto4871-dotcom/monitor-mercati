@@ -3149,88 +3149,139 @@ function showTopSignals(btn) {
   Object.assign(popup.style, {
     position:'fixed', zIndex:'9999',
     background:'var(--bg2)', border:'1px solid var(--border)',
-    borderRadius:'12px', padding:'16px 18px',
-    boxShadow:'0 8px 40px rgba(0,0,0,.65)', width:'520px', maxWidth:'96vw',
-    maxHeight:'82vh', overflowY:'auto',
+    borderRadius:'12px', padding:'0',
+    boxShadow:'0 8px 48px rgba(0,0,0,.7)', width:'600px', maxWidth:'96vw',
+    maxHeight:'88vh', display:'flex', flexDirection:'column',
   });
 
   const ms = getMarketScore();
-  const msLabel = ms === null ? '—' :
-    ms >= 65 ? `${ms} 🟢 Mercato rialzista` :
-    ms >= 45 ? `${ms} 🟡 Mercato neutro` :
-               `${ms} 🔴 Mercato ribassista`;
+  const msLabel = ms === null ? '—'
+    : ms >= 65 ? `${ms} — Mercato rialzista 🟢`
+    : ms >= 45 ? `${ms} — Mercato neutro 🟡`
+    :            `${ms} — Mercato ribassista 🔴`;
   const msColor = ms === null ? 'var(--text3)' : ms >= 65 ? '#4caf50' : ms >= 45 ? '#ffc107' : '#ef5350';
 
-  // Ordine per forza: strong > medium > weak
   const strOrd = {strong:3, medium:2, weak:1};
 
-  const buySignals = rows
+  const allBuy = rows
     .filter(r => r._signal && (r._signal.key === 'buy' || r._signal.key === 'hold') && !r._loading && !r._err)
     .sort((a,b) => {
       const sd = (strOrd[b._signal.strength]||0) - (strOrd[a._signal.strength]||0);
       return sd !== 0 ? sd : (b._signal.rawScore||0) - (a._signal.rawScore||0);
-    })
-    .slice(0, 5);
+    });
 
-  const sellSignals = rows
+  const allSell = rows
     .filter(r => r._signal && (r._signal.key === 'reduce' || r._signal.key === 'caution') && !r._loading && !r._err)
     .sort((a,b) => {
       const sd = (strOrd[b._signal.strength]||0) - (strOrd[a._signal.strength]||0);
       return sd !== 0 ? sd : (a._signal.rawScore||0) - (b._signal.rawScore||0);
-    })
-    .slice(0, 5);
+    });
 
-  const mkRow = (r) => {
+  // Riga compatta nella tabella
+  const mkRow = (r, idx) => {
     const sig = r._signal;
-    const name = r.i || r.m || r.s;
+    const name = (r.i || r.m || r.s).length > 28 ? (r.i || r.m || r.s).slice(0,26)+'…' : (r.i || r.m || r.s);
     const score = sig.rawScore != null ? Math.round(sig.rawScore) : '—';
     const strColor = sig.strength === 'strong' ? '#ff6f00' : sig.strength === 'medium' ? '#ffc107' : '#78909c';
-    const contra = sig.contratrend
-      ? `<span style="font-size:9px;color:#ff9800;font-weight:700;margin-left:5px">⚡ contro trend</span>` : '';
-    const ctx = sig.context
-      ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;line-height:1.4">${sig.context}</div>` : '';
-    return `<div style="display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
-      <div style="min-width:26px;text-align:center;font-size:16px;line-height:1.2">${sig.icon}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${name}">${name}${contra}</div>
+    const bgAlt = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.025)';
+    const contra = sig.contratrend ? `<span title="Contro trend di mercato" style="color:#ff9800;font-size:10px">⚡</span>` : '';
+    const ctx = sig.context ? `<div style="font-size:9px;color:var(--text3);line-height:1.3;margin-top:1px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${sig.context}">${sig.context}</div>` : '';
+    return `<tr style="background:${bgAlt}">
+      <td style="padding:6px 8px;font-size:13px;text-align:center;vertical-align:middle">${sig.icon}</td>
+      <td style="padding:6px 8px;vertical-align:middle">
+        <div style="font-size:11px;font-weight:700;color:var(--text)">${name} ${contra}</div>
         ${ctx}
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <span style="background:${sig.color}22;color:${sig.color};border:1px solid ${sig.color}55;font-size:10px;font-weight:700;padding:2px 7px;border-radius:7px">${sig.label}</span>
-        <div style="font-size:10px;font-weight:800;color:${strColor};margin-top:3px">${sig.icon} ${sig.label.split(' ')[1] || ''} · Score ${score}</div>
-      </div>
-    </div>`;
+      </td>
+      <td style="padding:6px 8px;font-size:9px;color:var(--text3);vertical-align:middle;white-space:nowrap">${r.a}</td>
+      <td style="padding:6px 8px;text-align:center;vertical-align:middle">
+        <span style="font-size:12px;font-weight:900;color:${strColor}">${score}</span>
+      </td>
+      <td style="padding:6px 8px;vertical-align:middle;text-align:right">
+        <span style="background:${sig.color}22;color:${sig.color};border:1px solid ${sig.color}55;font-size:10px;font-weight:700;padding:2px 7px;border-radius:7px;white-space:nowrap">${sig.label}</span>
+      </td>
+    </tr>`;
   };
 
-  const mkSection = (title, color, items) => {
-    if (!items.length) return `<div style="font-size:11px;color:var(--text3);padding:8px 0">${title}: nessun segnale rilevante</div>`;
-    return `<div style="font-size:10px;font-weight:800;color:${color};letter-spacing:.7px;text-transform:uppercase;margin:12px 0 6px">${title}</div>` +
-      items.map(mkRow).join('');
+  const mkTable = (items, emptyMsg) => {
+    if (!items.length) return `<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">${emptyMsg}</div>`;
+    return `<table style="width:100%;border-collapse:collapse">
+      <thead><tr style="border-bottom:2px solid var(--border)">
+        <th style="padding:5px 8px;font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.5px;text-align:center">FOR.</th>
+        <th style="padding:5px 8px;font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.5px;text-align:left">ASSET</th>
+        <th style="padding:5px 8px;font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.5px;text-align:left">CATEGORIA</th>
+        <th style="padding:5px 8px;font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.5px;text-align:center">SCORE</th>
+        <th style="padding:5px 8px;font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.5px;text-align:right">SEGNALE</th>
+      </tr></thead>
+      <tbody>${items.map((r,i) => mkRow(r,i)).join('')}</tbody>
+    </table>`;
   };
 
-  popup.innerHTML =
-    `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-       <div style="font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.7px;text-transform:uppercase">🎯 Top Segnali Forti</div>
-       <div style="font-size:11px;color:${msColor};font-weight:700">Market Score: ${msLabel}</div>
+  // Header fisso
+  const header = document.createElement('div');
+  Object.assign(header.style, {
+    padding:'14px 18px 0', flexShrink:'0',
+  });
+  header.innerHTML =
+    `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+       <div style="font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.6px;text-transform:uppercase">🎯 Segnali Operativi</div>
+       <div style="font-size:11px;color:${msColor};font-weight:700">Market Score ${msLabel}</div>
      </div>
-     <div style="font-size:10px;color:var(--text3);margin-bottom:12px;line-height:1.5">
-       🔥 = segnale forte (score alto + trend + mercato allineati) &nbsp;|&nbsp; ⚠️ = medio &nbsp;|&nbsp; ❄️ = debole
-     </div>` +
-    mkSection('📈 TOP 5 BUY — Accumula / Mantieni', '#4caf50', buySignals) +
-    mkSection('📉 TOP 5 SELL — Riduci / Cautela', '#ef5350', sellSignals) +
-    `<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
-       <button onclick="setSignalFilter('_strong');document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(255,111,0,.15);color:#ff6f00;border:1px solid rgba(255,111,0,.4);border-radius:8px;padding:4px 10px;cursor:pointer">🔥 Filtra Solo Forti</button>
-       <button onclick="setSignalFilter('_contratrend');document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(255,152,0,.12);color:#ff9800;border:1px solid rgba(255,152,0,.4);border-radius:8px;padding:4px 10px;cursor:pointer">⚡ Filtra Contro Trend</button>
-       <button onclick="setSignalFilter(null);document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(255,255,255,.05);color:var(--text3);border:1px solid var(--border);border-radius:8px;padding:4px 10px;cursor:pointer">✕ Reset filtro</button>
+     <div style="display:flex;gap:0;border-bottom:2px solid var(--border)">
+       <button id="ts-tab-buy" onclick="tsSwitch('buy')" style="flex:1;padding:8px 0;font-size:11px;font-weight:800;background:rgba(76,175,80,.15);color:#4caf50;border:none;border-bottom:2px solid #4caf50;cursor:pointer;letter-spacing:.3px">
+         📈 BUY &amp; HOLD <span style="background:#4caf50;color:#000;border-radius:10px;padding:0 6px;font-size:10px;margin-left:4px">${allBuy.length}</span>
+       </button>
+       <button id="ts-tab-sell" onclick="tsSwitch('sell')" style="flex:1;padding:8px 0;font-size:11px;font-weight:800;background:transparent;color:var(--text3);border:none;border-bottom:2px solid transparent;cursor:pointer;letter-spacing:.3px">
+         📉 SELL &amp; CAUTION <span style="background:var(--bg3);color:var(--text3);border-radius:10px;padding:0 6px;font-size:10px;margin-left:4px">${allSell.length}</span>
+       </button>
      </div>`;
+  popup.appendChild(header);
+
+  // Body scrollabile
+  const body = document.createElement('div');
+  Object.assign(body.style, {flex:'1', overflowY:'auto', padding:'0'});
+  body.id = 'ts-body';
+  body.innerHTML = mkTable(allBuy, 'Nessun asset in BUY al momento');
+  popup.appendChild(body);
+
+  // Footer con filtri rapidi
+  const footer = document.createElement('div');
+  Object.assign(footer.style, {
+    padding:'10px 18px', flexShrink:'0', borderTop:'1px solid var(--border)',
+    display:'flex', gap:'6px', flexWrap:'wrap', background:'var(--bg2)', borderRadius:'0 0 12px 12px',
+  });
+  footer.innerHTML =
+    `<span style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.5px;text-transform:uppercase;align-self:center">Filtra tabella:</span>
+     <button onclick="setSignalFilter('_strong');document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(255,111,0,.15);color:#ff6f00;border:1px solid rgba(255,111,0,.4);border-radius:8px;padding:3px 9px;cursor:pointer">🔥 Solo Forti</button>
+     <button onclick="setSignalFilter('buy');document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(76,175,80,.12);color:#4caf50;border:1px solid rgba(76,175,80,.4);border-radius:8px;padding:3px 9px;cursor:pointer">📈 Solo Buy</button>
+     <button onclick="setSignalFilter('reduce');document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(239,83,80,.12);color:#ef5350;border:1px solid rgba(239,83,80,.4);border-radius:8px;padding:3px 9px;cursor:pointer">📉 Solo Sell</button>
+     <button onclick="setSignalFilter('_contratrend');document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(255,152,0,.12);color:#ff9800;border:1px solid rgba(255,152,0,.4);border-radius:8px;padding:3px 9px;cursor:pointer">⚡ Contro Trend</button>
+     <button onclick="setSignalFilter(null);document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(255,255,255,.05);color:var(--text3);border:1px solid var(--border);border-radius:8px;padding:3px 9px;cursor:pointer">✕ Reset</button>`;
+  popup.appendChild(footer);
+
+  // Tab switch
+  window.tsSwitch = (tab) => {
+    const bd = document.getElementById('ts-body');
+    const tb = document.getElementById('ts-tab-buy');
+    const ts = document.getElementById('ts-tab-sell');
+    if (tab === 'buy') {
+      bd.innerHTML = mkTable(allBuy, 'Nessun asset in BUY al momento');
+      Object.assign(tb.style, {background:'rgba(76,175,80,.15)',color:'#4caf50',borderBottom:'2px solid #4caf50'});
+      Object.assign(ts.style, {background:'transparent',color:'var(--text3)',borderBottom:'2px solid transparent'});
+    } else {
+      bd.innerHTML = mkTable(allSell, 'Nessun asset in SELL al momento');
+      Object.assign(ts.style, {background:'rgba(239,83,80,.12)',color:'#ef5350',borderBottom:'2px solid #ef5350'});
+      Object.assign(tb.style, {background:'transparent',color:'var(--text3)',borderBottom:'2px solid transparent'});
+    }
+  };
 
   document.body.appendChild(popup);
   const rect = btn.getBoundingClientRect();
-  const pw = 520;
+  const pw = 600;
   let left = rect.right - pw;
   if (left < 8) left = 8;
   if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
-  popup.style.top  = (rect.bottom + 8) + 'px';
+  const top = Math.min(rect.bottom + 8, window.innerHeight - 500);
+  popup.style.top  = top + 'px';
   popup.style.left = left + 'px';
 
   const close = e => { if (!popup.contains(e.target) && e.target !== btn) { popup.remove(); document.removeEventListener('click', close); } };
