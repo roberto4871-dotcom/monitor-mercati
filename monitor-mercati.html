@@ -1848,12 +1848,25 @@ function fmtCell(col, row) {
     case 'yld':  return v !== null && v !== undefined ? `<span class="pos">${fmtN(v,2)}%</span>` : '<span class="na">—</span>';
     case 'signal': {
       if (!v) return '<span class="na">—</span>';
-      const pill = `<span class="sig-pill" style="background:${v.color}22;color:${v.color};border:1px solid ${v.color}55" title="${v.detail}">${v.label}</span>`;
-      if (!v.tags || !v.tags.length) return pill;
-      const tagHtml = v.tags.slice(0,2).map(t =>
-        `<span style="font-size:9px;color:${t.color};white-space:nowrap;display:block;line-height:1.5;font-weight:600">${t.label}</span>`
-      ).join('');
-      return `<div style="display:inline-flex;flex-direction:column;align-items:flex-start;gap:1px">${pill}${tagHtml}</div>`;
+      // Pill principale con icona forza integrata
+      const strengthBadge = v.icon
+        ? `<span style="font-size:10px;margin-right:3px" title="${v.label}">${v.icon}</span>`
+        : '';
+      const pill = `<span class="sig-pill" style="background:${v.color}22;color:${v.color};border:1px solid ${v.color}55" title="${v.detail}">${strengthBadge}${v.label}</span>`;
+      // Tag di contesto (max 1 se c'è contra-trend, max 2 altrimenti)
+      const lines = [];
+      if (v.tags && v.tags.length) {
+        lines.push(`<span style="font-size:9px;color:${v.tags[0].color};white-space:nowrap;display:block;line-height:1.5;font-weight:600">${v.tags[0].label}</span>`);
+      }
+      if (v.contratrend) {
+        lines.push(`<span style="font-size:9px;color:#ff9800;white-space:nowrap;display:block;line-height:1.5;font-weight:700">⚠ Contro trend mercato</span>`);
+      } else if (v.tags && v.tags.length > 1) {
+        lines.push(`<span style="font-size:9px;color:${v.tags[1].color};white-space:nowrap;display:block;line-height:1.5;font-weight:600">${v.tags[1].label}</span>`);
+      } else if (v.context && !lines.length) {
+        lines.push(`<span style="font-size:9px;color:var(--text3);white-space:nowrap;display:block;line-height:1.5">${v.context}</span>`);
+      }
+      if (!lines.length) return pill;
+      return `<div style="display:inline-flex;flex-direction:column;align-items:flex-start;gap:1px">${pill}${lines.join('')}</div>`;
     }
     case 'rs': {
       if (v === null || v === undefined || isNaN(v)) return '<span class="na">—</span>';
@@ -2307,6 +2320,99 @@ function momentumScore(row) {
 //  SEGNALE OPERATIVO — helper constants & functions
 // ═══════════════════════════════════════════════════
 
+// ── MARKET SCORE live — composito VIX 40% + Breadth MM200 35% + SP500 p30 25% ──
+function getMarketScore() {
+  const vixRow = rows.find(r => r.a === 'VOLATILITA');
+  let vixScore = null;
+  if (vixRow?.valore != null) {
+    vixScore = Math.min(100, Math.max(0, (40 - vixRow.valore) / 28 * 100));
+  }
+  const maRowsAll = rows.filter(r => r._ma200 !== null && r._ma200 !== undefined);
+  let breadthScore = maRowsAll.length > 0
+    ? (maRowsAll.filter(r => r._ma200 === true).length / maRowsAll.length) * 100
+    : null;
+  const spRow = rows.find(r => r.s === '^GSPC');
+  let momScore = spRow?.p30 != null
+    ? Math.min(100, Math.max(0, (spRow.p30 / 15) * 50 + 50))
+    : null;
+  const comps = [[vixScore,0.40],[breadthScore,0.35],[momScore,0.25]];
+  let ws = 0, wt = 0;
+  for (const [v,w] of comps) { if (v !== null) { ws += v*w; wt += w; } }
+  return wt > 0 ? Math.round(ws / wt) : null;
+}
+
+// ── FORZA DEL SEGNALE — 🔥 Forte / ⚠️ Medio / ❄️ Debole ──────────
+function computeSignalStrength(key, rawScore, tags, marketScore) {
+  // VIX: forza basata sull'estremo
+  const vixKeys = new Set(['low-fear','normal','elevated','high-fear','crisis']);
+  if (vixKeys.has(key)) {
+    if (key === 'low-fear' || key === 'crisis')    return {strength:'strong', icon:'🔥', label:'Forte',  contratrend:false};
+    if (key === 'normal'   || key === 'high-fear') return {strength:'medium', icon:'⚠️', label:'Medio',  contratrend:false};
+    return                                                {strength:'weak',   icon:'❄️', label:'Debole', contratrend:false};
+  }
+  // Conviction: quanto è lontano dallo score dalla soglia?
+  let conviction = 0;
+  if      (key === 'buy')     conviction = rawScore >= 82 ? 2 : rawScore >= 75 ? 1 : 0;
+  else if (key === 'hold')    conviction = rawScore >= 65 ? 1 : 0;
+  else if (key === 'neutral') conviction = 0;
+  else if (key === 'caution') conviction = rawScore <= 35 ? 1 : 0;
+  else if (key === 'reduce')  conviction = rawScore <= 18 ? 2 : rawScore <= 25 ? 1 : 0;
+  // Allineamento con il mercato
+  let marketBoost = 0, contratrend = false;
+  if (marketScore !== null) {
+    const bullMkt = marketScore >= 60, bearMkt = marketScore <= 40;
+    const bullSig = key === 'buy' || key === 'hold';
+    const bearSig = key === 'reduce' || key === 'caution';
+    if      (bullSig && bullMkt) marketBoost =  1;
+    else if (bullSig && bearMkt) { marketBoost = -1; contratrend = true; }
+    else if (bearSig && bearMkt) marketBoost =  1;
+    else if (bearSig && bullMkt) { marketBoost = -1; contratrend = true; }
+  }
+  // Allineamento dei tag contesto
+  const posC = new Set(['#4caf50','#8bc34a','#29b6f6']);
+  const negC = new Set(['#ef5350','#ff9800','#ff7043']);
+  const bullSig = key === 'buy' || key === 'hold';
+  const bearSig = key === 'reduce' || key === 'caution';
+  let tagSum = 0;
+  (tags || []).forEach(t => {
+    if (bullSig) tagSum += posC.has(t.color) ? 1 : negC.has(t.color) ? -1 : 0;
+    if (bearSig) tagSum += negC.has(t.color) ? 1 : posC.has(t.color) ? -1 : 0;
+  });
+  const tagAdj = tagSum > 0 ? 1 : tagSum < 0 ? -1 : 0;
+  const total = conviction + marketBoost + tagAdj;
+  if (total >= 2)  return {strength:'strong', icon:'🔥', label:'Forte',  contratrend};
+  if (total >= 0)  return {strength:'medium', icon:'⚠️', label:'Medio',  contratrend};
+  return                  {strength:'weak',   icon:'❄️', label:'Debole', contratrend};
+}
+
+// ── CONTESTO DEL SEGNALE — frase che spiega il perché ────────────
+function buildSignalContext(row, tags, key) {
+  const parts = [];
+  const tagLabels = (tags || []).map(t => t.label);
+  const tcTag = tagLabels.find(l => /[↑↓↗↘→]/.test(l));
+  if (tcTag) parts.push(tcTag);
+  if (row._ma200 === true  && row._ma50 === true)  parts.push('sopra MM50+MM200');
+  if (row._ma200 === false && row._ma50 === false)  parts.push('sotto MM50+MM200');
+  if (row._pctFromMA200 != null && Math.abs(row._pctFromMA200) > 8)
+    parts.push(`${row._pctFromMA200 > 0 ? '+' : ''}${row._pctFromMA200.toFixed(0)}% da MM200`);
+  const BOND_C = new Set(['INDICE OBBLIGAZIONARIO','ETF OBB. MASTER']);
+  if (BOND_C.has(row.a)) {
+    const cuts  = CB_RATES.filter(c => c.trend === 'cut').length;
+    const hikes = CB_RATES.filter(c => c.trend === 'hike').length;
+    if (cuts  > hikes) parts.push('banche centrali in taglio');
+    if (hikes > cuts)  parts.push('banche centrali in rialzo');
+    const ycTag = tagLabels.find(l => l.includes('Curva'));
+    if (ycTag) parts.push(ycTag);
+  }
+  const sTag = tagLabels.find(l => l.includes('stagione') || l.includes('Stagione'));
+  if (sTag) parts.push(sTag);
+  if (row.a !== 'VOLATILITA') {
+    const vTag = tagLabels.find(l => l.includes('VIX'));
+    if (vTag && !parts.some(p => p.includes('VIX'))) parts.push(vTag);
+  }
+  return parts.slice(0, 3).join(' · ');
+}
+
 // Feature 6: Bond a lunga duration sensibili alla curva dei rendimenti
 const LONG_DUR_BONDS = new Set(['IBGL.AS','EGOV.PA','IBTM.L','INFL.PA','INFU.PA','XGIN.DE']);
 
@@ -2385,11 +2491,15 @@ function computeAssetSignal(row) {
   if (VOL_CATS.has(row.a)) {
     const v = row.valore;
     if (!v) return null;
-    if (v < 15) return {rank:5, key:'low-fear',  label:'😌 Bassa Paura', color:'#4caf50', detail:`VIX ${v.toFixed(1)} — mercato tranquillo, risk-on favorevole`, tags:[]};
-    if (v < 20) return {rank:4, key:'normal',    label:'😐 Normale',     color:'#8bc34a', detail:`VIX ${v.toFixed(1)} — volatilità nella norma`, tags:[]};
-    if (v < 25) return {rank:3, key:'elevated',  label:'😟 Elevata',     color:'#ffc107', detail:`VIX ${v.toFixed(1)} — incertezza crescente, prudenza`, tags:[]};
-    if (v < 35) return {rank:2, key:'high-fear', label:'😨 Alta Paura',  color:'#ff9800', detail:`VIX ${v.toFixed(1)} — forte risk-off, ridurre esposizione`, tags:[]};
-    return              {rank:1, key:'crisis',    label:'😱 Crisi',        color:'#f44336', detail:`VIX ${v.toFixed(1)} — mercato in crisi, difensivi`, tags:[]};
+    const mkVix = (rank, key, label, color, desc) => {
+      const st = computeSignalStrength(key, v, [], null);
+      return {rank, key, label, color, detail:`VIX ${v.toFixed(1)} — ${desc}`, tags:[], rawScore:v, marketScore:null, context:`VIX ${v.toFixed(1)}`, ...st};
+    };
+    if (v < 15) return mkVix(5,'low-fear', '😌 Bassa Paura','#4caf50','mercato tranquillo, risk-on favorevole');
+    if (v < 20) return mkVix(4,'normal',   '😐 Normale',    '#8bc34a','volatilità nella norma');
+    if (v < 25) return mkVix(3,'elevated', '😟 Elevata',    '#ffc107','incertezza crescente, prudenza');
+    if (v < 35) return mkVix(2,'high-fear','😨 Alta Paura', '#ff9800','forte risk-off, ridurre esposizione');
+    return             mkVix(1,'crisis',   '😱 Crisi',      '#f44336','mercato in crisi, difensivi');
   }
 
   const mom = row._momentum;
@@ -2489,7 +2599,10 @@ function computeAssetSignal(row) {
   else if (score >= 30) result = {rank:2, key:'caution', label:'🟡 Cautela',   color:'#ffc107'};
   else                  result = {rank:1, key:'reduce',  label:'🔴 Riduci',    color:'#ef5350'};
 
-  return {...result, detail, tags};
+  const ms  = getMarketScore();
+  const st  = computeSignalStrength(result.key, score, tags, ms);
+  const ctx = buildSignalContext(row, tags, result.key);
+  return {...result, detail, tags, rawScore: score, marketScore: ms, ...st, context: ctx};
 }
 
 function computeMomentumScores() {
@@ -2954,6 +3067,26 @@ function showSignalFilterMenu(btn) {
     return el;
   };
 
+  // Conta per forza
+  const strengthCounts = {strong:0, medium:0, weak:0, contratrend:0};
+  rows.forEach(r => {
+    if (!r._signal) return;
+    if (r._signal.strength) strengthCounts[r._signal.strength] = (strengthCounts[r._signal.strength]||0)+1;
+    if (r._signal.contratrend) strengthCounts.contratrend++;
+  });
+
+  const mkLabel = (txt) => {
+    const el = document.createElement('div');
+    Object.assign(el.style, {padding:'4px 14px 2px', fontSize:'9px', fontWeight:'700', color:'var(--text3)', letterSpacing:'.6px', textTransform:'uppercase'});
+    el.textContent = txt;
+    return el;
+  };
+  const mkSep = () => {
+    const el = document.createElement('div');
+    Object.assign(el.style, {height:'1px', background:'var(--border)', margin:'4px 0'});
+    return el;
+  };
+
   // Tutti (reset)
   const allEl = document.createElement('div');
   Object.assign(allEl.style, {
@@ -2967,21 +3100,25 @@ function showSignalFilterMenu(btn) {
   allEl.addEventListener('click', () => { setSignalFilter(null); popup.remove(); document.removeEventListener('click', close); });
   popup.appendChild(allEl);
 
-  const sep0 = document.createElement('div');
-  Object.assign(sep0.style, {height:'1px', background:'var(--border)', margin:'4px 0'});
-  popup.appendChild(sep0);
+  // ── Sezione: Forza Segnale ──
+  popup.appendChild(mkSep());
+  popup.appendChild(mkLabel('Forza Segnale'));
+  [
+    {key:'_strong',     label:'🔥 Solo Forti',        color:'#ff6f00', cnt: strengthCounts.strong},
+    {key:'_medium',     label:'⚠️ Solo Medi',          color:'#ffc107', cnt: strengthCounts.medium},
+    {key:'_weak',       label:'❄️ Solo Deboli',        color:'#78909c', cnt: strengthCounts.weak},
+    {key:'_contratrend',label:'⚡ Contro Trend',       color:'#ff9800', cnt: strengthCounts.contratrend},
+  ].forEach(s => popup.appendChild(mkItem(s.label, s.key, s.color, s.cnt)));
 
+  // ── Sezione: Tipo Segnale ──
+  popup.appendChild(mkSep());
+  popup.appendChild(mkLabel('Tipo Segnale'));
+
+  const sep0 = document.createElement('div'); // dummy for compatibility
   ALL_SIGNALS.forEach(sig => {
     if (!sig) {
-      const sep = document.createElement('div');
-      Object.assign(sep.style, {
-        height:'1px', background:'var(--border)', margin:'4px 0',
-      });
-      popup.appendChild(sep);
-      const vixLabel = document.createElement('div');
-      Object.assign(vixLabel.style, {padding:'4px 14px 2px', fontSize:'9px', fontWeight:'700', color:'var(--text3)', letterSpacing:'.6px', textTransform:'uppercase'});
-      vixLabel.textContent = 'VIX / Volatilità';
-      popup.appendChild(vixLabel);
+      popup.appendChild(mkSep());
+      popup.appendChild(mkLabel('VIX / Volatilità'));
     } else {
       popup.appendChild(mkItem(sig.label, sig.key, sig.color, counts[sig.key]));
     }
@@ -2997,6 +3134,106 @@ function showSignalFilterMenu(btn) {
   const close = e => {
     if (!popup.contains(e.target) && e.target !== btn) { popup.remove(); document.removeEventListener('click', close); }
   };
+  setTimeout(() => document.addEventListener('click', close), 50);
+}
+
+// ═══════════════════════════════════════════════════
+//  TOP SEGNALI — ranking buy/sell più forti
+// ═══════════════════════════════════════════════════
+function showTopSignals(btn) {
+  const existing = document.getElementById('top-signals-popup');
+  if (existing) { existing.remove(); return; }
+
+  const popup = document.createElement('div');
+  popup.id = 'top-signals-popup';
+  Object.assign(popup.style, {
+    position:'fixed', zIndex:'9999',
+    background:'var(--bg2)', border:'1px solid var(--border)',
+    borderRadius:'12px', padding:'16px 18px',
+    boxShadow:'0 8px 40px rgba(0,0,0,.65)', width:'520px', maxWidth:'96vw',
+    maxHeight:'82vh', overflowY:'auto',
+  });
+
+  const ms = getMarketScore();
+  const msLabel = ms === null ? '—' :
+    ms >= 65 ? `${ms} 🟢 Mercato rialzista` :
+    ms >= 45 ? `${ms} 🟡 Mercato neutro` :
+               `${ms} 🔴 Mercato ribassista`;
+  const msColor = ms === null ? 'var(--text3)' : ms >= 65 ? '#4caf50' : ms >= 45 ? '#ffc107' : '#ef5350';
+
+  // Ordine per forza: strong > medium > weak
+  const strOrd = {strong:3, medium:2, weak:1};
+
+  const buySignals = rows
+    .filter(r => r._signal && (r._signal.key === 'buy' || r._signal.key === 'hold') && !r._loading && !r._err)
+    .sort((a,b) => {
+      const sd = (strOrd[b._signal.strength]||0) - (strOrd[a._signal.strength]||0);
+      return sd !== 0 ? sd : (b._signal.rawScore||0) - (a._signal.rawScore||0);
+    })
+    .slice(0, 5);
+
+  const sellSignals = rows
+    .filter(r => r._signal && (r._signal.key === 'reduce' || r._signal.key === 'caution') && !r._loading && !r._err)
+    .sort((a,b) => {
+      const sd = (strOrd[b._signal.strength]||0) - (strOrd[a._signal.strength]||0);
+      return sd !== 0 ? sd : (a._signal.rawScore||0) - (b._signal.rawScore||0);
+    })
+    .slice(0, 5);
+
+  const mkRow = (r) => {
+    const sig = r._signal;
+    const name = r.i || r.m || r.s;
+    const score = sig.rawScore != null ? Math.round(sig.rawScore) : '—';
+    const strColor = sig.strength === 'strong' ? '#ff6f00' : sig.strength === 'medium' ? '#ffc107' : '#78909c';
+    const contra = sig.contratrend
+      ? `<span style="font-size:9px;color:#ff9800;font-weight:700;margin-left:5px">⚡ contro trend</span>` : '';
+    const ctx = sig.context
+      ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;line-height:1.4">${sig.context}</div>` : '';
+    return `<div style="display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
+      <div style="min-width:26px;text-align:center;font-size:16px;line-height:1.2">${sig.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${name}">${name}${contra}</div>
+        ${ctx}
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <span style="background:${sig.color}22;color:${sig.color};border:1px solid ${sig.color}55;font-size:10px;font-weight:700;padding:2px 7px;border-radius:7px">${sig.label}</span>
+        <div style="font-size:10px;font-weight:800;color:${strColor};margin-top:3px">${sig.icon} ${sig.label.split(' ')[1] || ''} · Score ${score}</div>
+      </div>
+    </div>`;
+  };
+
+  const mkSection = (title, color, items) => {
+    if (!items.length) return `<div style="font-size:11px;color:var(--text3);padding:8px 0">${title}: nessun segnale rilevante</div>`;
+    return `<div style="font-size:10px;font-weight:800;color:${color};letter-spacing:.7px;text-transform:uppercase;margin:12px 0 6px">${title}</div>` +
+      items.map(mkRow).join('');
+  };
+
+  popup.innerHTML =
+    `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+       <div style="font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.7px;text-transform:uppercase">🎯 Top Segnali Forti</div>
+       <div style="font-size:11px;color:${msColor};font-weight:700">Market Score: ${msLabel}</div>
+     </div>
+     <div style="font-size:10px;color:var(--text3);margin-bottom:12px;line-height:1.5">
+       🔥 = segnale forte (score alto + trend + mercato allineati) &nbsp;|&nbsp; ⚠️ = medio &nbsp;|&nbsp; ❄️ = debole
+     </div>` +
+    mkSection('📈 TOP 5 BUY — Accumula / Mantieni', '#4caf50', buySignals) +
+    mkSection('📉 TOP 5 SELL — Riduci / Cautela', '#ef5350', sellSignals) +
+    `<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
+       <button onclick="setSignalFilter('_strong');document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(255,111,0,.15);color:#ff6f00;border:1px solid rgba(255,111,0,.4);border-radius:8px;padding:4px 10px;cursor:pointer">🔥 Filtra Solo Forti</button>
+       <button onclick="setSignalFilter('_contratrend');document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(255,152,0,.12);color:#ff9800;border:1px solid rgba(255,152,0,.4);border-radius:8px;padding:4px 10px;cursor:pointer">⚡ Filtra Contro Trend</button>
+       <button onclick="setSignalFilter(null);document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(255,255,255,.05);color:var(--text3);border:1px solid var(--border);border-radius:8px;padding:4px 10px;cursor:pointer">✕ Reset filtro</button>
+     </div>`;
+
+  document.body.appendChild(popup);
+  const rect = btn.getBoundingClientRect();
+  const pw = 520;
+  let left = rect.right - pw;
+  if (left < 8) left = 8;
+  if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+  popup.style.top  = (rect.bottom + 8) + 'px';
+  popup.style.left = left + 'px';
+
+  const close = e => { if (!popup.contains(e.target) && e.target !== btn) { popup.remove(); document.removeEventListener('click', close); } };
   setTimeout(() => document.addEventListener('click', close), 50);
 }
 
@@ -3461,7 +3698,12 @@ function applyFilters(data) {
                      maBreadthFilter === 'ma200'  ? r._ma200 === true :
                      maBreadthFilter === 'maBoth' ? (r._ma50 === true && r._ma200 === true) :
                      true;
-    const sigMatch = !signalFilter ? true : (r._signal?.key === signalFilter);
+    const sigMatch = !signalFilter ? true
+      : signalFilter === '_strong'  ? r._signal?.strength === 'strong'
+      : signalFilter === '_medium'  ? r._signal?.strength === 'medium'
+      : signalFilter === '_weak'    ? r._signal?.strength === 'weak'
+      : signalFilter === '_contratrend' ? r._signal?.contratrend === true
+      : (r._signal?.key === signalFilter);
     return fMatch && sMatch && maMatch && sigMatch;
   });
 }
@@ -4297,12 +4539,18 @@ async function openModal(idx) {
   if (sigEl) {
     const sig = row._signal;
     if (sig) {
-      const mainPill = `<span class="sig-pill" style="background:${sig.color}22;color:${sig.color};border:1px solid ${sig.color}55;font-size:11px;padding:3px 11px" title="${sig.detail}">${sig.label}</span>`;
+      const strBadge = sig.icon ? `<span style="font-size:13px;margin-right:4px">${sig.icon}</span>` : '';
+      const mainPill = `<span class="sig-pill" style="background:${sig.color}22;color:${sig.color};border:1px solid ${sig.color}55;font-size:11px;padding:3px 11px" title="${sig.detail}">${strBadge}${sig.label}</span>`;
+      const strLabel = sig.label && sig.strengthLabel
+        ? `<span style="font-size:10px;font-weight:700;color:${sig.strength==='strong'?'#ff6f00':sig.strength==='medium'?'#ffc107':'#78909c'}">${sig.icon} ${sig.label}</span>` : '';
       const tagPills = (sig.tags && sig.tags.length)
         ? sig.tags.map(t => `<span style="font-size:10px;color:${t.color};font-weight:700;background:${t.color}18;border:1px solid ${t.color}44;border-radius:8px;padding:2px 7px;white-space:nowrap">${t.label}</span>`).join('')
         : '';
-      const detailTip = `<span style="font-size:10px;color:var(--text3);flex:1;text-align:right" title="${sig.detail}">ⓘ ${sig.detail.split(' · ').slice(1,3).join(' · ')}</span>`;
-      sigEl.innerHTML = mainPill + tagPills + detailTip;
+      const contra = sig.contratrend
+        ? `<span style="font-size:10px;font-weight:700;color:#ff9800;background:rgba(255,152,0,.12);border:1px solid rgba(255,152,0,.4);border-radius:8px;padding:2px 7px;white-space:nowrap">⚠ Contro trend di mercato</span>` : '';
+      const ctxTip = sig.context
+        ? `<span style="font-size:10px;color:var(--text3);font-style:italic">${sig.context}</span>` : '';
+      sigEl.innerHTML = mainPill + tagPills + contra + ctxTip;
       sigEl.style.display = 'flex';
     } else {
       sigEl.style.display = 'none';
@@ -4745,7 +4993,7 @@ buildThead = function() {
   tr.innerHTML = starTh + visibleCols.map(c => {
     const cls = sortCol === c.key ? (sortDir===1 ? 'sorted-asc':'sorted-desc') : '';
     const lbl = c.key === '_signal'
-      ? `Segnale<br>Operativo&thinsp;<span onclick="event.stopPropagation();showSignalLegend(this)" title="Come funzionano i segnali operativi" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span>&thinsp;<span onclick="event.stopPropagation();showSignalFilterMenu(this)" title="Filtra per segnale" style="cursor:pointer;font-size:13px;vertical-align:middle;user-select:none;${signalFilter?'color:var(--accent);font-weight:900':'opacity:.75'}">${signalFilter?'▼●':'▼'}</span>${signalFilter?`&thinsp;<span onclick="event.stopPropagation();setSignalFilter(null)" title="Rimuovi filtro segnale" style="cursor:pointer;font-size:11px;color:var(--red);vertical-align:middle">✕</span>`:''}`
+      ? `Segnale<br>Operativo&thinsp;<span onclick="event.stopPropagation();showSignalLegend(this)" title="Come funzionano i segnali operativi" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span>&thinsp;<span onclick="event.stopPropagation();showSignalFilterMenu(this)" title="Filtra per segnale" style="cursor:pointer;font-size:13px;vertical-align:middle;user-select:none;${signalFilter?'color:var(--accent);font-weight:900':'opacity:.75'}">${signalFilter?'▼●':'▼'}</span>&thinsp;<span onclick="event.stopPropagation();showTopSignals(this)" title="Top segnali forti — ranking" style="cursor:pointer;font-size:12px;opacity:.85;vertical-align:middle;user-select:none">🎯</span>${signalFilter?`&thinsp;<span onclick="event.stopPropagation();setSignalFilter(null)" title="Rimuovi filtro segnale" style="cursor:pointer;font-size:11px;color:var(--red);vertical-align:middle">✕</span>`:''}`
       : c.key === 'ma'
       ? `MM<br>50/200&thinsp;<span onclick="event.stopPropagation();showMaLegend(this)" title="Legenda" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span>`
       : c.key === '_momentum'
