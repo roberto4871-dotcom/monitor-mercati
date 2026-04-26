@@ -3657,7 +3657,8 @@ function updateBiasStrip(visibleRows) {
   else if (absDiff > 0.10) { strIcon='⚠️'; strLabel='Medio';  }
   else                      { strIcon='❄️'; strLabel='Debole'; }
 
-  // Market score rimane globale
+  // Conteggi della vista corrente
+  const nHold = data.filter(r => !['buy','reduce'].includes(r._signal.key)).length;
   const ms = getMarketScore();
   const msStr = ms !== null ? `${ms}/100` : '—';
 
@@ -3701,8 +3702,12 @@ function updateBiasStrip(visibleRows) {
      </div>
      <div class="bs-div"></div>
      <div style="flex-shrink:0">
-       <div style="font-size:8px;color:rgba(255,255,255,.6);font-weight:700;letter-spacing:1px;text-transform:uppercase">Market Score</div>
-       <div><span style="font-size:20px;font-weight:900;color:#fff">${msStr}</span></div>
+       <div style="font-size:8px;color:rgba(255,255,255,.6);font-weight:700;letter-spacing:1px;text-transform:uppercase">Asset in vista</div>
+       <div style="display:flex;gap:8px;align-items:baseline;margin-top:2px">
+         <span style="font-size:12px;font-weight:800;color:#a5d6a7">BUY ${nBuy}</span>
+         <span style="font-size:12px;font-weight:800;color:#ef9a9a">SELL ${nSell}</span>
+         <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.5)">HOLD ${nHold}</span>
+       </div>
      </div>
      <div class="bs-div"></div>
      <div style="flex:1;display:flex;align-items:center;gap:16px;min-width:0;flex-wrap:wrap">
