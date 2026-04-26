@@ -3371,7 +3371,7 @@ function showSignalFilterMenu(btn) {
 }
 
 // ═══════════════════════════════════════════════════
-//  TOP SEGNALI — ranking buy/sell più forti
+//  TOP SEGNALI — ranking buy/sell con filtro categoria + PDF
 // ═══════════════════════════════════════════════════
 function showTopSignals(btn) {
   const existing = document.getElementById('top-signals-popup');
@@ -3383,15 +3383,11 @@ function showTopSignals(btn) {
     position:'fixed', zIndex:'9999',
     background:'var(--bg2)', border:'1px solid var(--border)',
     borderRadius:'12px', padding:'0',
-    boxShadow:'0 8px 48px rgba(0,0,0,.7)', width:'600px', maxWidth:'96vw',
-    maxHeight:'88vh', display:'flex', flexDirection:'column',
+    boxShadow:'0 8px 48px rgba(0,0,0,.7)', width:'640px', maxWidth:'96vw',
+    maxHeight:'90vh', display:'flex', flexDirection:'column',
   });
 
   const ms = getMarketScore();
-  const msLabel = ms === null ? '—'
-    : ms >= 65 ? `${ms} — Mercato rialzista 🟢`
-    : ms >= 45 ? `${ms} — Mercato neutro 🟡`
-    :            `${ms} — Mercato ribassista 🔴`;
   const msColor = ms === null ? 'var(--text3)' : ms >= 65 ? '#4caf50' : ms >= 45 ? '#ffc107' : '#ef5350';
 
   const strOrd = {strong:3, medium:2, weak:1};
@@ -3410,23 +3406,31 @@ function showTopSignals(btn) {
       return sd !== 0 ? sd : (a._signal.rawScore||0) - (b._signal.rawScore||0);
     });
 
-  // Riga compatta nella tabella — cliccabile per aprire il grafico
+  // Stato corrente
+  let currentTab = 'buy';
+  let currentCat = null;  // null = tutte le categorie
+
+  // Categorie disponibili (unione buy+sell, ordinate per nome)
+  const allCats = [...new Set([...allBuy, ...allSell].map(r => r.a))].sort();
+
+  // Riga compatta
   const mkRow = (r, idx) => {
     const sig = r._signal;
     const rowIdx = rows.indexOf(r);
-    const name = (r.i || r.m || r.s).length > 28 ? (r.i || r.m || r.s).slice(0,26)+'…' : (r.i || r.m || r.s);
+    const name = (r.i || r.m || r.s);
+    const nameShort = name.length > 30 ? name.slice(0,28)+'…' : name;
     const score = sig.rawScore != null ? Math.round(sig.rawScore) : '—';
     const strColor = sig.strength === 'strong' ? '#ff6f00' : sig.strength === 'medium' ? '#ffc107' : '#78909c';
-    const bgAlt = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.025)';
-    const contra = sig.contratrend ? `<span title="Contro trend di mercato" style="color:#ff9800;font-size:10px">⚡</span>` : '';
-    const ctx = sig.context ? `<div style="font-size:9px;color:var(--text3);line-height:1.3;margin-top:1px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${sig.context}">${sig.context}</div>` : '';
+    const bgAlt = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,.02)';
+    const contra = sig.contratrend ? `<span style="color:${sig.strength==='weak'?'#ef5350':'#ff9800'};font-size:10px" title="Contro trend">⚡</span>` : '';
+    const ctx = sig.context ? `<div style="font-size:9px;color:var(--text3);line-height:1.3;margin-top:1px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sig.context}</div>` : '';
     return `<tr style="background:${bgAlt};cursor:pointer;transition:background .12s"
-        onmouseenter="this.style.background='rgba(255,255,255,.06)'"
-        onmouseleave="this.style.background='${bgAlt}'"
+        onmouseenter="this.style.background='rgba(255,255,255,.055)';this.style.boxShadow='inset 3px 0 0 var(--accent)'"
+        onmouseleave="this.style.background='${bgAlt}';this.style.boxShadow=''"
         onclick="document.getElementById('top-signals-popup')?.remove();openModal(${rowIdx})">
       <td style="padding:6px 8px;font-size:13px;text-align:center;vertical-align:middle">${sig.icon}</td>
       <td style="padding:6px 8px;vertical-align:middle">
-        <div style="font-size:11px;font-weight:700;color:var(--text)">${name} ${contra}</div>
+        <div style="font-size:11px;font-weight:700;color:var(--text)">${nameShort} ${contra}</div>
         ${ctx}
       </td>
       <td style="padding:6px 8px;font-size:9px;color:var(--text3);vertical-align:middle;white-space:nowrap">${r.a}</td>
@@ -3434,13 +3438,13 @@ function showTopSignals(btn) {
         <span style="font-size:12px;font-weight:900;color:${strColor}">${score}</span>
       </td>
       <td style="padding:6px 8px;vertical-align:middle;text-align:right">
-        <span style="background:${sig.color}22;color:${sig.color};border:1px solid ${sig.color}55;font-size:10px;font-weight:700;padding:2px 7px;border-radius:7px;white-space:nowrap">${sig.label}</span>
+        <span style="background:${sig.color}22;color:${sig.color};border:1px solid ${sig.color}55;font-size:10px;font-weight:700;padding:2px 8px;border-radius:7px;white-space:nowrap">${sig.label}</span>
       </td>
     </tr>`;
   };
 
   const mkTable = (items, emptyMsg) => {
-    if (!items.length) return `<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px">${emptyMsg}</div>`;
+    if (!items.length) return `<div style="padding:28px;text-align:center;color:var(--text3);font-size:12px">${emptyMsg}</div>`;
     return `<table style="width:100%;border-collapse:collapse">
       <thead><tr style="border-bottom:2px solid var(--border)">
         <th style="padding:5px 8px;font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.5px;text-align:center">FOR.</th>
@@ -3453,81 +3457,181 @@ function showTopSignals(btn) {
     </table>`;
   };
 
-  // Header fisso
+  // Re-render body in base a tab + categoria
+  const reRender = () => {
+    const src = currentTab === 'buy' ? allBuy : allSell;
+    const filtered = currentCat ? src.filter(r => r.a === currentCat) : src;
+    document.getElementById('ts-body').innerHTML = mkTable(filtered,
+      currentTab === 'buy' ? 'Nessun segnale BUY per questa selezione' : 'Nessun segnale SELL per questa selezione');
+    // Aggiorna pills categoria
+    popup.querySelectorAll('.ts-cat-pill').forEach(p => {
+      const active = p.dataset.cat === (currentCat || '__all__');
+      p.style.background = active ? 'rgba(255,215,0,.18)' : 'transparent';
+      p.style.color      = active ? 'var(--accent)'       : 'var(--text3)';
+      p.style.borderColor= active ? 'var(--accent)'       : 'var(--border)';
+      p.style.fontWeight = active ? '800'                  : '600';
+    });
+  };
+
+  // Export PDF
+  const exportPdf = () => {
+    const src = currentTab === 'buy' ? allBuy : allSell;
+    const filtered = currentCat ? src.filter(r => r.a === currentCat) : src;
+    const now = new Date().toLocaleString('it-IT');
+    const tabLabel = currentTab === 'buy' ? '📈 BUY' : '📉 SELL';
+    const catLabel = currentCat || 'Tutte le categorie';
+    const rows_html = filtered.map(r => {
+      const sig = r._signal;
+      const name = r.i || r.m || r.s;
+      const score = sig.rawScore != null ? Math.round(sig.rawScore) : '—';
+      const strIcon = sig.icon;
+      const strLabel = sig.strengthLabel || '';
+      const contra = sig.contratrend && sig.strength !== 'strong'
+        ? (sig.strength === 'weak' ? '⚡ Contro trend' : '⚡ Setup specul.') : '';
+      return `<tr>
+        <td>${strIcon} ${strLabel}</td>
+        <td style="font-weight:700">${name}</td>
+        <td style="color:#90a4ae;font-size:9px">${r.a}</td>
+        <td style="text-align:center;font-weight:900;color:${sig.strength==='strong'?'#ff6f00':sig.strength==='medium'?'#ffc107':'#90a4ae'}">${score}</td>
+        <td style="color:${sig.color};font-weight:700">${sig.label}</td>
+        <td style="color:#ff9800;font-size:9px">${contra}</td>
+      </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
+    <title>Market Compass — Segnali ${tabLabel}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      @page{size:A4;margin:12mm}
+      body{font-family:'Segoe UI',system-ui,sans-serif;background:#fff;color:#1a2332;font-size:11px}
+      .hdr{display:flex;align-items:baseline;justify-content:space-between;border-bottom:3px solid #1a237e;padding-bottom:8px;margin-bottom:14px}
+      .hdr-title{font-size:18px;font-weight:900;color:#1a237e;letter-spacing:1px}
+      .hdr-sub{font-size:11px;color:#546e7a}
+      .meta{display:flex;gap:20px;margin-bottom:14px;padding:8px 12px;background:#f5f7fa;border-radius:6px}
+      .meta-item{display:flex;flex-direction:column;gap:2px}
+      .meta-label{font-size:8px;font-weight:700;color:#90a4ae;text-transform:uppercase;letter-spacing:.5px}
+      .meta-value{font-size:12px;font-weight:700;color:#1a2332}
+      table{width:100%;border-collapse:collapse}
+      thead th{background:#1a237e;color:#ffd700;padding:6px 8px;font-size:9px;font-weight:700;text-align:left;letter-spacing:.5px;text-transform:uppercase}
+      tbody tr{border-bottom:1px solid #e8edf2}
+      tbody tr:nth-child(even){background:#f8fafc}
+      td{padding:7px 8px}
+      .footer{margin-top:16px;font-size:8px;color:#90a4ae;text-align:right;border-top:1px solid #e8edf2;padding-top:6px}
+    </style></head><body>
+    <div class="hdr">
+      <div>
+        <div class="hdr-title">🧭 Market Compass</div>
+        <div class="hdr-sub">Segnali Operativi — ${tabLabel} · ${catLabel}</div>
+      </div>
+      <div style="text-align:right;font-size:9px;color:#90a4ae">${now}</div>
+    </div>
+    <div class="meta">
+      <div class="meta-item"><div class="meta-label">Segnale</div><div class="meta-value">${tabLabel}</div></div>
+      <div class="meta-item"><div class="meta-label">Categoria</div><div class="meta-value">${catLabel}</div></div>
+      <div class="meta-item"><div class="meta-label">Totale asset</div><div class="meta-value">${filtered.length}</div></div>
+      ${ms !== null ? `<div class="meta-item"><div class="meta-label">Market Score</div><div class="meta-value">${ms}/100</div></div>` : ''}
+    </div>
+    <table>
+      <thead><tr>
+        <th>Forza</th><th>Asset</th><th>Categoria</th><th>Score</th><th>Segnale</th><th>Note</th>
+      </tr></thead>
+      <tbody>${rows_html}</tbody>
+    </table>
+    <div class="footer">Market Compass — dati a scopo informativo · Generato il ${now}</div>
+    <script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script>
+    </body></html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) { alert('Abilita i popup per esportare in PDF'); return; }
+    win.document.write(html);
+    win.document.close();
+  };
+
+  // ── Header ──────────────────────────────────────────────────────
   const header = document.createElement('div');
-  Object.assign(header.style, {
-    padding:'14px 18px 0', flexShrink:'0',
-  });
+  header.style.cssText = 'padding:14px 18px 0;flex-shrink:0';
   header.innerHTML =
     `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
        <div style="font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.6px;text-transform:uppercase">🎯 Segnali Operativi</div>
-       <div style="font-size:11px;color:${msColor};font-weight:700">Market Score ${msLabel}</div>
+       <div style="display:flex;align-items:center;gap:8px">
+         ${ms !== null ? `<span style="font-size:11px;color:${msColor};font-weight:700">Score ${ms}/100</span>` : ''}
+         <button onclick="window._tsPdf()" style="font-size:10px;font-weight:700;background:rgba(255,215,0,.12);color:var(--accent);border:1px solid rgba(255,215,0,.4);border-radius:8px;padding:3px 10px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='rgba(255,215,0,.22)'" onmouseleave="this.style.background='rgba(255,215,0,.12)'">⬇ PDF</button>
+         <span onclick="document.getElementById('top-signals-popup')?.remove()" style="cursor:pointer;font-size:16px;color:var(--text3);line-height:1;padding:2px 4px" title="Chiudi">✕</span>
+       </div>
      </div>
      <div style="display:flex;gap:0;border-bottom:2px solid var(--border)">
-       <button id="ts-tab-buy" onclick="tsSwitch('buy')" style="flex:1;padding:8px 0;font-size:11px;font-weight:800;background:rgba(76,175,80,.15);color:#4caf50;border:none;border-bottom:2px solid #4caf50;cursor:pointer;letter-spacing:.3px">
+       <button id="ts-tab-buy" onclick="window._tsTab('buy')" style="flex:1;padding:8px 0;font-size:11px;font-weight:800;background:rgba(76,175,80,.15);color:#4caf50;border:none;border-bottom:2px solid #4caf50;cursor:pointer;letter-spacing:.3px">
          📈 BUY <span style="background:#4caf50;color:#000;border-radius:10px;padding:0 6px;font-size:10px;margin-left:4px">${allBuy.length}</span>
        </button>
-       <button id="ts-tab-sell" onclick="tsSwitch('sell')" style="flex:1;padding:8px 0;font-size:11px;font-weight:800;background:transparent;color:var(--text3);border:none;border-bottom:2px solid transparent;cursor:pointer;letter-spacing:.3px">
-         📉 SELL <span style="background:var(--bg3);color:var(--text3);border-radius:10px;padding:0 6px;font-size:10px;margin-left:4px">${allSell.length}</span>
+       <button id="ts-tab-sell" onclick="window._tsTab('sell')" style="flex:1;padding:8px 0;font-size:11px;font-weight:800;background:transparent;color:var(--text3);border:none;border-bottom:2px solid transparent;cursor:pointer;letter-spacing:.3px">
+         📉 SELL <span id="ts-sell-badge" style="background:var(--bg3);color:var(--text3);border-radius:10px;padding:0 6px;font-size:10px;margin-left:4px">${allSell.length}</span>
        </button>
      </div>`;
   popup.appendChild(header);
 
-  // Body scrollabile
+  // ── Filtro categorie (scroll orizzontale) ───────────────────────
+  const catBar = document.createElement('div');
+  catBar.style.cssText = 'display:flex;gap:5px;padding:8px 18px;overflow-x:auto;flex-shrink:0;border-bottom:1px solid var(--border);scrollbar-width:none';
+  const mkCatPill = (cat, label) =>
+    `<button class="ts-cat-pill" data-cat="${cat}"
+       onclick="window._tsCat('${cat}')"
+       style="flex-shrink:0;font-size:10px;font-weight:${cat==='__all__'?'800':'600'};padding:3px 11px;border-radius:20px;
+              border:1px solid ${cat==='__all__'?'var(--accent)':'var(--border)'};
+              background:${cat==='__all__'?'rgba(255,215,0,.18)':'transparent'};
+              color:${cat==='__all__'?'var(--accent)':'var(--text3)'};cursor:pointer;white-space:nowrap;transition:all .12s">
+       ${label}
+     </button>`;
+  catBar.innerHTML = mkCatPill('__all__', 'Tutti') +
+    allCats.map(c => {
+      const bCnt = allBuy.filter(r => r.a === c).length;
+      const sCnt = allSell.filter(r => r.a === c).length;
+      const badge = bCnt + sCnt > 0 ? ` <span style="opacity:.55;font-size:9px">${bCnt+sCnt}</span>` : '';
+      return mkCatPill(c, c + badge);
+    }).join('');
+  popup.appendChild(catBar);
+
+  // ── Body scrollabile ────────────────────────────────────────────
   const body = document.createElement('div');
-  Object.assign(body.style, {flex:'1', overflowY:'auto', padding:'0'});
+  body.style.cssText = 'flex:1;overflow-y:auto;padding:0';
   body.id = 'ts-body';
   body.innerHTML = mkTable(allBuy, 'Nessun asset in BUY al momento');
   popup.appendChild(body);
 
-  // Footer con filtri rapidi
-  const footer = document.createElement('div');
-  Object.assign(footer.style, {
-    padding:'10px 18px', flexShrink:'0', borderTop:'1px solid var(--border)',
-    display:'flex', gap:'6px', flexWrap:'wrap', background:'var(--bg2)', borderRadius:'0 0 12px 12px',
-  });
-  footer.innerHTML =
-    `<span style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.5px;text-transform:uppercase;align-self:center">Filtra tabella:</span>
-     <button onclick="setSignalFilter('_strong');document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(255,111,0,.15);color:#ff6f00;border:1px solid rgba(255,111,0,.4);border-radius:8px;padding:3px 9px;cursor:pointer">🔥 Solo Forti</button>
-     <button onclick="setSignalFilter('buy');document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(76,175,80,.12);color:#4caf50;border:1px solid rgba(76,175,80,.4);border-radius:8px;padding:3px 9px;cursor:pointer">📈 Solo Buy</button>
-     <button onclick="setSignalFilter('reduce');document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(239,83,80,.12);color:#ef5350;border:1px solid rgba(239,83,80,.4);border-radius:8px;padding:3px 9px;cursor:pointer">📉 Solo Sell</button>
-     <button onclick="setSignalFilter('_contratrend');document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(255,152,0,.12);color:#ff9800;border:1px solid rgba(255,152,0,.4);border-radius:8px;padding:3px 9px;cursor:pointer">⚡ Contro Trend</button>
-     <button onclick="setSignalFilter(null);document.getElementById('top-signals-popup')?.remove()" style="font-size:10px;font-weight:700;background:rgba(255,255,255,.05);color:var(--text3);border:1px solid var(--border);border-radius:8px;padding:3px 9px;cursor:pointer">✕ Reset</button>
-     <div style="width:100%;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-       <div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px">Come si legge</div>
-       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px">
-         <div style="font-size:10px;color:var(--text2)"><span style="color:#4caf50;font-weight:700">BUY</span> — trend rialzista su più periodi, sopra le medie mobili, momentum forte</div>
-         <div style="font-size:10px;color:var(--text2)"><span style="color:#ef5350;font-weight:700">SELL</span> — trend ribassista, sotto le medie, momentum negativo</div>
-         <div style="font-size:10px;color:var(--text2)"><span style="color:#ff6f00;font-weight:700">🔥 Forte</span> — alta convinzione: segnale chiaro + mercato allineato</div>
-         <div style="font-size:10px;color:var(--text2)"><span style="color:#ffc107;font-weight:700">⚠️ Medio</span> — segnale presente ma non al massimo della convinzione</div>
-       </div>
-     </div>`;
-  popup.appendChild(footer);
-
-  // Tab switch
-  window.tsSwitch = (tab) => {
-    const bd = document.getElementById('ts-body');
+  // ── Callbacks globali (closure) ─────────────────────────────────
+  window._tsTab = (tab) => {
+    currentTab = tab;
+    currentCat = null;  // reset categoria quando si cambia tab
     const tb = document.getElementById('ts-tab-buy');
     const ts = document.getElementById('ts-tab-sell');
     if (tab === 'buy') {
-      bd.innerHTML = mkTable(allBuy, 'Nessun asset con segnale BUY al momento');
       Object.assign(tb.style, {background:'rgba(76,175,80,.15)',color:'#4caf50',borderBottom:'2px solid #4caf50'});
       Object.assign(ts.style, {background:'transparent',color:'var(--text3)',borderBottom:'2px solid transparent'});
     } else {
-      bd.innerHTML = mkTable(allSell, 'Nessun asset con segnale SELL al momento');
       Object.assign(ts.style, {background:'rgba(239,83,80,.12)',color:'#ef5350',borderBottom:'2px solid #ef5350'});
       Object.assign(tb.style, {background:'transparent',color:'var(--text3)',borderBottom:'2px solid transparent'});
     }
+    reRender();
   };
+  window._tsCat = (cat) => {
+    currentCat = cat === '__all__' ? null : cat;
+    reRender();
+  };
+  window._tsPdf = exportPdf;
 
+  // Posizionamento
   document.body.appendChild(popup);
   const rect = btn.getBoundingClientRect();
-  const pw = 600;
+  const pw = 640;
   let left = rect.right - pw;
   if (left < 8) left = 8;
   if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
-  const top = Math.min(rect.bottom + 8, window.innerHeight - 500);
-  popup.style.top  = top + 'px';
+
+  const ph = popup.offsetHeight;
+  const spaceBelow = window.innerHeight - rect.bottom - 12;
+  const top = spaceBelow >= Math.min(ph, window.innerHeight * 0.7)
+    ? rect.bottom + 8
+    : Math.max(8, rect.top - Math.min(ph, window.innerHeight - 16) - 8);
+  popup.style.top  = Math.max(8, top) + 'px';
   popup.style.left = left + 'px';
 
   const close = e => { if (!popup.contains(e.target) && e.target !== btn) { popup.remove(); document.removeEventListener('click', close); } };
