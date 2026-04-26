@@ -259,7 +259,10 @@ td.ora{color:#64b5f6;font-size:10px}
 .mkt-badge.closed { background:rgba(96,125,139,.15); color:#546e7a; border:1px solid rgba(96,125,139,.25); }
 
 /* ── REGIME BADGE ──────────────────────────────────── */
-
+#regime-badge{display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 18px;border-radius:12px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.12);transition:background .5s,border-color .5s;cursor:default;min-width:90px;text-align:center}
+#regime-badge .rg-title{font-size:8px;color:rgba(255,255,255,.45);font-weight:700;letter-spacing:1.2px;text-transform:uppercase}
+#regime-badge .rg-icon{font-size:24px;line-height:1.15}
+#regime-badge .rg-label{font-size:11px;font-weight:900;letter-spacing:.8px;transition:color .5s}
 
 /* ── MODAL TABS ─────────────────────────────────── */
 .modal-tabs{display:flex;background:var(--bg3);border-bottom:2px solid var(--border);padding:0 8px;flex-shrink:0;overflow-x:auto;scrollbar-width:none}
@@ -596,7 +599,7 @@ body.light .cal-item{background:var(--bg3)}
     </div>
   <div class="modal-resize-handle" id="modal-resize-handle"></div>
     <div class="modal-stats" id="modal-stats"></div>
-    <div id="modal-signal" style="display:none;align-items:center;flex-wrap:wrap;gap:6px;padding:6px 18px 8px;border-bottom:1px solid var(--border)"></div>
+    <div id="modal-signal" style="display:none"></div>
 
     <!-- ─ Tab bar ─ -->
     <div class="modal-tabs">
@@ -696,6 +699,11 @@ body.light .cal-item{background:var(--bg3)}
     <h1>Monitor Mercati</h1>
     <p>Dashboard Finanziaria — Dati Live Yahoo Finance</p>
     <div class="markets-bar" id="markets-bar"></div>
+  </div>
+  <div id="regime-badge" title="Regime globale di mercato: VIX + Breadth + SP500 vs MM200">
+    <div class="rg-title">Regime</div>
+    <div class="rg-icon">⚪</div>
+    <div class="rg-label" style="color:rgba(255,255,255,.35)">—</div>
   </div>
   <div class="header-right" style="display:flex;align-items:flex-start;gap:12px">
     <div>
@@ -2264,6 +2272,8 @@ async function loadMA() {
   });
   // Aggiorna il Market Breadth Panel dopo aver caricato tutte le MA
   updateBreadthPanel();
+  // Regime globale dipende da _ma200 → aggiorna dopo MA
+  updateGlobalRegime();
 }
 
 // ═══════════════════════════════════════════════════
@@ -2368,6 +2378,64 @@ function getMarketScore() {
   let ws = 0, wt = 0;
   for (const [v,w] of comps) { if (v !== null) { ws += v*w; wt += w; } }
   return wt > 0 ? Math.round(ws / wt) : null;
+}
+
+// ── REGIME GLOBALE — 🟢 RISK ON / 🟡 NEUTRAL / 🔴 RISK OFF ────────
+// Score: +1 per ogni condizione soddisfatta (VIX<18, breadth>55%, SP500>MM200)
+// 3 → RISK ON  |  2 → NEUTRAL+  |  1 → NEUTRAL−  |  0 → RISK OFF
+function updateGlobalRegime() {
+  const badge = document.getElementById('regime-badge');
+  if (!badge) return;
+
+  // Componente 1: VIX < 18 → +1
+  const vixRow = rows.find(r => r.a === 'VOLATILITA');
+  const vix    = vixRow?.valore ?? null;
+  const vixPt  = vix !== null ? (vix < 18 ? 1 : 0) : null;
+
+  // Componente 2: Breadth > 55% (% asset sopra MM200) → +1
+  const maRows  = rows.filter(r => r._ma200 !== null && r._ma200 !== undefined && !r._loading && !r._err);
+  const breadth = maRows.length > 0 ? (maRows.filter(r => r._ma200 === true).length / maRows.length * 100) : null;
+  const breadthPt = breadth !== null ? (breadth > 55 ? 1 : 0) : null;
+
+  // Componente 3: SP500 sopra MM200 → +1
+  const spRow = rows.find(r => r.s === '^GSPC');
+  const spAboveMa200 = spRow?._ma200 ?? null;
+  const spPt = spAboveMa200 !== null ? (spAboveMa200 === true ? 1 : 0) : null;
+
+  // Totale (solo componenti disponibili)
+  const pts = [vixPt, breadthPt, spPt].filter(v => v !== null);
+  if (!pts.length) {
+    badge.innerHTML = '<div class="rg-title">Regime</div><div class="rg-icon">⚪</div><div class="rg-label" style="color:rgba(255,255,255,.35)">—</div>';
+    badge.style.background   = 'rgba(0,0,0,.25)';
+    badge.style.borderColor  = 'rgba(255,255,255,.12)';
+    return;
+  }
+  const total = pts.reduce((s, v) => s + v, 0);
+
+  let icon, label, color, bg;
+  if      (total === 3) { icon='🟢'; label='RISK ON';   color='#66bb6a'; bg='rgba(46,125,50,.35)';  }
+  else if (total === 2) { icon='🟡'; label='NEUTRAL +'; color='#ffd54f'; bg='rgba(245,127,23,.25)'; }
+  else if (total === 1) { icon='🟠'; label='NEUTRAL −'; color='#ff8a65'; bg='rgba(183,81,0,.25)';   }
+  else                  { icon='🔴'; label='RISK OFF';  color='#ef5350'; bg='rgba(183,28,28,.35)';  }
+
+  // Market Score → FORTE / MEDIO / DEBOLE (numero nascosto, qualità visibile)
+  const ms = getMarketScore();
+  let msLabel='', msColor='';
+  if (ms !== null) {
+    if      (ms >= 65) { msLabel='● Forte';  msColor='#66bb6a'; }
+    else if (ms >= 40) { msLabel='● Medio';  msColor='#ffd54f'; }
+    else               { msLabel='● Debole'; msColor='#ef5350'; }
+  }
+  const msHTML = msLabel ? `<div style="font-size:9px;font-weight:700;color:${msColor};letter-spacing:.3px;margin-top:1px">${msLabel}</div>` : '';
+
+  badge.style.background  = bg;
+  badge.style.borderColor = color + '55';
+  badge.innerHTML = `
+    <div class="rg-title">Regime</div>
+    <div class="rg-icon">${icon}</div>
+    <div class="rg-label" style="color:${color}">${label}</div>
+    ${msHTML}
+  `;
 }
 
 // ── FORZA DEL SEGNALE — 🔥 Forte / ⚠️ Medio / ❄️ Debole ──────────
@@ -2634,6 +2702,7 @@ function computeMomentumScores() {
     rows[idx]._action   = deriveAction(rows[idx]._signal);
     updateRow(idx);
   });
+  updateGlobalRegime();
 }
 
 // ═══════════════════════════════════════════════════
@@ -4643,6 +4712,103 @@ function drawRelStrength(rsPairs) {
   chart.timeScale().fitContent();
 }
 
+// ── CONTESTO STRUTTURATO MODAL — Trend / Posizione / Macro ──────────
+function buildModalSignalHTML(row) {
+  const sig = row._signal;
+  if (!sig) return '';
+
+  // Mappa chiave → etichetta direzione (label è stato sovrascritto da strength)
+  const DIRECTION_LABELS = {
+    'buy':'🟢 Accumula','hold':'🔵 Mantieni','neutral':'⚪ Neutro',
+    'caution':'🟡 Cautela','reduce':'🔴 Riduci',
+    'low-fear':'😌 Bassa Paura','normal':'😐 Normale',
+    'elevated':'😟 Elevata','high-fear':'😨 Alta Paura','crisis':'😱 Crisi',
+  };
+  const dirLabel  = DIRECTION_LABELS[sig.key] || sig.key;
+  const strColor  = sig.strength==='strong' ? '#ff6f00' : sig.strength==='medium' ? '#ffc107' : '#78909c';
+  const rawScore  = sig.rawScore ?? 50;
+
+  // ── Pill principale (direzione) + badge forza ──────────────────
+  const pill = `<span style="background:${sig.color}22;color:${sig.color};border:1px solid ${sig.color}55;font-size:13px;font-weight:900;padding:5px 16px;border-radius:10px;letter-spacing:.3px">${dirLabel}</span>`;
+  const str  = `<span style="color:${strColor};font-size:12px;font-weight:700;padding:4px 10px;border:1px solid ${strColor}44;border-radius:8px;background:${strColor}11">${sig.icon} ${sig.label}</span>`;
+  const bar  = `<div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+      <div style="width:60px;height:5px;border-radius:3px;background:rgba(255,255,255,.08)">
+        <div style="height:5px;border-radius:3px;width:${rawScore}%;background:${sig.color};transition:width .5s"></div>
+      </div>
+      <span style="font-size:9px;color:var(--text3);font-weight:600;white-space:nowrap">${rawScore}/100</span>
+    </div>`;
+
+  // ── Trend ──────────────────────────────────────────────────────
+  const tc = computeTrendConsistency(row);
+  const trendVal = tc
+    ? `<span style="color:${tc.color};font-weight:700;font-size:11px">${tc.label}</span>`
+    : `<span style="color:var(--text3);font-size:11px">—</span>`;
+
+  // ── Posizione vs medie mobili ──────────────────────────────────
+  const maItems = [];
+  if (row._ma200 !== null && row._ma200 !== undefined)
+    maItems.push(row._ma200
+      ? `<span style="color:#4caf50;font-weight:700;font-size:11px">🟢 sopra MM200</span>`
+      : `<span style="color:#ef5350;font-weight:700;font-size:11px">🔴 sotto MM200</span>`);
+  if (row._ma50 !== null && row._ma50 !== undefined)
+    maItems.push(row._ma50
+      ? `<span style="color:#8bc34a;font-size:11px">sopra MM50</span>`
+      : `<span style="color:#ff7043;font-size:11px">sotto MM50</span>`);
+  const posVal = maItems.length
+    ? maItems.join(`<span style="color:var(--text3)"> · </span>`)
+    : `<span style="color:var(--text3);font-size:11px">—</span>`;
+
+  // ── Macro ──────────────────────────────────────────────────────
+  const macroItems = [];
+  const vix = getVixLevel();
+  if (vix !== null) {
+    const vl = vix < 18 ? ['basso','#4caf50'] : vix > 28 ? ['elevato','#ef5350'] : ['moderato','#ffc107'];
+    macroItems.push(`<span style="color:${vl[1]};font-weight:700;font-size:11px">VIX ${vix.toFixed(1)} — ${vl[0]}</span>`);
+  }
+  // Regime globale dal badge
+  const regimeBadge = document.getElementById('regime-badge');
+  const regimeLabel = regimeBadge?.querySelector('.rg-label')?.textContent?.trim();
+  if (regimeLabel && regimeLabel !== '—') {
+    const rc = regimeLabel.startsWith('RISK ON') ? '#66bb6a' : regimeLabel.startsWith('RISK OFF') ? '#ef5350' : '#ffd54f';
+    macroItems.push(`<span style="color:${rc};font-size:11px">${regimeLabel}</span>`);
+  }
+  // Bond: curva rendimenti
+  const BOND_C = new Set(['INDICE OBBLIGAZIONARIO','ETF OBB. MASTER']);
+  if (BOND_C.has(row.a)) {
+    const spread = getYieldCurveSpread();
+    if (spread !== null) {
+      const yc = spread > 0.5 ? ['curva normale','#4caf50'] : spread < 0 ? ['curva invertita','#ef5350'] : ['curva piatta','#ffc107'];
+      macroItems.push(`<span style="color:${yc[1]};font-size:11px">${yc[0]}</span>`);
+    }
+    const cuts  = CB_RATES.filter(c => c.trend === 'cut').length;
+    const hikes = CB_RATES.filter(c => c.trend === 'hike').length;
+    if (cuts > hikes)  macroItems.push(`<span style="color:#4caf50;font-size:11px">banche in taglio</span>`);
+    if (hikes > cuts)  macroItems.push(`<span style="color:#ef5350;font-size:11px">banche in rialzo</span>`);
+  }
+  const macroVal = macroItems.length
+    ? macroItems.join(`<span style="color:var(--text3)"> · </span>`)
+    : `<span style="color:var(--text3);font-size:11px">—</span>`;
+
+  // ── Griglia strutturata ────────────────────────────────────────
+  const row_ = (lbl, val) => `
+    <div style="display:contents">
+      <span style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;padding:3px 0">${lbl}</span>
+      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:3px 0">${val}</div>
+    </div>`;
+
+  return `
+    <div style="padding:10px 18px 12px;border-bottom:1px solid var(--border);background:${sig.color}08">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        ${pill}${str}${bar}
+      </div>
+      <div style="display:grid;grid-template-columns:65px 1fr;gap:2px 10px;align-items:start">
+        ${row_('Trend',    trendVal)}
+        ${row_('Posizione',posVal)}
+        ${row_('Macro',    macroVal)}
+      </div>
+    </div>`;
+}
+
 // Configurazione periodi: period e interval per yfinance
 const PERIOD_CFG = {
   '1M':  { src:'hist',  slice: -20  },               // da dati già caricati
@@ -4700,23 +4866,14 @@ async function openModal(idx) {
      <span class="stat-value ${s.color}">${s.value}</span></div>`
   ).join('');
 
-  // Segnale Operativo badge sotto le stats
+  // Segnale Operativo — Contesto strutturato (Trend / Posizione / Macro)
   const sigEl = document.getElementById('modal-signal');
   if (sigEl) {
-    const sig = row._signal;
-    if (sig) {
-      const strBadge = sig.icon ? `<span style="font-size:13px;margin-right:4px">${sig.icon}</span>` : '';
-      const mainPill = `<span class="sig-pill" style="background:${sig.color}22;color:${sig.color};border:1px solid ${sig.color}55;font-size:11px;padding:3px 11px" title="${sig.detail}">${strBadge}${sig.label}</span>`;
-      const strLabel = sig.label && sig.strengthLabel
-        ? `<span style="font-size:10px;font-weight:700;color:${sig.strength==='strong'?'#ff6f00':sig.strength==='medium'?'#ffc107':'#78909c'}">${sig.icon} ${sig.label}</span>` : '';
-      const tagPills = (sig.tags && sig.tags.length)
-        ? sig.tags.map(t => `<span style="font-size:10px;color:${t.color};font-weight:700;background:${t.color}18;border:1px solid ${t.color}44;border-radius:8px;padding:2px 7px;white-space:nowrap">${t.label}</span>`).join('')
-        : '';
-      const contra = '';
-      const ctxTip = sig.context
-        ? `<span style="font-size:10px;color:var(--text3);font-style:italic">${sig.context}</span>` : '';
-      sigEl.innerHTML = mainPill + tagPills + contra + ctxTip;
-      sigEl.style.display = 'flex';
+    const html = buildModalSignalHTML(row);
+    if (html) {
+      sigEl.innerHTML       = html;
+      sigEl.style.display   = 'block';
+      sigEl.style.padding   = '0';
     } else {
       sigEl.style.display = 'none';
     }
