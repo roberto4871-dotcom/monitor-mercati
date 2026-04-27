@@ -4079,13 +4079,22 @@ function updateBiasStrip(visibleRows) {
        <div style="font-size:44px;font-weight:900;color:#fff;letter-spacing:-1px;line-height:1.05">${biasLabel}</div>
      </div>
      <div class="bs-div"></div>
-     <!-- ② Distribuzione -->
+     <!-- ② Segnali -->
      <div style="flex-shrink:0">
-       <div style="font-size:9px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:5px">Distribuzione</div>
-       <div style="display:flex;align-items:center;gap:14px">
-         <span style="font-size:20px;font-weight:900;color:#fff">▲ ${nBuy}</span>
-         <span style="font-size:20px;font-weight:900;color:rgba(255,255,255,.65)">▼ ${nSell}</span>
-         <span style="font-size:13px;color:rgba(255,255,255,.35);font-weight:600">— ${nHold}</span>
+       <div style="font-size:9px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Segnali</div>
+       <div style="display:flex;align-items:center;gap:16px">
+         <div style="text-align:center">
+           <div style="font-size:22px;font-weight:900;color:#a5d6a7;line-height:1">${nBuy}</div>
+           <div style="font-size:8px;font-weight:800;color:rgba(165,214,167,.7);letter-spacing:.8px;margin-top:1px">BUY</div>
+         </div>
+         <div style="text-align:center">
+           <div style="font-size:22px;font-weight:900;color:#ef9a9a;line-height:1">${nSell}</div>
+           <div style="font-size:8px;font-weight:800;color:rgba(239,154,154,.7);letter-spacing:.8px;margin-top:1px">SELL</div>
+         </div>
+         <div style="text-align:center">
+           <div style="font-size:22px;font-weight:900;color:rgba(255,255,255,.3);line-height:1">${nHold}</div>
+           <div style="font-size:8px;font-weight:800;color:rgba(255,255,255,.2);letter-spacing:.8px;margin-top:1px">NEUTRI</div>
+         </div>
        </div>
      </div>
      <div class="bs-div"></div>
