@@ -4139,7 +4139,11 @@ function renderTable() {
   const screened = doScreeningFilter(filtered);
   const sorted   = applySort(screened);
   buildRows(sorted);
-  updateBiasStrip(rows); // sempre tutti i dati, indipendente dal filtro attivo
+  // Strip: applica categoria/gruppo ma NON il filtro segnale (evita che cambi colore al click BUY/SELL)
+  const _sf = signalFilter; signalFilter = null;
+  const stripRows = applySort(doScreeningFilter(applyFilters(rows)));
+  signalFilter = _sf;
+  updateBiasStrip(stripRows);
 }
 
 function updateRow(idx) {
