@@ -4139,7 +4139,7 @@ function renderTable() {
   const screened = doScreeningFilter(filtered);
   const sorted   = applySort(screened);
   buildRows(sorted);
-  updateBiasStrip(sorted);
+  updateBiasStrip(rows); // sempre tutti i dati, indipendente dal filtro attivo
 }
 
 function updateRow(idx) {
