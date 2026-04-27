@@ -4080,6 +4080,23 @@ function updateBiasStrip(visibleRows) {
 
   strip.style.background = biasColor;
   strip.style.display    = 'flex';
+
+  // Genera le card segnali senza onclick inline (evita problemi con template annidati)
+  const bsCards = [
+    { key:'buy',      n:nBuy,  numColor:'#a5d6a7',              lblColor:'rgba(165,214,167,.7)',    label:'BUY'    },
+    { key:'reduce',   n:nSell, numColor:'#ef9a9a',              lblColor:'rgba(239,154,154,.7)',    label:'SELL'   },
+    { key:'_neutral', n:nHold, numColor:'rgba(255,255,255,.35)',lblColor:'rgba(255,255,255,.22)',   label:'NEUTRI' },
+  ].map(({key, n, numColor, lblColor, label}) => {
+    const isActive = signalFilter === key;
+    const bg = isActive
+      ? 'background:rgba(255,255,255,.18);box-shadow:0 0 0 1.5px rgba(255,255,255,.45)'
+      : 'background:rgba(255,255,255,.06)';
+    return `<div class="bs-card" data-bskey="${key}" title="Filtra: ${label}" style="text-align:center;cursor:pointer;padding:5px 10px;border-radius:8px;transition:background .15s,box-shadow .15s;${bg}">
+      <div style="font-size:22px;font-weight:900;color:${numColor};line-height:1">${n}</div>
+      <div style="font-size:8px;font-weight:800;color:${lblColor};letter-spacing:.8px;margin-top:2px">${label}</div>
+    </div>`;
+  }).join('');
+
   strip.innerHTML =
     `<!-- ① BIAS — dominante -->
      <div style="flex-shrink:0;min-width:130px">
@@ -4090,19 +4107,7 @@ function updateBiasStrip(visibleRows) {
      <!-- ② Segnali -->
      <div style="flex-shrink:0">
        <div style="font-size:9px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Segnali</div>
-       <div style="display:flex;align-items:center;gap:10px">
-         ${[
-           { key:'buy',      n:nBuy,  numColor:'#a5d6a7', lblColor:'rgba(165,214,167,.7)', label:'BUY'    },
-           { key:'reduce',   n:nSell, numColor:'#ef9a9a', lblColor:'rgba(239,154,154,.7)', label:'SELL'   },
-           { key:'_neutral', n:nHold, numColor:'rgba(255,255,255,.35)', lblColor:'rgba(255,255,255,.22)', label:'NEUTRI' },
-         ].map(({key, n, numColor, lblColor, label}) => {
-           const isActive = signalFilter === key;
-           return `<div onclick="window._bsFilter('${key}')" title="Filtra tabella: ${label}" style="text-align:center;cursor:pointer;padding:5px 10px;border-radius:8px;transition:background .15s;${isActive ? 'background:rgba(255,255,255,.18);box-shadow:0 0 0 1.5px rgba(255,255,255,.45)' : 'background:rgba(255,255,255,.06)'}">
-             <div style="font-size:22px;font-weight:900;color:${numColor};line-height:1">${n}</div>
-             <div style="font-size:8px;font-weight:800;color:${lblColor};letter-spacing:.8px;margin-top:2px">${label}</div>
-           </div>`;
-         }).join('')}
-       </div>
+       <div style="display:flex;align-items:center;gap:10px">${bsCards}</div>
      </div>
      <div class="bs-div"></div>
      <!-- ③ Top segnali -->
@@ -4116,6 +4121,16 @@ function updateBiasStrip(visibleRows) {
          <div>${sellLine}</div>
        </div>
      </div>`;
+
+  // Aggiungo listener dopo aver settato l'innerHTML
+  strip.querySelectorAll('.bs-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const key = card.dataset.bskey;
+      setSignalFilter(signalFilter === key ? null : key);
+      const tbl = document.querySelector('.table-wrapper');
+      if (tbl) tbl.scrollIntoView({ behavior:'smooth', block:'start' });
+    });
+  });
 }
 
 function renderTable() {
