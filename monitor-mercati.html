@@ -6360,15 +6360,18 @@ async function loadPerformance(row) {
       fetch(`/weekly/${encodeURIComponent(row.s)}`).then(r => r.json()),
     ]);
     let html = '';
-    if (!rm.error) {
+    if (!rm.error && rm.years && Array.isArray(rm.years) && rm.years.length) {
       html += '<div class="perf-section-title">Rendimenti Mensili</div>';
       html += buildMonthlyTable(rm);
+    } else {
+      html += '<div class="perf-section-title">Rendimenti Mensili</div>';
+      html += `<div style="color:var(--text3);font-size:12px;padding:12px 0">${rm.error || 'Dati mensili non disponibili per questo asset'}</div>`;
     }
     html += '<div class="perf-section-title" style="margin-top:20px">Rendimenti Settimanali</div>';
-    if (!rw.error) {
+    if (!rw.error && rw.data) {
       html += '<div class="weekly-scroll">' + buildWeeklyTable(rw) + '</div>';
     } else {
-      html += `<div style="color:var(--red);font-size:11px">⚠ ${rw.error}</div>`;
+      html += `<div style="color:var(--text3);font-size:12px;padding:12px 0">${rw.error || 'Dati settimanali non disponibili'}</div>`;
     }
     el.innerHTML = html;
     el.dataset.loaded = '1';
@@ -6388,6 +6391,7 @@ function mretClass(v) {
 }
 
 function buildMonthlyTable(d) {
+  if (!d || !Array.isArray(d.years) || !d.years.length) return '<div style="color:var(--text3);font-size:12px;padding:12px 0">Dati non disponibili</div>';
   const years = d.years.slice().reverse();
   let html = '<table class="monthly-table"><thead><tr><th>Anno</th>';
   MONTHS_IT.forEach(m => html += `<th>${m}</th>`);
