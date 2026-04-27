@@ -3250,13 +3250,6 @@ function setSignalFilter(key) {
   buildThead(); // aggiorna indicatore attivo nell'header
 }
 
-// Toggle dal bias strip: secondo click toglie il filtro
-window._bsFilter = function(key) {
-  setSignalFilter(signalFilter === key ? null : key);
-  // scroll alla tabella per vedere il risultato
-  const tbl = document.querySelector('.table-wrap');
-  if (tbl) tbl.scrollIntoView({ behavior:'smooth', block:'start' });
-};
 
 function showSignalFilterMenu(btn) {
   const existing = document.getElementById('signal-filter-popup');
@@ -4081,21 +4074,16 @@ function updateBiasStrip(visibleRows) {
   strip.style.background = biasColor;
   strip.style.display    = 'flex';
 
-  // Genera le card segnali senza onclick inline (evita problemi con template annidati)
   const bsCards = [
-    { key:'buy',      n:nBuy,  numColor:'#a5d6a7',              lblColor:'rgba(165,214,167,.7)',    label:'BUY'    },
-    { key:'reduce',   n:nSell, numColor:'#ef9a9a',              lblColor:'rgba(239,154,154,.7)',    label:'SELL'   },
-    { key:'_neutral', n:nHold, numColor:'rgba(255,255,255,.35)',lblColor:'rgba(255,255,255,.22)',   label:'NEUTRI' },
-  ].map(({key, n, numColor, lblColor, label}) => {
-    const isActive = signalFilter === key;
-    const bg = isActive
-      ? 'background:rgba(255,255,255,.18);box-shadow:0 0 0 1.5px rgba(255,255,255,.45)'
-      : 'background:rgba(255,255,255,.06)';
-    return `<div class="bs-card" data-bskey="${key}" title="Filtra: ${label}" style="text-align:center;cursor:pointer;padding:5px 10px;border-radius:8px;transition:background .15s,box-shadow .15s;${bg}">
+    { n:nBuy,  numColor:'#a5d6a7',              lblColor:'rgba(165,214,167,.7)',    label:'BUY'    },
+    { n:nSell, numColor:'#ef9a9a',              lblColor:'rgba(239,154,154,.7)',    label:'SELL'   },
+    { n:nHold, numColor:'rgba(255,255,255,.35)',lblColor:'rgba(255,255,255,.22)',   label:'NEUTRI' },
+  ].map(({n, numColor, lblColor, label}) =>
+    `<div style="text-align:center;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.06)">
       <div style="font-size:22px;font-weight:900;color:${numColor};line-height:1">${n}</div>
       <div style="font-size:8px;font-weight:800;color:${lblColor};letter-spacing:.8px;margin-top:2px">${label}</div>
-    </div>`;
-  }).join('');
+    </div>`
+  ).join('');
 
   strip.innerHTML =
     `<!-- ① BIAS — dominante -->
@@ -4122,23 +4110,6 @@ function updateBiasStrip(visibleRows) {
        </div>
      </div>`;
 
-  // Click: aggiorna SOLO tabella + CSS card, mai la strip (evita caos visivo)
-  strip.querySelectorAll('.bs-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const key = card.dataset.bskey;
-      signalFilter = (signalFilter === key) ? null : key;
-      // Aggiorna tabella senza toccare la strip
-      buildThead();
-      buildRows(applySort(doScreeningFilter(applyFilters(rows))));
-      // Aggiorna solo il CSS evidenziazione card
-      strip.querySelectorAll('.bs-card').forEach(c => {
-        const on = c.dataset.bskey === signalFilter;
-        c.style.background  = on ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.06)';
-        c.style.boxShadow   = on ? '0 0 0 1.5px rgba(255,255,255,.5)' : 'none';
-        c.style.transform   = on ? 'scale(1.05)' : 'scale(1)';
-      });
-    });
-  });
 }
 
 function renderTable() {
@@ -4147,11 +4118,7 @@ function renderTable() {
   const screened = doScreeningFilter(filtered);
   const sorted   = applySort(screened);
   buildRows(sorted);
-  // Strip: applica categoria/gruppo ma NON il filtro segnale (evita che cambi colore al click BUY/SELL)
-  const _sf = signalFilter; signalFilter = null;
-  const stripRows = applySort(doScreeningFilter(applyFilters(rows)));
-  signalFilter = _sf;
-  updateBiasStrip(stripRows);
+  updateBiasStrip(sorted);
 }
 
 function updateRow(idx) {
