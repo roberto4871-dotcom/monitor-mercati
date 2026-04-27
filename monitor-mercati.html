@@ -4122,13 +4122,21 @@ function updateBiasStrip(visibleRows) {
        </div>
      </div>`;
 
-  // Aggiungo listener dopo aver settato l'innerHTML
+  // Click: aggiorna SOLO tabella + CSS card, mai la strip (evita caos visivo)
   strip.querySelectorAll('.bs-card').forEach(card => {
     card.addEventListener('click', () => {
       const key = card.dataset.bskey;
-      setSignalFilter(signalFilter === key ? null : key);
-      const tbl = document.querySelector('.table-wrapper');
-      if (tbl) tbl.scrollIntoView({ behavior:'smooth', block:'start' });
+      signalFilter = (signalFilter === key) ? null : key;
+      // Aggiorna tabella senza toccare la strip
+      buildThead();
+      buildRows(applySort(doScreeningFilter(applyFilters(rows))));
+      // Aggiorna solo il CSS evidenziazione card
+      strip.querySelectorAll('.bs-card').forEach(c => {
+        const on = c.dataset.bskey === signalFilter;
+        c.style.background  = on ? 'rgba(255,255,255,.22)' : 'rgba(255,255,255,.06)';
+        c.style.boxShadow   = on ? '0 0 0 1.5px rgba(255,255,255,.5)' : 'none';
+        c.style.transform   = on ? 'scale(1.05)' : 'scale(1)';
+      });
     });
   });
 }
