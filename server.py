@@ -7,6 +7,7 @@ import http.server
 import urllib.parse
 import urllib.request
 import json
+import math
 import os
 import time
 import threading
@@ -1615,10 +1616,16 @@ def fetch_monthly(symbol):
 
         monthly = {}
         for i in range(1, len(closes)):
+            c_cur, c_prev = closes[i], closes[i - 1]
+            # Salta righe con NaN o zero (evita JSON invalido e divisione per zero)
+            if math.isnan(c_cur) or math.isnan(c_prev) or c_prev == 0:
+                continue
             dt    = dates[i]
             year  = str(dt.year)
             month = str(dt.month)
-            ret   = round((closes[i] / closes[i - 1] - 1) * 100, 2)
+            ret   = round((c_cur / c_prev - 1) * 100, 2)
+            if math.isnan(ret):
+                continue
             if year not in monthly:
                 monthly[year] = {}
             monthly[year][month] = ret
@@ -1628,7 +1635,9 @@ def fetch_monthly(symbol):
         for year, months in monthly.items():
             c = 1.0
             for m in sorted(months.keys(), key=int):
-                c *= 1 + months[m] / 100
+                v = months[m]
+                if not math.isnan(v):
+                    c *= 1 + v / 100
             ytd[year] = round((c - 1) * 100, 2)
 
         result = {'data': monthly, 'years': sorted(monthly.keys()), 'ytd': ytd}
@@ -1665,16 +1674,18 @@ def fetch_weekly(symbol):
 
         weekly = {}
         for i in range(1, len(closes)):
+            c_cur, c_prev = closes[i], closes[i - 1]
+            if math.isnan(c_cur) or math.isnan(c_prev) or c_prev == 0:
+                continue
             dt  = dates[i]
-            # Usa isocalendar per ENTRAMBI anno e settimana (ISO 8601 coerente)
-            # Esempio: 29 dic 2025 → ISO year=2026, week=1 (non year=2025!)
             iso      = dt.isocalendar()
             iso_year = str(iso[0])
             iso_week = str(iso[1])
-            # Mostra solo l'anno corrente (l'utente vuole solo da inizio anno)
             if iso_year != str(cur_year):
                 continue
-            ret = round((closes[i] / closes[i - 1] - 1) * 100, 2)
+            ret = round((c_cur / c_prev - 1) * 100, 2)
+            if math.isnan(ret):
+                continue
             if iso_year not in weekly:
                 weekly[iso_year] = {}
             weekly[iso_year][iso_week] = ret
@@ -1777,7 +1788,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         print(f'  {args[1]}  {path}')
 
     def _json(self, data):
-        body = json.dumps(data, default=str).encode()
+        def _sanitize(obj):
+            if isinstance(obj, float):
+                return None if (math.isnan(obj) or math.isinf(obj)) else obj
+            if isinstance(obj, dict):
+                return {k: _sanitize(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [_sanitize(v) for v in obj]
+            return obj
+        body = json.dumps(_sanitize(data), default=str).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
