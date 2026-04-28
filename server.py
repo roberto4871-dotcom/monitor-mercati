@@ -56,6 +56,35 @@ _news_cache    = {}; _news_lock    = threading.Lock(); NEWS_TTL    = 900
 _cal_cache     = {}; _cal_lock     = threading.Lock(); CAL_TTL     = 1800
 _monthly_cache = {}; _monthly_lock = threading.Lock(); MONTHLY_TTL = 3600
 _weekly_cache  = {}; _weekly_lock  = threading.Lock(); WEEKLY_TTL  = 3600
+
+# ── Liste preferiti condivise (sync multi-PC) ──────────────────────────────
+LISTS_FILE = os.path.join(os.path.dirname(__file__), 'lists.json')
+_lists_lock = threading.Lock()
+_LISTS_DEFAULT = {
+    'mm_fav': [], 'mm_fav2': [], 'mm_fav3': [], 'mm_fav4': [], 'mm_fav5': [],
+    'mm_fav_name': 'Lista 1', 'mm_fav2_name': 'Lista 2',
+    'mm_fav3_name': 'Lista 3', 'mm_fav4_name': 'Lista 4', 'mm_fav5_name': 'Lista 5',
+}
+def _load_lists():
+    try:
+        if os.path.exists(LISTS_FILE):
+            with open(LISTS_FILE, 'r') as f:
+                data = json.load(f)
+                return {**_LISTS_DEFAULT, **data}
+    except Exception:
+        pass
+    return dict(_LISTS_DEFAULT)
+
+def _save_lists(data):
+    try:
+        with open(LISTS_FILE, 'w') as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f'  [lists] errore salvataggio: {e}')
+
+_lists_data = _load_lists()
+print(f'  [lists] caricate — fav:{len(_lists_data["mm_fav"])} fav2:{len(_lists_data["mm_fav2"])} fav3:{len(_lists_data["mm_fav3"])} fav4:{len(_lists_data["mm_fav4"])} fav5:{len(_lists_data["mm_fav5"])}')
+# ───────────────────────────────────────────────────────────────────────────
 _ma_cache      = {}; _ma_lock      = threading.Lock(); MA_TTL      = 300
 _seasonal_cache= {}; _seasonal_lock= threading.Lock(); SEASONAL_TTL= 21600  # 6 ore
 _corr_cache  = {}; _corr_lock  = threading.Lock(); CORR_TTL  = 1800
@@ -1866,8 +1895,28 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self._json(fetch_correlation(syms, days))
         elif self.path.startswith('/news-feed'):
             self._json(fetch_aggregated_news())
+        elif self.path == '/api/lists':
+            with _lists_lock:
+                self._json(dict(_lists_data))
         else:
             super().do_GET()
+
+    def do_POST(self):
+        if self.path == '/api/lists':
+            try:
+                length = int(self.headers.get('Content-Length', 0))
+                body   = self.rfile.read(length)
+                data   = json.loads(body)
+                with _lists_lock:
+                    global _lists_data
+                    _lists_data = {**_LISTS_DEFAULT, **data}
+                    _save_lists(_lists_data)
+                self._json({'ok': True})
+            except Exception as e:
+                self._json({'ok': False, 'error': str(e)})
+        else:
+            self.send_response(404)
+            self.end_headers()
 
     def _debug_sources(self):
         """Endpoint di debug: testa le sorgenti dati e restituisce i risultati."""

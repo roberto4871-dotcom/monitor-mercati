@@ -1681,6 +1681,53 @@ let favorites3 = new Set(JSON.parse(localStorage.getItem('mm_fav3') || '[]'));
 let favorites4 = new Set(JSON.parse(localStorage.getItem('mm_fav4') || '[]'));
 let favorites5 = new Set(JSON.parse(localStorage.getItem('mm_fav5') || '[]'));
 
+// ── Sync liste con server (multi-PC) ──────────────────────────────────────
+const _FAV_KEYS = ['mm_fav','mm_fav2','mm_fav3','mm_fav4','mm_fav5',
+                   'mm_fav_name','mm_fav2_name','mm_fav3_name','mm_fav4_name','mm_fav5_name'];
+const _FAV_SETS = [null, favorites, favorites2, favorites3, favorites4, favorites5];
+
+function _listsToObj() {
+  const o = {};
+  ['mm_fav','mm_fav2','mm_fav3','mm_fav4','mm_fav5'].forEach((k,i) => {
+    o[k] = [..._FAV_SETS[i+1]];
+  });
+  ['mm_fav_name','mm_fav2_name','mm_fav3_name','mm_fav4_name','mm_fav5_name'].forEach(k => {
+    o[k] = localStorage.getItem(k) || '';
+  });
+  return o;
+}
+
+function _applyServerLists(data) {
+  const setMap = {mm_fav:favorites, mm_fav2:favorites2, mm_fav3:favorites3, mm_fav4:favorites4, mm_fav5:favorites5};
+  Object.entries(setMap).forEach(([k, set]) => {
+    const arr = data[k];
+    if (Array.isArray(arr)) {
+      set.clear(); arr.forEach(s => set.add(s));
+      localStorage.setItem(k, JSON.stringify(arr));
+    }
+  });
+  ['mm_fav_name','mm_fav2_name','mm_fav3_name','mm_fav4_name','mm_fav5_name'].forEach(k => {
+    if (data[k]) localStorage.setItem(k, data[k]);
+  });
+}
+
+async function _syncListsFromServer() {
+  try {
+    const r = await fetch('/api/lists');
+    if (!r.ok) return;
+    const data = await r.json();
+    // Il server vince se ha dati (almeno una lista non vuota)
+    const hasData = ['mm_fav','mm_fav2','mm_fav3','mm_fav4','mm_fav5'].some(k => Array.isArray(data[k]) && data[k].length > 0);
+    if (hasData) { _applyServerLists(data); applyFavNames(); renderTable(); }
+  } catch(e) { /* server non raggiungibile: usa localStorage */ }
+}
+
+async function _saveListsToServer() {
+  try { await fetch('/api/lists', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(_listsToObj())}); }
+  catch(e) {}
+}
+// ─────────────────────────────────────────────────────────────────────────
+
 function favName(n) {
   const defaults = {1:'Lista 1', 2:'Lista 2', 3:'Lista 3', 4:'Lista 4', 5:'Lista 5'};
   const key = n === 1 ? 'mm_fav_name' : `mm_fav${n}_name`;
@@ -1694,6 +1741,7 @@ function renameFav(n) {
   if (!trimmed) return;
   const key = n === 1 ? 'mm_fav_name' : `mm_fav${n}_name`;
   localStorage.setItem(key, trimmed);
+  _saveListsToServer();
   applyFavNames();
 }
 function applyFavNames() {
@@ -4017,6 +4065,7 @@ function toggleFavorite(sym, n) {
   const key = _keys[n] || 'mm_fav';
   if (fav.has(sym)) fav.delete(sym); else fav.add(sym);
   localStorage.setItem(key, JSON.stringify([...fav]));
+  _saveListsToServer();
   renderTable();
 }
 
@@ -4218,8 +4267,11 @@ function doScreeningFilter(data) {
   });
 });
 
-// Applica nomi watchlist personalizzati all'avvio
-document.addEventListener('DOMContentLoaded', applyFavNames);
+// Applica nomi watchlist e carica liste dal server (sync multi-PC)
+document.addEventListener('DOMContentLoaded', () => {
+  applyFavNames();
+  _syncListsFromServer();
+});
 
 function applyFilters(data) {
   const q = document.getElementById('search-box').value.toLowerCase().trim();
