@@ -3641,15 +3641,17 @@ function showTopSignals(btn) {
          I segnali si aggiornano in tempo reale. La lista è ordinata per forza segnale decrescente.
        </div>
      </div>
-     <div style="display:flex;gap:0;border-bottom:2px solid var(--border);align-items:stretch">
+     <div style="display:flex;gap:0;border-bottom:2px solid var(--border)">
        <button id="ts-tab-buy" onclick="window._tsTab('buy')" style="flex:1;padding:8px 0;font-size:11px;font-weight:800;background:rgba(76,175,80,.15);color:#4caf50;border:none;border-bottom:2px solid #4caf50;cursor:pointer;letter-spacing:.3px">
          📈 BUY <span style="background:#4caf50;color:#000;border-radius:10px;padding:0 6px;font-size:10px;margin-left:4px">${allBuy.length}</span>
        </button>
        <button id="ts-tab-sell" onclick="window._tsTab('sell')" style="flex:1;padding:8px 0;font-size:11px;font-weight:800;background:transparent;color:var(--text3);border:none;border-bottom:2px solid transparent;cursor:pointer;letter-spacing:.3px">
          📉 SELL <span id="ts-sell-badge" style="background:var(--bg3);color:var(--text3);border-radius:10px;padding:0 6px;font-size:10px;margin-left:4px">${allSell.length}</span>
        </button>
-       <button onclick="window._tsInfo()" title="Come funzionano i segnali" style="padding:0 14px;font-size:11px;font-weight:800;background:rgba(100,149,237,.15);color:#90caf9;border:none;border-left:1px solid var(--border);border-bottom:2px solid #6495ed;cursor:pointer;letter-spacing:.3px;flex-shrink:0">ℹ</button>
-     </div>`;
+     </div>
+     <button onclick="window._tsInfo()" style="width:100%;padding:7px;font-size:10px;font-weight:700;background:rgba(100,149,237,.13);color:#90caf9;border:none;border-bottom:1px solid var(--border);cursor:pointer;letter-spacing:.4px;text-align:center">
+       ℹ &nbsp;Come funzionano i segnali?
+     </button>`;
   popup.appendChild(header);
 
   // ── Filtro categorie (scroll orizzontale) ───────────────────────
