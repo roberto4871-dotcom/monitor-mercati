@@ -538,13 +538,25 @@ def fetch_fundamentals(symbol):
             data['nextEarnings'] = {}
 
         # ── Consensus analisti ────────────────────────────────
-        data['analystConsensus'] = info.get('recommendationKey')       # 'strong_buy','buy','hold','sell','underperform'
+        # Fonte primaria: info (può essere vuota su alcuni ambienti)
+        data['analystConsensus'] = info.get('recommendationKey')
         data['analystCount']     = info.get('numberOfAnalystOpinions')
-        data['analystScore']     = info.get('recommendationMean')      # 1=Strong Buy … 5=Strong Sell
+        data['analystScore']     = info.get('recommendationMean')
         data['targetMean']       = info.get('targetMeanPrice')
         data['targetHigh']       = info.get('targetHighPrice')
         data['targetLow']        = info.get('targetLowPrice')
         data['targetMedian']     = info.get('targetMedianPrice')
+
+        # Fallback prezzi target: t.analyst_price_targets (yfinance 1.x, più affidabile)
+        try:
+            apt = t.analyst_price_targets
+            if isinstance(apt, dict) and apt:
+                if not data['targetMean']:  data['targetMean']   = apt.get('mean')
+                if not data['targetHigh']:  data['targetHigh']   = apt.get('high')
+                if not data['targetLow']:   data['targetLow']    = apt.get('low')
+                if not data['targetMedian']:data['targetMedian'] = apt.get('median')
+        except Exception:
+            pass
 
         # Trend mensile (ultimi 4 mesi) + breakdown corrente
         try:
@@ -568,13 +580,29 @@ def fetch_fundamentals(symbol):
                 curr_rows = rec[rec['period'] == '0m']
                 if curr_rows.empty: curr_rows = rec.iloc[:1]
                 curr = curr_rows.iloc[0]
-                data['analystBreakdown'] = {
+                bd = {
                     'strongBuy':  _ri(curr,'strongBuy'),
                     'buy':        _ri(curr,'buy'),
                     'hold':       _ri(curr,'hold'),
                     'sell':       _ri(curr,'sell'),
                     'strongSell': _ri(curr,'strongSell'),
                 }
+                data['analystBreakdown'] = bd
+                # Fallback consensus da breakdown se info non lo ha
+                if not data['analystConsensus']:
+                    total = sum(bd.values())
+                    if total > 0:
+                        if not data['analystCount']: data['analystCount'] = total
+                        sb = bd['strongBuy']; b = bd['buy']; h = bd['hold']
+                        s = bd['sell'];      ss = bd['strongSell']
+                        bulls = sb + b; bears = s + ss
+                        if bulls / total >= 0.6:   data['analystConsensus'] = 'buy'
+                        elif bears / total >= 0.5: data['analystConsensus'] = 'sell'
+                        else:                      data['analystConsensus'] = 'hold'
+                        # Score sintetico 1-5
+                        if not data['analystScore']:
+                            data['analystScore'] = round(
+                                (1*sb + 2*b + 3*h + 4*s + 5*ss) / total, 2)
             else:
                 data['analystTrend']     = []
                 data['analystBreakdown'] = {}
