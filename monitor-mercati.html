@@ -3604,8 +3604,41 @@ function showTopSignals(btn) {
        <div style="font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.6px;text-transform:uppercase">🎯 Segnali Operativi</div>
        <div style="display:flex;align-items:center;gap:8px">
          ${ms !== null ? `<span style="font-size:11px;color:${msColor};font-weight:700">Score ${ms}/100</span>` : ''}
+         <button onclick="window._tsInfo()" title="Come funzionano i segnali" style="font-size:13px;font-weight:900;background:rgba(100,149,237,.18);color:#90caf9;border:1px solid rgba(100,149,237,.4);border-radius:50%;width:26px;height:26px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0">ℹ</button>
          <button onclick="window._tsPdf()" style="font-size:10px;font-weight:700;background:rgba(255,215,0,.12);color:var(--accent);border:1px solid rgba(255,215,0,.4);border-radius:8px;padding:3px 10px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='rgba(255,215,0,.22)'" onmouseleave="this.style.background='rgba(255,215,0,.12)'">⬇ PDF</button>
          <span onclick="document.getElementById('top-signals-popup')?.remove()" style="cursor:pointer;font-size:16px;color:var(--text3);line-height:1;padding:2px 4px" title="Chiudi">✕</span>
+       </div>
+     </div>
+     <div id="ts-legend" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;font-size:11px;line-height:1.7">
+       <div style="font-weight:800;color:var(--accent);margin-bottom:8px;font-size:12px">Come funzionano i segnali</div>
+       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 16px">
+         <div>
+           <div style="font-weight:700;color:var(--text);margin-bottom:3px">Le 3 condizioni</div>
+           <div style="color:var(--text2)">Ogni asset viene valutato su <b>3 criteri</b>:</div>
+           <div style="margin-top:4px;color:var(--text2)">① <b>Trend</b> — prezzo sopra/sotto la MM200 e direzione recente</div>
+           <div style="color:var(--text2)">② <b>Momentum</b> — score tecnico composito (RSI, forza relativa, MM50)</div>
+           <div style="color:var(--text2)">③ <b>Macro</b> — allineamento col regime di mercato (VIX, breadth, S&P500)</div>
+         </div>
+         <div>
+           <div style="font-weight:700;color:var(--text);margin-bottom:3px">Forza del segnale</div>
+           <div style="color:var(--text2)"><span style="color:#ff6f00">🔥 Forte</span> — 3/3 condizioni soddisfatte</div>
+           <div style="color:var(--text2)"><span style="color:#ff9800">⚠️ Medio</span> — 2/3 condizioni soddisfatte</div>
+           <div style="color:var(--text2)"><span style="color:#90a4ae">❄️ Debole</span> — 1/3 condizioni soddisfatte</div>
+         </div>
+         <div>
+           <div style="font-weight:700;color:var(--text);margin-bottom:3px">BUY vs SELL</div>
+           <div style="color:var(--text2)"><span style="color:#4caf50">🟢 BUY</span> — trend rialzista + momentum positivo</div>
+           <div style="color:var(--text2)"><span style="color:#ef5350">🔴 SELL</span> — trend ribassista + momentum negativo</div>
+           <div style="color:var(--text2)">⬜ Neutro — segnali contrastanti, nessuna direzione chiara</div>
+         </div>
+         <div>
+           <div style="font-weight:700;color:var(--text);margin-bottom:3px">Etichette speciali</div>
+           <div style="color:#ff9800">⚡ Setup speculativo — segnale medio contro il trend macro</div>
+           <div style="color:#ef5350">⚡ Contro trend — segnale debole contro il mercato (rischio alto)</div>
+         </div>
+       </div>
+       <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);color:var(--text3);font-size:10px">
+         I segnali si aggiornano in tempo reale. La lista è ordinata per forza segnale decrescente.
        </div>
      </div>
      <div style="display:flex;gap:0;border-bottom:2px solid var(--border)">
@@ -3665,7 +3698,13 @@ function showTopSignals(btn) {
     currentCat = cat === '__all__' ? null : cat;
     reRender();
   };
-  window._tsPdf = exportPdf;
+  window._tsPdf  = exportPdf;
+  window._tsInfo = () => {
+    const leg = document.getElementById('ts-legend');
+    if (!leg) return;
+    const open = leg.style.display === 'none' || !leg.style.display;
+    leg.style.display = open ? 'block' : 'none';
+  };
 
   // Posizionamento
   document.body.appendChild(popup);
