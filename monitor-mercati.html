@@ -782,6 +782,12 @@ body.light .cal-item{background:var(--bg3)}
       🎯 <span>Segnali Operativi</span>
       <span id="btn-top-signals-counts" style="font-size:10px;opacity:.8"></span>
     </button>
+    <button onclick="showBuySellLegend(this)" title="Legenda segnali — come funziona BUY/SELL"
+      style="background:rgba(100,149,237,.18);border:1.5px solid rgba(100,149,237,.5);color:#90caf9;padding:5px 14px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;letter-spacing:.3px;transition:all .15s"
+      onmouseenter="this.style.background='rgba(100,149,237,.32)'"
+      onmouseleave="this.style.background='rgba(100,149,237,.18)'">
+      ℹ Legenda
+    </button>
     <div class="spacer"></div>
     <button class="btn-refresh" id="btn-refresh">↻ Aggiorna</button>
   </div>
@@ -3725,6 +3731,81 @@ function showTopSignals(btn) {
   popup.style.top  = Math.max(8, top) + 'px';
   popup.style.left = left + 'px';
 
+  const close = e => { if (!popup.contains(e.target) && e.target !== btn) { popup.remove(); document.removeEventListener('click', close); } };
+  setTimeout(() => document.addEventListener('click', close), 50);
+}
+
+function showBuySellLegend(btn) {
+  const existing = document.getElementById('buysell-legend-popup');
+  if (existing) { existing.remove(); return; }
+  const popup = document.createElement('div');
+  popup.id = 'buysell-legend-popup';
+  Object.assign(popup.style, {
+    position:'fixed', zIndex:'9999',
+    background:'var(--bg2)', border:'1px solid var(--border)',
+    borderRadius:'14px', padding:'22px 24px',
+    boxShadow:'0 10px 48px rgba(0,0,0,.7)', width:'500px', maxWidth:'96vw',
+  });
+  popup.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:14px;font-weight:900;color:var(--accent);letter-spacing:.5px">Come funzionano i segnali BUY / SELL</div>
+      <span onclick="document.getElementById('buysell-legend-popup').remove()" style="cursor:pointer;font-size:18px;color:var(--text3);padding:2px 6px">✕</span>
+    </div>
+
+    <div style="font-size:11px;color:var(--text2);margin-bottom:16px;line-height:1.6">
+      Ogni asset viene valutato su <b style="color:var(--text)">3 condizioni</b>. Il numero soddisfatte determina il segnale.
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+      <div style="background:rgba(255,255,255,.04);border-radius:10px;padding:12px 14px">
+        <div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:6px">① Trend</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6">Il prezzo è sopra o sotto la media mobile a 200 giorni? La direzione recente è rialzista o ribassista?</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px">✅ = sopra MM200 e trend positivo &nbsp;|&nbsp; ❌ = sotto MM200 o pressione ribassista</div>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border-radius:10px;padding:12px 14px">
+        <div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:6px">② Momentum</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6">Score composito 0–100 basato su variazioni a 7, 30, 60 e 90 giorni + forza relativa rispetto al mercato.</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px">✅ = score ≥ 55 &nbsp;|&nbsp; ❌ = score &lt; 45</div>
+      </div>
+      <div style="background:rgba(255,255,255,.04);border-radius:10px;padding:12px 14px">
+        <div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:6px">③ Allineamento macro</div>
+        <div style="font-size:11px;color:var(--text2);line-height:1.6">Il mercato generale è favorevole? Si basa su VIX, breadth (% asset sopra MM200) e S&P500 sopra MM200.</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px">✅ = VIX &lt;18, breadth &gt;55%, S&P sopra MM200 &nbsp;|&nbsp; ❌ = mercato sotto stress</div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:14px">
+      <div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:10px">Risultato finale</div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 14px;align-items:start">
+        <div style="background:rgba(76,175,80,.15);border:1px solid #4caf50;color:#4caf50;font-weight:800;font-size:11px;padding:3px 12px;border-radius:7px;white-space:nowrap">🟢 BUY</div>
+        <div style="font-size:11px;color:var(--text2)">Trend rialzista + momentum positivo (almeno 1 delle 3). Più condizioni = segnale più forte.</div>
+        <div style="background:rgba(239,83,80,.15);border:1px solid #ef5350;color:#ef5350;font-weight:800;font-size:11px;padding:3px 12px;border-radius:7px;white-space:nowrap">🔴 SELL</div>
+        <div style="font-size:11px;color:var(--text2)">Trend ribassista + momentum negativo. Più condizioni negative = segnale più forte.</div>
+        <div style="background:rgba(120,144,156,.1);border:1px solid #78909c;color:#90a4ae;font-weight:800;font-size:11px;padding:3px 12px;border-radius:7px;white-space:nowrap">⚪ NEUTRO</div>
+        <div style="font-size:11px;color:var(--text2)">Segnali misti o insufficienti. Nessuna direzione operativa chiara.</div>
+      </div>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:5px">
+        <div style="font-size:10px;color:#ff9800">⚡ <b>Setup speculativo</b> — segnale medio (2/3) ma contro il trend macro generale</div>
+        <div style="font-size:10px;color:#ef5350">⚡ <b>Contro trend</b> — segnale debole (1/3) contro il mercato. Rischio elevato.</div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;display:flex;gap:8px;justify-content:center">
+      <div style="font-size:10px;color:#ff6f00;background:rgba(255,111,0,.1);border:1px solid rgba(255,111,0,.3);padding:3px 10px;border-radius:6px">🔥 Forte = 3/3 condizioni</div>
+      <div style="font-size:10px;color:#ff9800;background:rgba(255,152,0,.1);border:1px solid rgba(255,152,0,.3);padding:3px 10px;border-radius:6px">⚠️ Medio = 2/3 condizioni</div>
+      <div style="font-size:10px;color:#90a4ae;background:rgba(144,164,174,.1);border:1px solid rgba(144,164,174,.3);padding:3px 10px;border-radius:6px">❄️ Debole = 1/3 condizioni</div>
+    </div>`;
+
+  document.body.appendChild(popup);
+  const rect = btn.getBoundingClientRect();
+  const pw = 500;
+  let left = Math.max(8, Math.min(rect.left, window.innerWidth - pw - 8));
+  const ph = popup.offsetHeight;
+  const top = (window.innerHeight - rect.bottom > ph + 20)
+    ? rect.bottom + 8
+    : Math.max(8, rect.top - ph - 8);
+  popup.style.top  = Math.max(8, top) + 'px';
+  popup.style.left = left + 'px';
   const close = e => { if (!popup.contains(e.target) && e.target !== btn) { popup.remove(); document.removeEventListener('click', close); } };
   setTimeout(() => document.addEventListener('click', close), 50);
 }
