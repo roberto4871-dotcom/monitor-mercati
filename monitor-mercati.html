@@ -3604,7 +3604,7 @@ function showTopSignals(btn) {
        <div style="font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.6px;text-transform:uppercase">🎯 Segnali Operativi</div>
        <div style="display:flex;align-items:center;gap:8px">
          ${ms !== null ? `<span style="font-size:11px;color:${msColor};font-weight:700">Score ${ms}/100</span>` : ''}
-         <button onclick="window._tsInfo()" title="Come funzionano i segnali" style="font-size:13px;font-weight:900;background:rgba(100,149,237,.18);color:#90caf9;border:1px solid rgba(100,149,237,.4);border-radius:50%;width:26px;height:26px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0">ℹ</button>
+         <button onclick="window._tsInfo()" title="Come funzionano i segnali" style="font-size:10px;font-weight:700;background:rgba(100,149,237,.18);color:#90caf9;border:1px solid rgba(100,149,237,.4);border-radius:8px;padding:3px 10px;cursor:pointer;flex-shrink:0">ℹ Legenda</button>
          <button onclick="window._tsPdf()" style="font-size:10px;font-weight:700;background:rgba(255,215,0,.12);color:var(--accent);border:1px solid rgba(255,215,0,.4);border-radius:8px;padding:3px 10px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='rgba(255,215,0,.22)'" onmouseleave="this.style.background='rgba(255,215,0,.12)'">⬇ PDF</button>
          <span onclick="document.getElementById('top-signals-popup')?.remove()" style="cursor:pointer;font-size:16px;color:var(--text3);line-height:1;padding:2px 4px" title="Chiudi">✕</span>
        </div>
