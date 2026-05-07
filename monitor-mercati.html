@@ -7409,20 +7409,21 @@ function printScatter() {
       </tr></thead><tbody>${makeTable(items, color)}</tbody></table>
     </div>`;
 
-  // Grafico HTML/CSS ordinato per momentum desc (come il chart nel browser)
+  // Grafico HTML/CSS ordinato per momentum desc — paginazione automatica
   const sorted = instruments.slice().sort((a, b) => b._momentum - a._momentum);
-  const barRows = sorted.map(r => {
-    const mom  = r._momentum;
-    const rs   = r._rs;
-    const name = (r.i || r.m) || r.s || '';
-    const rsLbl = (rs >= 0 ? '+' : '') + rs.toFixed(1) + '%';
-    let barColor, quadLabel;
-    if      (mom >= 50 && rs >= 0) { barColor = '#4caf50'; quadLabel = ''; }
-    else if (mom <  50 && rs >= 0) { barColor = '#2196f3'; quadLabel = ''; }
-    else if (mom >= 50 && rs <  0) { barColor = '#ff9800'; quadLabel = ''; }
-    else                            { barColor = '#ef5350'; quadLabel = ''; }
+  const ROWS_PER_PAGE = 30;  // ~30 righe stanno in un A4 landscape
+
+  function makeBarRow(r) {
+    const mom    = r._momentum;
+    const rs     = r._rs;
+    const name   = (r.i || r.m) || r.s || '';
+    const rsLbl  = (rs >= 0 ? '+' : '') + rs.toFixed(1) + '%';
     const rsColor = rs >= 0 ? '#4caf50' : '#ef5350';
-    // linea di separazione a 50%
+    let barColor;
+    if      (mom >= 50 && rs >= 0) barColor = '#4caf50';
+    else if (mom <  50 && rs >= 0) barColor = '#2196f3';
+    else if (mom >= 50 && rs <  0) barColor = '#ff9800';
+    else                            barColor = '#ef5350';
     return `<div class="br">
       <span class="bn">${name}</span>
       <div class="bt">
@@ -7432,6 +7433,47 @@ function printScatter() {
       <span class="brs" style="color:${rsColor}">${rsLbl}</span>
       <span class="bsc" style="color:${barColor}">${mom.toFixed(0)}</span>
     </div>`;
+  }
+
+  const colHeader = `
+    <div class="bar-header">
+      <span class="bh-name">Strumento</span>
+      <span class="bh-track">◀ Trend debole &nbsp;·&nbsp; Forza Trend (0–100) &nbsp;·&nbsp; Trend forte ▶</span>
+      <span class="bh-rs">RS%</span>
+      <span class="bh-sc">Score</span>
+    </div>`;
+  const legend = `
+    <div class="leg">
+      <div class="leg-item"><div class="leg-dot" style="background:#4caf50"></div>Leader (Trend↑ RS+)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#ff9800"></div>Misto (Trend↑ RS−)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#2196f3"></div>Recupero (Trend↓ RS+)</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#ef5350"></div>Evitare (Trend↓ RS−)</div>
+    </div>`;
+
+  // Dividi in pagine da ROWS_PER_PAGE righe ciascuna
+  const chunks = [];
+  for (let i = 0; i < sorted.length; i += ROWS_PER_PAGE)
+    chunks.push(sorted.slice(i, i + ROWS_PER_PAGE));
+  const totalChartPages = chunks.length;
+
+  const chartPages = chunks.map((chunk, idx) => {
+    const pageNum = idx + 1;
+    const rows = chunk.map(makeBarRow).join('');
+    const isLast = idx === totalChartPages - 1;
+    return `
+  <div class="page1">
+    <div class="hdr">
+      <span class="hdr-title">🎯 Scatter — ${group}</span>
+      <span class="hdr-meta">Market Compass · ${now} · ${sorted.length} strumenti${totalChartPages > 1 ? ' · pag. ' + pageNum + '/' + totalChartPages : ''}</span>
+    </div>
+    <div class="chart-box">
+      ${colHeader}
+      ${rows}
+      ${isLast ? legend : ''}
+    </div>
+    <div class="footer">Generato da Market Compass — dati a scopo informativo</div>
+  </div>
+  <div class="page-break"></div>`;
   }).join('');
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -7443,38 +7485,37 @@ function printScatter() {
     .page-break{break-after:page;page-break-after:always}
 
     /* ─── Header comune ─── */
-    .hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #ffd700;padding-bottom:5px;flex-shrink:0;margin-bottom:8px}
+    .hdr{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #ffd700;padding-bottom:5px;flex-shrink:0;margin-bottom:6px}
     .hdr-title{font-size:14px;font-weight:800;color:#ffd700;letter-spacing:1px;text-transform:uppercase}
     .hdr-meta{font-size:8.5px;color:#546e7a}
-    .footer{font-size:7.5px;color:#546e7a;text-align:right;margin-top:6px}
+    .footer{font-size:7.5px;color:#546e7a;text-align:right;margin-top:5px}
 
-    /* ─── PAGINA 1: grafico HTML/CSS ─── */
+    /* ─── Pagine grafico ─── */
     .page1{padding:4px 0}
-    .chart-box{background:#0d1220;border:1px solid #1e2d45;border-radius:8px;padding:8px 12px}
-    .chart-axis-label{font-size:9px;color:#546e7a;text-align:center;margin-bottom:4px;letter-spacing:.3px}
+    .chart-box{background:#0d1220;border:1px solid #1e2d45;border-radius:8px;padding:6px 12px}
 
     /* righe barre */
-    .br{display:flex;align-items:center;gap:6px;height:20px;margin-bottom:2px}
-    .bn{width:160px;min-width:160px;text-align:right;font-size:9.5px;color:#dce6f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
-    .bt{flex:1;height:14px;background:rgba(255,255,255,.05);border-radius:2px;position:relative;overflow:visible}
+    .br{display:flex;align-items:center;gap:6px;height:18px;margin-bottom:2px;page-break-inside:avoid;break-inside:avoid}
+    .bn{width:155px;min-width:155px;text-align:right;font-size:9px;color:#dce6f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+    .bt{flex:1;height:12px;background:rgba(255,255,255,.05);border-radius:2px;position:relative;overflow:visible}
     .bf{height:100%;border-radius:2px;position:absolute;left:0;top:0}
-    .bm{position:absolute;left:50%;top:-2px;height:calc(100% + 4px);width:1px;background:rgba(255,255,255,.3);border-left:1px dashed rgba(255,255,255,.3)}
+    .bm{position:absolute;left:50%;top:-3px;height:calc(100% + 6px);border-left:1px dashed rgba(255,255,255,.3)}
     .brs{width:44px;min-width:44px;font-size:9px;font-weight:700;text-align:right;flex-shrink:0}
     .bsc{width:28px;min-width:28px;font-size:8.5px;color:#8fa8c8;text-align:right;flex-shrink:0}
 
-    /* intestazione colonne grafico */
-    .bar-header{display:flex;align-items:center;gap:6px;height:16px;margin-bottom:3px;border-bottom:1px solid #1e2d45;padding-bottom:3px}
-    .bh-name{width:160px;min-width:160px;font-size:8px;color:#546e7a;text-align:right;flex-shrink:0;text-transform:uppercase;letter-spacing:.5px}
-    .bh-track{flex:1;font-size:8px;color:#546e7a;text-align:center;text-transform:uppercase;letter-spacing:.5px}
+    /* intestazione colonne */
+    .bar-header{display:flex;align-items:center;gap:6px;height:15px;margin-bottom:3px;border-bottom:1px solid #1e2d45;padding-bottom:2px}
+    .bh-name{width:155px;min-width:155px;font-size:8px;color:#546e7a;text-align:right;flex-shrink:0;text-transform:uppercase;letter-spacing:.5px}
+    .bh-track{flex:1;font-size:8px;color:#546e7a;text-align:center;text-transform:uppercase;letter-spacing:.3px}
     .bh-rs{width:44px;min-width:44px;font-size:8px;color:#546e7a;text-align:right;flex-shrink:0;text-transform:uppercase}
     .bh-sc{width:28px;min-width:28px;font-size:8px;color:#546e7a;text-align:right;flex-shrink:0;text-transform:uppercase}
 
-    /* legenda quadranti */
-    .leg{display:flex;gap:12px;margin-top:6px;justify-content:center}
+    /* legenda */
+    .leg{display:flex;gap:14px;margin-top:6px;justify-content:center;flex-wrap:wrap}
     .leg-item{display:flex;align-items:center;gap:4px;font-size:8px;color:#8fa8c8}
     .leg-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
 
-    /* ─── PAGINA 2: riepilogo quadranti ─── */
+    /* ─── Pagina riepilogo quadranti ─── */
     .page2{padding:4px 0}
     .q-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
     .q-block{background:#0d1220;border:1px solid #1e2d45;border-radius:6px;padding:8px 10px}
@@ -7487,34 +7528,9 @@ function printScatter() {
     tr:last-child td{border-bottom:none}
   </style></head><body>
 
-  <!-- PAGINA 1: grafico a barre HTML -->
-  <div class="page1">
-    <div class="hdr">
-      <span class="hdr-title">🎯 Scatter — ${group}</span>
-      <span class="hdr-meta">Market Compass · ${now} · ${sorted.length} strumenti</span>
-    </div>
-    <div class="chart-box">
-      <div class="chart-axis-label">◀&nbsp; Trend debole &nbsp;|&nbsp; Forza del Trend (0 – 100) &nbsp;|&nbsp; Trend forte &nbsp;▶</div>
-      <div class="bar-header">
-        <span class="bh-name">Strumento</span>
-        <span class="bh-track">━━━━━━━━ barra proporzionale 0–100 ━━━━━━━━</span>
-        <span class="bh-rs">RS%</span>
-        <span class="bh-sc">Trend</span>
-      </div>
-      ${barRows}
-      <div class="leg">
-        <div class="leg-item"><div class="leg-dot" style="background:#4caf50"></div>Leader (Trend↑ RS+)</div>
-        <div class="leg-item"><div class="leg-dot" style="background:#ff9800"></div>Misto (Trend↑ RS−)</div>
-        <div class="leg-item"><div class="leg-dot" style="background:#2196f3"></div>Recupero (Trend↓ RS+)</div>
-        <div class="leg-item"><div class="leg-dot" style="background:#ef5350"></div>Evitare (Trend↓ RS−)</div>
-      </div>
-    </div>
-    <div class="footer">Generato da Market Compass — dati a scopo informativo</div>
-  </div>
+  ${chartPages}
 
-  <div class="page-break"></div>
-
-  <!-- PAGINA 2: riepilogo quadranti -->
+  <!-- Pagina riepilogo quadranti -->
   <div class="page2">
     <div class="hdr">
       <span class="hdr-title">🎯 Riepilogo Quadranti — ${group}</span>
