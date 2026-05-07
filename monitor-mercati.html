@@ -7717,12 +7717,13 @@ function renderSideNews(cat) {
 // ═══════════════════════════════════════════════════════════
 
 // ── Dati statici (aggiornati alle ultime letture ufficiali) ─
+// Aggiornati al 7 maggio 2026
 const CB_RATES = [
-  { key:'fed', flag:'🇺🇸', name:'Federal Reserve',    rate:4.25, trend:'hold', label:'Tassi stabili — attesa dati' },
-  { key:'ecb', flag:'🇪🇺', name:'BCE',                rate:2.40, trend:'cut',  label:'Ciclo di taglio in corso' },
-  { key:'boe', flag:'🇬🇧', name:'Bank of England',    rate:4.50, trend:'cut',  label:'Tagli graduali previsti' },
-  { key:'boj', flag:'🇯🇵', name:'Banca del Giappone', rate:0.50, trend:'hike', label:'Uscita da politica ultra-accomodante' },
-  { key:'snb', flag:'🇨🇭', name:'SNB Svizzera',       rate:0.25, trend:'hold', label:'Inflazione sotto target' },
+  { key:'fed', flag:'🇺🇸', name:'Federal Reserve',    rate:3.75, trend:'hold', label:'Tre hold consecutivi — attesa dati macro' },
+  { key:'ecb', flag:'🇪🇺', name:'BCE',                rate:2.00, trend:'hold', label:'Pausa nel ciclo di tagli — possibili rialzi futuri' },
+  { key:'boe', flag:'🇬🇧', name:'Bank of England',    rate:3.75, trend:'hold', label:'Tassi confermati — riunione in corso oggi' },
+  { key:'boj', flag:'🇯🇵', name:'Banca del Giappone', rate:0.75, trend:'hike', label:'Ciclo di rialzi in pausa — incertezza geopolitica' },
+  { key:'snb', flag:'🇨🇭', name:'SNB Svizzera',       rate:0.00, trend:'hold', label:'Tasso zero — inflazione sotto target' },
 ];
 
 // Riunioni FOMC (date di pubblicazione decisione — giorno 2)
