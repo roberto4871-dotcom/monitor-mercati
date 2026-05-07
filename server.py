@@ -1231,6 +1231,33 @@ def _ecb_hicp(country_code):
         return None
 
 
+def _fred_rate(series_id):
+    """Ultimo valore da una serie FRED (es. DFEDTARU, IRSTJPRESLN, IRSTCHRESLN)."""
+    try:
+        import requests as req
+        url = f'https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}'
+        r = req.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
+        if r.status_code != 200:
+            return None
+        lines = [l for l in r.text.splitlines() if l and not l.startswith('DATE')]
+        # scorri dalla fine finché trovi un valore valido (FRED usa '.' per N/D)
+        for line in reversed(lines):
+            parts = line.split(',')
+            if len(parts) < 2:
+                continue
+            val_str = parts[1].strip()
+            if val_str == '.' or not val_str:
+                continue
+            try:
+                return {'v': float(val_str), 'date': parts[0].strip()}
+            except ValueError:
+                continue
+        return None
+    except Exception as e:
+        print(f'  [macro-live] FRED {series_id}: {e}')
+        return None
+
+
 def _ecb_policy_rates():
     """Tasso BCE depositi (DFR) e rifinanziamento principale (MRR). Restituisce dict."""
     try:
@@ -1320,6 +1347,21 @@ def fetch_macro_live():
     boe = _boe_base_rate()
     if boe:
         rates['BOE'] = {'name':'Bank of England', 'flag':'🇬🇧', 'src':'BOE', **boe}
+
+    # Fed funds upper target (DFEDTARU — aggiornato giornalmente da FRED)
+    fed = _fred_rate('DFEDTARU')
+    if fed:
+        rates['FED'] = {'name':'Federal Reserve', 'flag':'🇺🇸', 'src':'FRED', **fed}
+
+    # BOJ policy rate — uncollateralized overnight call rate (IRSTJPRESLN)
+    boj = _fred_rate('IRSTJPRESLN')
+    if boj:
+        rates['BOJ'] = {'name':'Banca del Giappone', 'flag':'🇯🇵', 'src':'FRED', **boj}
+
+    # SNB policy rate — overnight rate (IRSTCHRESLN)
+    snb = _fred_rate('IRSTCHRESLN')
+    if snb:
+        rates['SNB'] = {'name':'SNB Svizzera', 'flag':'🇨🇭', 'src':'FRED', **snb}
 
     print(f'  [macro-live] inflazione={list(infl.keys())} tassi={list(rates.keys())}')
     result = {'inflation': infl, 'rates': rates, 'ts': int(now)}

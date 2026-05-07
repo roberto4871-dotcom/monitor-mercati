@@ -7988,12 +7988,16 @@ function renderMacroRates() {
 }
 
 // ── Banche Centrali ──────────────────────────────────────────
+// Mappa chiave CB_RATES → chiave in _macroLive.rates
+const CB_LIVE_KEY = { fed:'FED', ecb:'ECB_DFR', boe:'BOE', boj:'BOJ', snb:'SNB' };
+
 function renderMacroCB() {
   const nextFomc = FOMC_DATES.find(d => d >= new Date().toISOString().slice(0,10));
   const nextEcb  = ECB_DATES.find(d =>  d >= new Date().toISOString().slice(0,10));
   const nextBoj  = BOJ_DATES.find(d =>  d >= new Date().toISOString().slice(0,10));
   const nextBoe  = BOE_DATES.find(d =>  d >= new Date().toISOString().slice(0,10));
   const nextMap  = { fed: nextFomc, ecb: nextEcb, boj: nextBoj, boe: nextBoe };
+  const liveRates = _macroLive?.rates || {};
 
   document.getElementById('macro-cb-body').innerHTML = CB_RATES.map(cb => {
     const next = nextMap[cb.key];
@@ -8001,14 +8005,23 @@ function renderMacroCB() {
     const fmtNext = next
       ? `Prossima riunione: ${new Date(next+'T12:00:00').toLocaleDateString('it-IT',{day:'numeric',month:'short'})} <span class="cal-countdown ${cd.cls}">(${cd.text})</span>`
       : '';
+
+    // Usa tasso live se disponibile, altrimenti fallback su statico
+    const liveKey  = CB_LIVE_KEY[cb.key];
+    const live     = liveKey ? liveRates[liveKey] : null;
+    const rate     = live ? live.v : cb.rate;
+    const liveBadge = live
+      ? `<span style="font-size:8px;color:#4caf50;margin-left:4px" title="Live — ${live.src} · ${live.date}">● live</span>`
+      : `<span style="font-size:8px;color:#546e7a;margin-left:4px">● statico</span>`;
+
     return `<div class="cb-row">
       <div>
-        <div class="cb-name"><span class="cb-flag">${cb.flag}</span>${cb.name}</div>
+        <div class="cb-name"><span class="cb-flag">${cb.flag}</span>${cb.name}${liveBadge}</div>
         <div class="cb-next">${cb.label}</div>
         ${fmtNext ? `<div class="cb-next" style="margin-top:1px">${fmtNext}</div>` : ''}
       </div>
       <div style="text-align:right;flex-shrink:0">
-        <div class="cb-rate">${cb.rate.toFixed(2)}%</div>
+        <div class="cb-rate">${rate.toFixed(2)}%</div>
         <div class="cb-trend ${cb.trend}">${cb.trend === 'hold' ? '⏸ Hold' : cb.trend === 'cut' ? '↓ Taglio' : '↑ Rialzo'}</div>
       </div>
     </div>`;
