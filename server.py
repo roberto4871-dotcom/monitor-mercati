@@ -58,13 +58,19 @@ _monthly_cache = {}; _monthly_lock = threading.Lock(); MONTHLY_TTL = 3600
 _weekly_cache  = {}; _weekly_lock  = threading.Lock(); WEEKLY_TTL  = 3600
 
 # ── Liste preferiti condivise (sync multi-PC) ──────────────────────────────
-LISTS_FILE = os.path.join(os.path.dirname(__file__), 'lists.json')
+# LISTS_PATH può essere impostato come variabile d'ambiente Railway (es. /data/lists.json)
+# per usare un Volume persistente che sopravvive ai deploy.
+# Se non impostato, usa il file locale (non persiste su Railway tra deploy).
+_LISTS_PATH_ENV = os.environ.get('LISTS_PATH', '')
+LISTS_FILE = _LISTS_PATH_ENV if _LISTS_PATH_ENV else os.path.join(os.path.dirname(__file__), 'lists.json')
+
 _lists_lock = threading.Lock()
 _LISTS_DEFAULT = {
     'mm_fav': [], 'mm_fav2': [], 'mm_fav3': [], 'mm_fav4': [], 'mm_fav5': [],
     'mm_fav_name': 'Lista 1', 'mm_fav2_name': 'Lista 2',
     'mm_fav3_name': 'Lista 3', 'mm_fav4_name': 'Lista 4', 'mm_fav5_name': 'Lista 5',
 }
+
 def _load_lists():
     try:
         if os.path.exists(LISTS_FILE):
@@ -77,13 +83,15 @@ def _load_lists():
 
 def _save_lists(data):
     try:
+        # Crea la cartella padre se non esiste (es. /data su Railway)
+        os.makedirs(os.path.dirname(LISTS_FILE) or '.', exist_ok=True)
         with open(LISTS_FILE, 'w') as f:
             json.dump(data, f, indent=2)
     except Exception as e:
         print(f'  [lists] errore salvataggio: {e}')
 
 _lists_data = _load_lists()
-print(f'  [lists] caricate — fav:{len(_lists_data["mm_fav"])} fav2:{len(_lists_data["mm_fav2"])} fav3:{len(_lists_data["mm_fav3"])} fav4:{len(_lists_data["mm_fav4"])} fav5:{len(_lists_data["mm_fav5"])}')
+print(f'  [lists] file={LISTS_FILE} | fav:{len(_lists_data["mm_fav"])} fav2:{len(_lists_data["mm_fav2"])} fav3:{len(_lists_data["mm_fav3"])} fav4:{len(_lists_data["mm_fav4"])} fav5:{len(_lists_data["mm_fav5"])}')
 # ───────────────────────────────────────────────────────────────────────────
 _ma_cache      = {}; _ma_lock      = threading.Lock(); MA_TTL      = 300
 _seasonal_cache= {}; _seasonal_lock= threading.Lock(); SEASONAL_TTL= 21600  # 6 ore
