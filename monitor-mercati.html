@@ -840,7 +840,13 @@ body.light .cal-item{background:var(--bg3)}
   <div id="breadth-panel" style="display:none"></div>
 
   <!-- ── Market Bias Strip ── -->
-  <div id="bias-strip"></div>
+  <div id="bias-strip-toggle-bar" style="display:none;align-items:center;padding:3px 16px;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0">
+    <button id="bias-strip-btn" onclick="toggleBiasStrip()" style="background:none;border:none;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--text2);display:flex;align-items:center;gap:6px;padding:3px 0">
+      <span id="bias-strip-arrow">▶</span>
+      <span id="bias-strip-summary"></span>
+    </button>
+  </div>
+  <div id="bias-strip" style="display:none"></div>
 
   <div class="table-wrapper" id="live-table-wrap">
     <table id="main-table">
@@ -4203,11 +4209,29 @@ function buildThead() {
   }).join('');
 }
 
+let _biasStripOpen = false;
+let _biasStripData = [];
+
+function toggleBiasStrip() {
+  _biasStripOpen = !_biasStripOpen;
+  const strip  = document.getElementById('bias-strip');
+  const arrow  = document.getElementById('bias-strip-arrow');
+  if (strip)  strip.style.display  = _biasStripOpen ? 'flex' : 'none';
+  if (arrow)  arrow.textContent    = _biasStripOpen ? '▼' : '▶';
+}
+
 function updateBiasStrip(visibleRows) {
-  const strip = document.getElementById('bias-strip');
+  const strip      = document.getElementById('bias-strip');
+  const toggleBar  = document.getElementById('bias-strip-toggle-bar');
+  const summary    = document.getElementById('bias-strip-summary');
   if (!strip) return;
   const data = (visibleRows || []).filter(r => r._signal && !r._loading && !r._err);
-  if (!data.length) { strip.style.display = 'none'; return; }
+  if (!data.length) {
+    strip.style.display     = 'none';
+    if (toggleBar) toggleBar.style.display = 'none';
+    return;
+  }
+  _biasStripData = data;
 
   // Bias calcolato sulle righe visibili: % BUY vs % SELL
   const nBuy  = data.filter(r => r._signal.key === 'buy').length;
@@ -4246,7 +4270,22 @@ function updateBiasStrip(visibleRows) {
   }).join('<span style="color:rgba(255,255,255,.3)"> · </span>') : '<span style="font-size:11px;color:rgba(255,255,255,.4)">—</span>';
 
   strip.style.background = biasColor;
-  strip.style.display    = 'flex';
+  // Aggiorna la barra toggle con il riassunto
+  if (toggleBar) {
+    toggleBar.style.display = 'flex';
+    toggleBar.style.borderLeft = `3px solid ${biasColor}`;
+  }
+  if (summary) {
+    summary.innerHTML =
+      `<span style="color:${biasColor};font-weight:900">${biasArrow} ${biasLabel}</span>` +
+      `<span style="color:var(--text2);margin-left:8px">· ` +
+      `<span style="color:#4caf50">${nBuy} BUY</span> · ` +
+      `<span style="color:#ef5350">${nSell} SELL</span> · ` +
+      `<span style="color:var(--text2)">${nHold} Neutri</span></span>` +
+      `<span style="color:var(--text2);margin-left:8px;opacity:.6">${_biasStripOpen ? '(chiudi ▲)' : '(espandi ▼)'}</span>`;
+  }
+  // Mostra/nasconde il pannello in base allo stato toggle
+  strip.style.display = _biasStripOpen ? 'flex' : 'none';
 
   const bsCards = [
     { n:nBuy,  numColor:'#a5d6a7',              lblColor:'rgba(165,214,167,.7)',    label:'BUY'    },
@@ -4524,7 +4563,7 @@ function renderCharts() {
   const metric = chartMetric;
   const data   = loaded
     .filter(r => r[metric] !== null && r[metric] !== undefined)
-    .sort((a, b) => a[metric] - b[metric]);
+    .sort((a, b) => b[metric] - a[metric]);   // positivi in cima, negativi in fondo
 
   // ── KPI cards ─────────────────────────────────────
   const kpiEl = document.getElementById('chart-kpis');
