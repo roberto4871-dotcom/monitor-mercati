@@ -3481,8 +3481,9 @@ function showTopSignals(btn) {
   let currentTab = 'buy';
   let currentCat = null;  // null = tutte le categorie
 
-  // Categorie disponibili (unione buy+sell, ordinate per nome)
-  const allCats = [...new Set([...allBuy, ...allSell].map(r => r.a))].sort();
+  // Categorie disponibili: TUTTE quelle presenti in tabella (anche solo NEUTRAL/HOLD)
+  const allSignaled = rows.filter(r => r._signal && !r._loading && !r._err);
+  const allCats = [...new Set(allSignaled.map(r => r.a))].sort();
 
   // Riga compatta
   const mkRow = (r, idx) => {
@@ -3532,8 +3533,10 @@ function showTopSignals(btn) {
   const reRender = () => {
     const src = currentTab === 'buy' ? allBuy : allSell;
     const filtered = currentCat ? src.filter(r => r.a === currentCat) : src;
-    document.getElementById('ts-body').innerHTML = mkTable(filtered,
-      currentTab === 'buy' ? 'Nessun segnale BUY per questa selezione' : 'Nessun segnale SELL per questa selezione');
+    const emptyMsg = currentTab === 'buy'
+      ? (currentCat ? `Nessun segnale BUY in <b>${currentCat}</b> — tutti i segnali sono neutrali o di cautela` : 'Nessun segnale BUY al momento')
+      : (currentCat ? `Nessun segnale SELL in <b>${currentCat}</b> — tutti i segnali sono neutrali o di cautela` : 'Nessun segnale SELL al momento');
+    document.getElementById('ts-body').innerHTML = mkTable(filtered, emptyMsg);
     // Aggiorna pills categoria
     popup.querySelectorAll('.ts-cat-pill').forEach(p => {
       const active = p.dataset.cat === (currentCat || '__all__');
