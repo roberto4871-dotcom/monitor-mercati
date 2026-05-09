@@ -3325,9 +3325,37 @@ function showSignalFilterMenu(btn) {
   const existing = document.getElementById('signal-filter-popup');
   if (existing) { existing.remove(); return; }
 
-  // Conta asset per segnale (su tutti i rows, non solo visibili)
+  // ── Scope: filtra le righe in base alla categoria/menu attivo ──
+  const _SF_LABELS = {
+    'all':'Tutti gli strumenti', '_sintesi':'Vista Sintesi',
+    'favorites':'Lista 1','favorites2':'Lista 2','favorites3':'Lista 3','favorites4':'Lista 4','favorites5':'Lista 5',
+    'INDICE AZIONARIO':'Indici Azionari','INDICE OBBLIGAZIONARIO':'Indici Obbligazionari',
+    'MATERIA PRIMA':'Materie Prime','VALUTA':'Valute','VOLATILITA':'Volatilità',
+    'TITOLI EUROPA':'Titoli Europa','TITOLI IT BIG CAP':'Big Cap IT','TITOLI USA':'Titoli USA',
+    'ETF AZ. MASTER':'ETF Azionari','ETF OBB. MASTER':'ETF Obbligazionari',
+    'ETF COMM. MASTER':'ETF Commodities','ETF MEGATREND':'ETF Megatrend',
+    'ETF SINGLE COUNTRY':'ETF Single Country','ETF SETTORIALE':'ETF Settoriali',
+    'ETF INDICI':'ETF Indici','ULTRABIG':'Ultrabig','SVIZZERA':'Svizzera',
+  };
+  const _isGlobal = !activeFilter || activeFilter === '_sintesi' || activeFilter === 'all';
+  let scopeRows = rows;
+  let scopeLabel = 'Tutti i mercati';
+  if (!_isGlobal) {
+    if (EXCEL_GROUPS[activeFilter]) {
+      const syms = EXCEL_GROUPS[activeFilter];
+      scopeRows = rows.filter(r => syms.has(r.s));
+    } else if (activeFilter.startsWith('favorites')) {
+      const _fs = {favorites,favorites2,favorites3,favorites4,favorites5}[activeFilter];
+      scopeRows = _fs ? rows.filter(r => _fs.has(r.s)) : rows;
+    } else {
+      scopeRows = rows.filter(r => r.a === activeFilter);
+    }
+    scopeLabel = _SF_LABELS[activeFilter] || activeFilter;
+  }
+
+  // Conta asset per segnale (solo nelle righe dello scope attivo)
   const counts = {};
-  rows.forEach(r => {
+  scopeRows.forEach(r => {
     if (r._signal?.key) counts[r._signal.key] = (counts[r._signal.key] || 0) + 1;
   });
 
@@ -3371,9 +3399,9 @@ function showSignalFilterMenu(btn) {
     return el;
   };
 
-  // Conta per forza
+  // Conta per forza (solo scope attivo)
   const strengthCounts = {strong:0, medium:0, weak:0, contratrend:0};
-  rows.forEach(r => {
+  scopeRows.forEach(r => {
     if (!r._signal) return;
     if (r._signal.strength) strengthCounts[r._signal.strength] = (strengthCounts[r._signal.strength]||0)+1;
     if (r._signal.contratrend) strengthCounts.contratrend++;
@@ -3390,6 +3418,20 @@ function showSignalFilterMenu(btn) {
     Object.assign(el.style, {height:'1px', background:'var(--border)', margin:'4px 0'});
     return el;
   };
+
+  // Header scope
+  const scopeHeader = document.createElement('div');
+  Object.assign(scopeHeader.style, {
+    padding:'7px 14px 5px', fontSize:'10px', fontWeight:'800',
+    color: _isGlobal ? 'var(--text3)' : 'var(--accent)',
+    letterSpacing:'.5px', textTransform:'uppercase',
+    borderBottom:'1px solid var(--border)', marginBottom:'2px',
+    display:'flex', alignItems:'center', gap:'5px',
+  });
+  scopeHeader.innerHTML = _isGlobal
+    ? `<span style="opacity:.6">📊 Tutti i mercati</span>`
+    : `<span style="color:var(--accent)">📊 ${scopeLabel}</span><span style="font-size:9px;color:var(--text3);font-weight:600">${scopeRows.filter(r=>r._signal&&!r._loading&&!r._err).length} asset</span>`;
+  popup.appendChild(scopeHeader);
 
   // Tutti (reset)
   const allEl = document.createElement('div');
