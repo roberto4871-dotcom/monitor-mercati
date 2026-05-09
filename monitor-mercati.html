@@ -3630,7 +3630,8 @@ function showTopSignals(btn) {
        <div style="display:flex;align-items:center;gap:8px">
          ${ms !== null ? `<span style="font-size:11px;color:${msColor};font-weight:700">Score ${ms}/100</span>` : ''}
          <button onclick="window._tsInfo()" title="Come funzionano i segnali" style="font-size:10px;font-weight:700;background:rgba(100,149,237,.18);color:#90caf9;border:1px solid rgba(100,149,237,.4);border-radius:8px;padding:3px 10px;cursor:pointer;flex-shrink:0">ℹ Legenda</button>
-         <button onclick="window._tsPdf()" style="font-size:10px;font-weight:700;background:rgba(255,215,0,.12);color:var(--accent);border:1px solid rgba(255,215,0,.4);border-radius:8px;padding:3px 10px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='rgba(255,215,0,.22)'" onmouseleave="this.style.background='rgba(255,215,0,.12)'">⬇ PDF</button>
+         <button onclick="window._tsLegendPdf()" title="Stampa legenda in PDF" style="font-size:10px;font-weight:700;background:rgba(100,149,237,.12);color:#90caf9;border:1px solid rgba(100,149,237,.35);border-radius:8px;padding:3px 10px;cursor:pointer;flex-shrink:0">⬇ PDF legenda</button>
+         <button onclick="window._tsPdf()" style="font-size:10px;font-weight:700;background:rgba(255,215,0,.12);color:var(--accent);border:1px solid rgba(255,215,0,.4);border-radius:8px;padding:3px 10px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='rgba(255,215,0,.22)'" onmouseleave="this.style.background='rgba(255,215,0,.12)'">⬇ PDF segnali</button>
          <span onclick="document.getElementById('top-signals-popup')?.remove()" style="cursor:pointer;font-size:16px;color:var(--text3);line-height:1;padding:2px 4px" title="Chiudi">✕</span>
        </div>
      </div>
@@ -3662,9 +3663,8 @@ function showTopSignals(btn) {
            <div style="color:#ef5350">⚡ Contro trend — segnale debole contro il mercato (rischio alto)</div>
          </div>
        </div>
-       <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px">
-         <div style="color:var(--text3);font-size:10px">I segnali si aggiornano in tempo reale. La lista è ordinata per forza segnale decrescente.</div>
-         <button onclick="window._tsLegendPdf()" style="flex-shrink:0;font-size:10px;font-weight:700;background:rgba(100,149,237,.15);color:#90caf9;border:1px solid rgba(100,149,237,.4);border-radius:8px;padding:4px 12px;cursor:pointer;white-space:nowrap" title="Stampa legenda in PDF">⬇ PDF legenda</button>
+       <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);color:var(--text3);font-size:10px">
+         I segnali si aggiornano in tempo reale. La lista è ordinata per forza segnale decrescente.
        </div>
      </div>
      <div style="display:flex;gap:0;border-bottom:2px solid var(--border)">
