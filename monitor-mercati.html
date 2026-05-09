@@ -927,8 +927,16 @@ body.light .cal-item{background:var(--bg3)}
     </div>
   </div>
 
-  <!-- ── KPI cards ── -->
-  <div class="chart-kpis" id="chart-kpis"></div>
+  <!-- ── KPI cards (collassabili) ── -->
+  <div style="display:flex;align-items:center;gap:8px;padding:0 16px 0;flex-shrink:0">
+    <button id="chart-kpis-toggle" onclick="
+      const kpis=document.getElementById('chart-kpis');
+      const open=kpis.style.display!=='none';
+      kpis.style.display=open?'none':'flex';
+      this.textContent=open?'▼ Statistiche':'▲ Chiudi';
+    " style="font-size:11px;color:var(--text3);background:none;border:1px solid var(--border);border-radius:12px;padding:2px 12px;cursor:pointer;white-space:nowrap">▼ Statistiche</button>
+  </div>
+  <div class="chart-kpis" id="chart-kpis" style="display:none"></div>
 
   <!-- ── Grafico principale ── -->
   <div class="chart-main-wrap">
@@ -4734,6 +4742,7 @@ function renderCharts() {
           afterDataLimits: s => { s.min = Math.min(s.min, 0); s.max = Math.max(s.max, 0); }
         },
         y: {
+          reverse: true,
           ticks: { color:'#dce6f5', font:{size:12, weight:'600'}, autoSkip:false },
           grid:  { display: false },
         }
