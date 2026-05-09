@@ -4589,7 +4589,18 @@ function applyFilters(data) {
       const sMatch = !q || (r.m||'').toLowerCase().includes(q) ||
                            (r.i||'').toLowerCase().includes(q) ||
                            (r.a||'').toLowerCase().includes(q);
-      return sMatch;
+      const maMatch = !maBreadthFilter ? true :
+                      maBreadthFilter === 'ma50'   ? r._ma50  === true :
+                      maBreadthFilter === 'ma200'  ? r._ma200 === true :
+                      maBreadthFilter === 'maBoth' ? (r._ma50 === true && r._ma200 === true) : true;
+      const sigMatch = !signalFilter ? true
+        : signalFilter === '_strong'      ? r._signal?.strength === 'strong'
+        : signalFilter === '_medium'      ? r._signal?.strength === 'medium'
+        : signalFilter === '_weak'        ? r._signal?.strength === 'weak'
+        : signalFilter === '_contratrend' ? r._signal?.contratrend === true
+        : signalFilter === '_neutral'     ? (r._signal?.key !== 'buy' && r._signal?.key !== 'reduce')
+        : (r._signal?.key === signalFilter);
+      return sMatch && maMatch && sigMatch;
     });
   }
   return data.filter(r => {
