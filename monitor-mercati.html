@@ -3662,8 +3662,9 @@ function showTopSignals(btn) {
            <div style="color:#ef5350">⚡ Contro trend — segnale debole contro il mercato (rischio alto)</div>
          </div>
        </div>
-       <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);color:var(--text3);font-size:10px">
-         I segnali si aggiornano in tempo reale. La lista è ordinata per forza segnale decrescente.
+       <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px">
+         <div style="color:var(--text3);font-size:10px">I segnali si aggiornano in tempo reale. La lista è ordinata per forza segnale decrescente.</div>
+         <button onclick="window._tsLegendPdf()" style="flex-shrink:0;font-size:10px;font-weight:700;background:rgba(100,149,237,.15);color:#90caf9;border:1px solid rgba(100,149,237,.4);border-radius:8px;padding:4px 12px;cursor:pointer;white-space:nowrap" title="Stampa legenda in PDF">⬇ PDF legenda</button>
        </div>
      </div>
      <div style="display:flex;gap:0;border-bottom:2px solid var(--border)">
@@ -3732,6 +3733,89 @@ function showTopSignals(btn) {
     if (!leg) return;
     const open = leg.style.display === 'none' || !leg.style.display;
     leg.style.display = open ? 'block' : 'none';
+  };
+
+  window._tsLegendPdf = () => {
+    const now = new Date().toLocaleString('it-IT');
+    const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
+    <title>Market Compass — Legenda Segnali</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      @page{size:A4;margin:14mm}
+      body{font-family:'Segoe UI',system-ui,sans-serif;background:#fff;color:#1a2332;font-size:12px;line-height:1.6}
+      .hdr{display:flex;align-items:baseline;justify-content:space-between;border-bottom:3px solid #1a237e;padding-bottom:8px;margin-bottom:20px}
+      .hdr-title{font-size:20px;font-weight:900;color:#1a237e;letter-spacing:1px}
+      .hdr-sub{font-size:10px;color:#546e7a}
+      .section{margin-bottom:18px;padding:14px 16px;background:#f5f7fa;border-radius:8px;border-left:4px solid #1a237e}
+      .section-title{font-size:13px;font-weight:800;color:#1a237e;margin-bottom:10px;letter-spacing:.4px;text-transform:uppercase}
+      .row{display:flex;align-items:flex-start;gap:8px;margin-bottom:5px}
+      .row-icon{min-width:28px;font-size:14px;text-align:center}
+      .row-text{color:#2c3e50;font-size:11px}
+      .row-text b{color:#1a237e}
+      .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+      .tag-buy{display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:5px;padding:1px 8px;font-weight:700;font-size:11px}
+      .tag-sell{display:inline-block;background:#ffebee;color:#c62828;border:1px solid #ef9a9a;border-radius:5px;padding:1px 8px;font-weight:700;font-size:11px}
+      .tag-neu{display:inline-block;background:#f5f5f5;color:#546e7a;border:1px solid #cfd8dc;border-radius:5px;padding:1px 8px;font-weight:700;font-size:11px}
+      .tag-strong{display:inline-block;background:#fff3e0;color:#e65100;border:1px solid #ffcc80;border-radius:5px;padding:1px 8px;font-weight:700;font-size:11px}
+      .tag-medium{display:inline-block;background:#fffde7;color:#f57f17;border:1px solid #fff176;border-radius:5px;padding:1px 8px;font-weight:700;font-size:11px}
+      .tag-weak{display:inline-block;background:#eceff1;color:#546e7a;border:1px solid #b0bec5;border-radius:5px;padding:1px 8px;font-weight:700;font-size:11px}
+      .score-box{display:inline-block;background:#e8eaf6;color:#283593;border:1px solid #9fa8da;border-radius:5px;padding:2px 10px;font-weight:900;font-size:13px}
+      .footer{margin-top:22px;padding-top:8px;border-top:1px solid #cfd8dc;font-size:9px;color:#90a4ae;text-align:center}
+      .speciale{background:#fff8e1;border-left:4px solid #ff9800;padding:12px 14px;border-radius:8px;margin-bottom:18px}
+      .speciale-title{font-size:12px;font-weight:800;color:#e65100;margin-bottom:8px}
+    </style></head><body>
+    <div class="hdr">
+      <div class="hdr-title">🎯 Market Compass — Legenda Segnali Operativi</div>
+      <div class="hdr-sub">Generato il ${now}</div>
+    </div>
+
+    <div class="grid">
+      <div class="section">
+        <div class="section-title">Le 3 condizioni di valutazione</div>
+        <div class="row"><div class="row-icon">①</div><div class="row-text"><b>Trend</b> — il prezzo è sopra o sotto la Media Mobile a 200 giorni e qual è la direzione recente</div></div>
+        <div class="row"><div class="row-icon">②</div><div class="row-text"><b>Momentum</b> — score tecnico composito basato su RSI, forza relativa e Media Mobile a 50 giorni</div></div>
+        <div class="row"><div class="row-icon">③</div><div class="row-text"><b>Macro</b> — allineamento con il regime di mercato globale (VIX, breadth di mercato, S&P500)</div></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Forza del segnale</div>
+        <div class="row"><div class="row-icon">🔥</div><div class="row-text"><span class="tag-strong">FORTE</span> — tutte e 3/3 le condizioni soddisfatte</div></div>
+        <div class="row"><div class="row-icon">⚠️</div><div class="row-text"><span class="tag-medium">MEDIO</span> — 2/3 condizioni soddisfatte</div></div>
+        <div class="row"><div class="row-icon">❄️</div><div class="row-text"><span class="tag-weak">DEBOLE</span> — solo 1/3 condizioni soddisfatte</div></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Direzione del segnale</div>
+        <div class="row"><div class="row-icon">🟢</div><div class="row-text"><span class="tag-buy">BUY</span> — trend rialzista con momentum positivo</div></div>
+        <div class="row"><div class="row-icon">🔴</div><div class="row-text"><span class="tag-sell">SELL / RIDUCI</span> — trend ribassista con momentum negativo</div></div>
+        <div class="row"><div class="row-icon">⬜</div><div class="row-text"><span class="tag-neu">NEUTRO</span> — segnali contrastanti, nessuna direzione chiara</div></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Score numerico</div>
+        <div class="row"><div class="row-icon" style="min-width:auto"><span class="score-box">+85</span></div><div class="row-text">Valori <b>positivi alti</b> = forte pressione rialzista</div></div>
+        <div class="row"><div class="row-icon" style="min-width:auto"><span class="score-box">−72</span></div><div class="row-text">Valori <b>negativi alti</b> = forte pressione ribassista</div></div>
+        <div class="row"><div class="row-icon" style="min-width:auto"><span class="score-box">~0</span></div><div class="row-text">Valori <b>vicini a zero</b> = mercato indeciso/laterale</div></div>
+      </div>
+    </div>
+
+    <div class="speciale">
+      <div class="speciale-title">⚡ Etichette speciali — segnali contro tendenza</div>
+      <div class="row"><div class="row-icon">⚡</div><div class="row-text" style="color:#e65100"><b>Setup speculativo</b> — segnale di forza MEDIA che va contro il trend macro dominante. Opportunità ad alto rischio/rendimento, da gestire con stop-loss.</div></div>
+      <div class="row" style="margin-top:6px"><div class="row-icon">⚡</div><div class="row-text" style="color:#c62828"><b>Contro trend</b> — segnale DEBOLE in direzione opposta al mercato. Rischio elevato, adatto solo a operatori esperti con protezioni attive.</div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Come leggere la tabella segnali</div>
+      <div class="row"><div class="row-icon">📋</div><div class="row-text">La lista è <b>ordinata per forza segnale decrescente</b>: in cima appaiono i segnali più convinti (3/3 condizioni soddisfatte).</div></div>
+      <div class="row"><div class="row-icon">🔄</div><div class="row-text">I segnali si <b>aggiornano in tempo reale</b> con i dati di mercato. Ricaricare la pagina per avere l'ultima situazione.</div></div>
+      <div class="row"><div class="row-icon">⚠️</div><div class="row-text">I segnali hanno <b>scopo puramente informativo</b> e non costituiscono consulenza finanziaria o invito all'investimento.</div></div>
+    </div>
+
+    <div class="footer">Market Compass — dati a scopo informativo · Non costituisce consulenza finanziaria · Generato il ${now}</div>
+    <script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script>
+    </body></html>`;
+    const win = window.open('', '_blank');
+    if (!win) { alert('Abilita i popup per esportare in PDF'); return; }
+    win.document.write(html);
+    win.document.close();
   };
 
   // Posizionamento
