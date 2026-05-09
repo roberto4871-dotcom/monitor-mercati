@@ -1690,6 +1690,7 @@ let sortDir = 1;
 let activeFilter = '_sintesi';
 let maBreadthFilter = null;   // null | 'ma50' | 'ma200' | 'maBoth'
 let signalFilter    = null;   // null | signal key string (es. 'buy','hold','neutral','caution','reduce','low-fear',…)
+let actionFilter    = null;   // null | 'buy'|'buy_strong'|'buy_medium'|'buy_weak'|'sell'|'sell_strong'|'sell_medium'|'sell_weak'|'neutral_hold'
 let screeningRules = [];      // [{field, op, val}, ...]
 let screeningMA    = '';      // '' | 'above50' | 'below50' | 'above200' | 'below200' | 'bull' | 'bear'
 let rsConfig = JSON.parse(localStorage.getItem('mm_rs_config') || 'null') ||
@@ -3320,6 +3321,121 @@ function setSignalFilter(key) {
   buildThead(); // aggiorna indicatore attivo nell'header
 }
 
+function setActionFilter(key) {
+  actionFilter = key;
+  renderTable();
+  buildThead();
+}
+
+// ═══════════════════════════════════════════════════
+//  FILTRO BUY / SELL — menu dedicato colonna _action
+// ═══════════════════════════════════════════════════
+function showActionFilterMenu(btn) {
+  const existing = document.getElementById('action-filter-popup');
+  if (existing) { existing.remove(); return; }
+
+  // Scope rows identico al signal filter menu
+  const _ALBL = {
+    'all':'Tutti','_sintesi':'Vista Sintesi','_asset_globale':'Asset Globale','_indici':'Indici',
+    'favorites':'Lista 1','favorites2':'Lista 2','favorites3':'Lista 3','favorites4':'Lista 4','favorites5':'Lista 5',
+    'INDICE AZIONARIO':'Indici Azionari','INDICE OBBLIGAZIONARIO':'Indici Obbligazionari',
+    'MATERIA PRIMA':'Materie Prime','VALUTA':'Valute','VOLATILITA':'Volatilità',
+    'TITOLI EUROPA':'Titoli Europa','TITOLI IT BIG CAP':'Big Cap IT','TITOLI USA':'Titoli USA',
+    'ETF AZ. MASTER':'ETF Azionari','ETF OBB. MASTER':'ETF Obbligazionari',
+    'ETF COMM. MASTER':'ETF Commodities','ETF MEGATREND':'ETF Megatrend',
+    'ETF SINGLE COUNTRY':'ETF Single Country','ETF SETTORIALE':'ETF Settoriali',
+    'ETF INDICI':'ETF Indici','ULTRABIG':'Ultrabig','SVIZZERA':'Svizzera',
+  };
+  const _glob = !activeFilter || activeFilter === 'all';
+  let scopeRows = rows;
+  if (!_glob) {
+    if (EXCEL_GROUPS[activeFilter]) {
+      const syms = EXCEL_GROUPS[activeFilter];
+      scopeRows = rows.filter(r => syms.has(r.s));
+    } else if (activeFilter.startsWith('favorites')) {
+      const _fs = {favorites,favorites2,favorites3,favorites4,favorites5}[activeFilter];
+      scopeRows = _fs ? rows.filter(r => _fs.has(r.s)) : rows;
+    } else {
+      scopeRows = rows.filter(r => r.a === activeFilter);
+    }
+  }
+  const sig = scopeRows.filter(r => r._signal && !r._loading && !r._err);
+  const cnt = fn => sig.filter(fn).length;
+
+  const popup = document.createElement('div');
+  popup.id = 'action-filter-popup';
+  Object.assign(popup.style, {
+    position:'fixed', zIndex:'9999',
+    background:'var(--bg2)', border:'1px solid var(--border)',
+    borderRadius:'10px', padding:'8px 0',
+    boxShadow:'0 8px 32px rgba(0,0,0,.55)', minWidth:'210px',
+  });
+
+  const mkItem = (label, key, color, count) => {
+    const isActive = actionFilter === key;
+    const el = document.createElement('div');
+    Object.assign(el.style, {
+      padding:'7px 14px', cursor:'pointer', fontSize:'12px', fontWeight:'600',
+      display:'flex', alignItems:'center', justifyContent:'space-between', gap:'10px',
+      background: isActive ? (color+'22') : 'transparent',
+      color: isActive ? color : 'var(--text)',
+      borderLeft: isActive ? `3px solid ${color}` : '3px solid transparent',
+    });
+    el.innerHTML = `<span>${label}</span><span style="font-size:10px;font-weight:700;background:var(--bg3);padding:1px 6px;border-radius:8px;color:var(--text3)">${count ?? 0}</span>`;
+    el.addEventListener('mouseenter', () => { if (!isActive) el.style.background='rgba(255,255,255,.05)'; });
+    el.addEventListener('mouseleave', () => { if (!isActive) el.style.background='transparent'; });
+    el.addEventListener('click', () => { setActionFilter(key); popup.remove(); document.removeEventListener('click', close); });
+    return el;
+  };
+  const mkLabel = txt => { const el=document.createElement('div'); Object.assign(el.style,{padding:'4px 14px 2px',fontSize:'9px',fontWeight:'700',color:'var(--text3)',letterSpacing:'.6px',textTransform:'uppercase'}); el.textContent=txt; return el; };
+  const mkSep = () => { const el=document.createElement('div'); Object.assign(el.style,{height:'1px',background:'var(--border)',margin:'4px 0'}); return el; };
+
+  // Header scope
+  const hdr = document.createElement('div');
+  Object.assign(hdr.style,{padding:'7px 14px 5px',fontSize:'10px',fontWeight:'800',color:_glob?'var(--text3)':'var(--accent)',letterSpacing:'.5px',textTransform:'uppercase',borderBottom:'1px solid var(--border)',marginBottom:'2px',display:'flex',alignItems:'center',gap:'5px'});
+  hdr.innerHTML = _glob ? `<span style="opacity:.6">📊 Tutti i mercati</span>` : `<span style="color:var(--accent)">📊 ${_ALBL[activeFilter]||activeFilter}</span><span style="font-size:9px;color:var(--text3);font-weight:600">${sig.length} asset</span>`;
+  popup.appendChild(hdr);
+
+  // Tutti (reset)
+  const allEl = document.createElement('div');
+  Object.assign(allEl.style,{padding:'7px 14px',cursor:'pointer',fontSize:'11px',fontWeight:'700',color:!actionFilter?'var(--accent)':'var(--text3)',letterSpacing:'.5px',textTransform:'uppercase',borderLeft:!actionFilter?'3px solid var(--accent)':'3px solid transparent',background:!actionFilter?'rgba(255,215,0,.08)':'transparent'});
+  allEl.textContent = 'Tutti i segnali';
+  allEl.addEventListener('click', () => { setActionFilter(null); popup.remove(); document.removeEventListener('click', close); });
+  popup.appendChild(allEl);
+
+  // ── BUY ──
+  popup.appendChild(mkSep());
+  popup.appendChild(mkLabel('📈 BUY'));
+  popup.appendChild(mkItem('🟢 Tutti BUY',    'buy',        '#4caf50', cnt(r=>r._action===3)));
+  popup.appendChild(mkItem('🔥 BUY Forte',    'buy_strong', '#ff6f00', cnt(r=>r._action===3&&r._signal?.strength==='strong')));
+  popup.appendChild(mkItem('⚠️ BUY Medio',    'buy_medium', '#ffc107', cnt(r=>r._action===3&&r._signal?.strength==='medium')));
+  popup.appendChild(mkItem('❄️ BUY Debole',   'buy_weak',   '#78909c', cnt(r=>r._action===3&&r._signal?.strength==='weak')));
+
+  // ── NEUTRO ──
+  popup.appendChild(mkSep());
+  popup.appendChild(mkItem('⬜ Neutro / Cautela', 'neutral_hold', '#90a4ae', cnt(r=>r._action===2)));
+
+  // ── SELL ──
+  popup.appendChild(mkSep());
+  popup.appendChild(mkLabel('📉 SELL'));
+  popup.appendChild(mkItem('🔴 Tutti SELL',   'sell',        '#ef5350', cnt(r=>r._action===1)));
+  popup.appendChild(mkItem('🔥 SELL Forte',   'sell_strong', '#ff6f00', cnt(r=>r._action===1&&r._signal?.strength==='strong')));
+  popup.appendChild(mkItem('⚠️ SELL Medio',   'sell_medium', '#ffc107', cnt(r=>r._action===1&&r._signal?.strength==='medium')));
+  popup.appendChild(mkItem('❄️ SELL Debole',  'sell_weak',   '#78909c', cnt(r=>r._action===1&&r._signal?.strength==='weak')));
+
+  document.body.appendChild(popup);
+  const rect = btn.getBoundingClientRect();
+  popup.style.top = (rect.bottom + 6) + 'px';
+  let left = rect.left;
+  if (left + 215 > window.innerWidth) left = window.innerWidth - 220;
+  popup.style.left = Math.max(4, left) + 'px';
+
+  const close = e => {
+    if (!popup.contains(e.target) && e.target !== btn) { popup.remove(); document.removeEventListener('click', close); }
+  };
+  setTimeout(() => document.addEventListener('click', close), 50);
+}
+
 
 function showSignalFilterMenu(btn) {
   const existing = document.getElementById('signal-filter-popup');
@@ -4600,7 +4716,18 @@ function applyFilters(data) {
         : signalFilter === '_contratrend' ? r._signal?.contratrend === true
         : signalFilter === '_neutral'     ? (r._signal?.key !== 'buy' && r._signal?.key !== 'reduce')
         : (r._signal?.key === signalFilter);
-      return sMatch && maMatch && sigMatch;
+      const actMatch = !actionFilter ? true
+        : actionFilter === 'buy'         ? r._action === 3
+        : actionFilter === 'buy_strong'  ? (r._action === 3 && r._signal?.strength === 'strong')
+        : actionFilter === 'buy_medium'  ? (r._action === 3 && r._signal?.strength === 'medium')
+        : actionFilter === 'buy_weak'    ? (r._action === 3 && r._signal?.strength === 'weak')
+        : actionFilter === 'sell'        ? r._action === 1
+        : actionFilter === 'sell_strong' ? (r._action === 1 && r._signal?.strength === 'strong')
+        : actionFilter === 'sell_medium' ? (r._action === 1 && r._signal?.strength === 'medium')
+        : actionFilter === 'sell_weak'   ? (r._action === 1 && r._signal?.strength === 'weak')
+        : actionFilter === 'neutral_hold'? r._action === 2
+        : true;
+      return sMatch && maMatch && sigMatch && actMatch;
     });
   }
   return data.filter(r => {
@@ -4626,7 +4753,18 @@ function applyFilters(data) {
       : signalFilter === '_contratrend' ? r._signal?.contratrend === true
       : signalFilter === '_neutral' ? (r._signal?.key !== 'buy' && r._signal?.key !== 'reduce')
       : (r._signal?.key === signalFilter);
-    return fMatch && sMatch && maMatch && sigMatch;
+    const actMatch = !actionFilter ? true
+      : actionFilter === 'buy'         ? r._action === 3
+      : actionFilter === 'buy_strong'  ? (r._action === 3 && r._signal?.strength === 'strong')
+      : actionFilter === 'buy_medium'  ? (r._action === 3 && r._signal?.strength === 'medium')
+      : actionFilter === 'buy_weak'    ? (r._action === 3 && r._signal?.strength === 'weak')
+      : actionFilter === 'sell'        ? r._action === 1
+      : actionFilter === 'sell_strong' ? (r._action === 1 && r._signal?.strength === 'strong')
+      : actionFilter === 'sell_medium' ? (r._action === 1 && r._signal?.strength === 'medium')
+      : actionFilter === 'sell_weak'   ? (r._action === 1 && r._signal?.strength === 'weak')
+      : actionFilter === 'neutral_hold'? r._action === 2
+      : true;
+    return fMatch && sMatch && maMatch && sigMatch && actMatch;
   });
 }
 
@@ -6006,7 +6144,7 @@ buildThead = function() {
     const lbl = c.key === '_signal'
       ? `Segnale<br>Operativo&thinsp;<span onclick="event.stopPropagation();showSignalLegend(this)" title="Come funzionano i segnali operativi" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span>&thinsp;<span onclick="event.stopPropagation();showSignalFilterMenu(this)" title="Filtra per segnale" style="cursor:pointer;font-size:13px;vertical-align:middle;user-select:none;${signalFilter?'color:var(--accent);font-weight:900':'opacity:.75'}">${signalFilter?'▼●':'▼'}</span>&thinsp;<span onclick="event.stopPropagation();showTopSignals(this)" title="Top segnali forti — ranking" style="cursor:pointer;font-size:12px;opacity:.85;vertical-align:middle;user-select:none">🎯</span>${signalFilter?`&thinsp;<span onclick="event.stopPropagation();setSignalFilter(null)" title="Rimuovi filtro segnale" style="cursor:pointer;font-size:11px;color:var(--red);vertical-align:middle">✕</span>`:''}`
       : c.key === '_action'
-      ? `Buy<br>Sell&thinsp;<span onclick="event.stopPropagation();showSignalFilterMenu(this)" title="Filtra per segnale" style="cursor:pointer;font-size:13px;vertical-align:middle;user-select:none;${signalFilter?'color:var(--accent);font-weight:900':'opacity:.75'}">${signalFilter?'▲●':'▲'}</span>${signalFilter?`&thinsp;<span onclick="event.stopPropagation();setSignalFilter(null)" title="Rimuovi filtro" style="cursor:pointer;font-size:11px;color:var(--red);vertical-align:middle">✕</span>`:''}`
+      ? `Buy<br>Sell&thinsp;<span onclick="event.stopPropagation();showActionFilterMenu(this)" title="Filtra per BUY/SELL" style="cursor:pointer;font-size:13px;vertical-align:middle;user-select:none;${actionFilter?'color:var(--accent);font-weight:900':'opacity:.75'}">${actionFilter?'▲●':'▲'}</span>${actionFilter?`&thinsp;<span onclick="event.stopPropagation();setActionFilter(null)" title="Rimuovi filtro" style="cursor:pointer;font-size:11px;color:var(--red);vertical-align:middle">✕</span>`:''}`
       : c.key === 'ma'
       ? `MM<br>50/200&thinsp;<span onclick="event.stopPropagation();showMaLegend(this)" title="Legenda" style="cursor:pointer;font-size:13px;opacity:.95;vertical-align:middle;user-select:none">ℹ</span>`
       : c.key === '_momentum'
