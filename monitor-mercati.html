@@ -3327,7 +3327,8 @@ function showSignalFilterMenu(btn) {
 
   // ── Scope: filtra le righe in base alla categoria/menu attivo ──
   const _SF_LABELS = {
-    'all':'Tutti gli strumenti', '_sintesi':'Vista Sintesi',
+    'all':'Tutti gli strumenti',
+    '_sintesi':'Vista Sintesi','_asset_globale':'Asset Globale','_indici':'Indici',
     'favorites':'Lista 1','favorites2':'Lista 2','favorites3':'Lista 3','favorites4':'Lista 4','favorites5':'Lista 5',
     'INDICE AZIONARIO':'Indici Azionari','INDICE OBBLIGAZIONARIO':'Indici Obbligazionari',
     'MATERIA PRIMA':'Materie Prime','VALUTA':'Valute','VOLATILITA':'Volatilità',
@@ -3337,7 +3338,7 @@ function showSignalFilterMenu(btn) {
     'ETF SINGLE COUNTRY':'ETF Single Country','ETF SETTORIALE':'ETF Settoriali',
     'ETF INDICI':'ETF Indici','ULTRABIG':'Ultrabig','SVIZZERA':'Svizzera',
   };
-  const _isGlobal = !activeFilter || activeFilter === '_sintesi' || activeFilter === 'all';
+  const _isGlobal = !activeFilter || activeFilter === 'all';
   let scopeRows = rows;
   let scopeLabel = 'Tutti i mercati';
   if (!_isGlobal) {
