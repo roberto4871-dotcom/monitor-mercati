@@ -24,6 +24,17 @@ PORT = int(os.environ.get('PORT', 8080))
 
 # ── Semaforo globale: max 6 richieste Yahoo Finance in parallelo ──────────
 _yf_semaphore = threading.Semaphore(6)
+
+import concurrent.futures as _cf
+
+def _yf_call(fn, timeout=10, default=None):
+    """Esegue fn() in un thread separato con timeout. Evita blocchi su t.info ecc."""
+    with _cf.ThreadPoolExecutor(max_workers=1) as ex:
+        fut = ex.submit(fn)
+        try:
+            return fut.result(timeout=timeout)
+        except (_cf.TimeoutError, Exception):
+            return default
 _yf_cooldown_until = 0.0   # timestamp: se > now, aspetta prima di fare richieste YF
 _yf_cooldown_lock  = threading.Lock()
 
@@ -436,19 +447,22 @@ def fetch_fundamentals(symbol):
             return c['data']
     import math
     info = None
-    for attempt in range(4):
+    t = yf.Ticker(symbol)
+    for attempt in range(3):
         _yf_wait_cooldown()
         try:
             with _yf_semaphore:
-                t    = yf.Ticker(symbol)
-                info = t.info
+                info = _yf_call(lambda: t.info, timeout=12)
+            if info is None:
+                print(f'  [fundamentals] timeout t.info per {symbol}')
+                return {'error': 'Timeout dati fondamentali. Riprova.'}
             # yfinance a volte restituisce una stringa di errore come valore
-            if not info or isinstance(list(info.values())[0] if info else None, str) and 'Too Many' in str(list(info.values())[0]):
+            if not info or (isinstance(list(info.values())[0] if info else None, str) and 'Too Many' in str(list(info.values())[0])):
                 raise Exception('Too Many Requests')
             break   # successo
         except Exception as e:
             if is_rate_limit_error(e):
-                wait = 2 ** (attempt + 1)  # 2s, 4s, 8s, 16s
+                wait = 2 ** (attempt + 1)  # 2s, 4s, 8s
                 print(f'  [fundamentals] rate limit {symbol}, retry {attempt+1} fra {wait}s')
                 _yf_set_cooldown(wait)
                 time.sleep(wait)
@@ -499,7 +513,7 @@ def fetch_fundamentals(symbol):
 
         # ── Ultimi 4 trimestri (conto economico) ──────────────────
         try:
-            qi = t.quarterly_income_stmt
+            qi = _yf_call(lambda: t.quarterly_income_stmt, timeout=10)
             quarters = []
             if qi is not None and not qi.empty and len(qi.columns) > 0:
                 for col in list(qi.columns[:4]):
@@ -525,7 +539,7 @@ def fetch_fundamentals(symbol):
         try:
             import datetime
             today  = datetime.date.today()
-            cal    = t.calendar
+            cal    = _yf_call(lambda: t.calendar, timeout=8) or {}
             dates  = cal.get('Earnings Date', [])
             # Prendi solo date FUTURE (ignora quelle già passate)
             future = [d for d in dates if hasattr(d, 'strftime') and d >= today]
