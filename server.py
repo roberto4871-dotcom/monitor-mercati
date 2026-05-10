@@ -559,6 +559,40 @@ def fetch_fundamentals(symbol):
         except Exception:
             data['nextEarnings'] = {}
 
+        # ── Storico dividendi ultimi 3 anni ──────────────────
+        try:
+            import datetime as _dt
+            three_yrs_ago = _dt.date.today() - _dt.timedelta(days=3*366)
+            div_series = _yf_call(lambda: t.dividends, timeout=10)
+            div_history = []
+            if div_series is not None and not div_series.empty:
+                for dt_idx, amount in div_series.items():
+                    try:
+                        d_date = dt_idx.date() if hasattr(dt_idx, 'date') else _dt.date.fromisoformat(str(dt_idx)[:10])
+                        if d_date >= three_yrs_ago:
+                            div_history.append({'date': d_date.strftime('%Y-%m-%d'), 'amount': round(float(amount), 4)})
+                    except Exception:
+                        pass
+            div_history.sort(key=lambda x: x['date'], reverse=True)
+            data['dividendsHistory'] = div_history
+        except Exception:
+            data['dividendsHistory'] = []
+
+        # Ex-dividend date, dividend rate, last dividend
+        try:
+            import datetime as _dt
+            ex_ts = info.get('exDividendDate')
+            data['exDividendDate']   = _dt.datetime.utcfromtimestamp(ex_ts).strftime('%Y-%m-%d') if ex_ts else None
+            last_ts = info.get('lastDividendDate')
+            data['lastDividendDate'] = _dt.datetime.utcfromtimestamp(last_ts).strftime('%Y-%m-%d') if last_ts else None
+            data['dividendRate']     = info.get('dividendRate')
+            data['lastDivValue']     = info.get('lastDividendValue')
+        except Exception:
+            data['exDividendDate'] = None
+            data['lastDividendDate'] = None
+            data['dividendRate'] = None
+            data['lastDivValue'] = None
+
         # ── Consensus analisti ────────────────────────────────
         # Fonte primaria: info (può essere vuota su alcuni ambienti)
         data['analystConsensus'] = info.get('recommendationKey')

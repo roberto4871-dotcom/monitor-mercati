@@ -7049,6 +7049,62 @@ function renderFundamentals(d) {
     html += `</tbody></table>`;
   }
 
+  // ── Dividendi ────────────────────────────────────────────────
+  const divHistory = d.dividendsHistory || [];
+  const hasDivs = divHistory.length > 0 || d.exDividendDate || d.dividendRate;
+  if (hasDivs) {
+    html += `<div class="fund-section-title">💰 Dividendi</div>`;
+
+    // Pillole riepilogative
+    const divMeta = [];
+    if (d.dividendRate)   divMeta.push({l:'Dividendo annuo', v:`${d.currency||''} ${N(d.dividendRate, 2)}`});
+    if (d.dividendYield)  divMeta.push({l:'Rendimento (yield)', v:`${d.dividendYield}%`});
+    if (d.exDividendDate) {
+      const isUpcoming = new Date(d.exDividendDate) >= new Date();
+      divMeta.push({l: isUpcoming ? '📅 Prossima Ex-Date' : 'Ultima Ex-Date', v: fDate(d.exDividendDate), accent: isUpcoming});
+    }
+    if (d.lastDivValue)   divMeta.push({l:'Ultimo importo', v:`${d.currency||''} ${N(d.lastDivValue, 4)}`});
+    if (d.lastDividendDate && !d.exDividendDate) divMeta.push({l:'Ultima data', v: fDate(d.lastDividendDate)});
+    if (divMeta.length) {
+      html += `<div class="fund-grid" style="margin-bottom:10px">`;
+      html += divMeta.map(m => `<div class="fund-item"><span class="fund-label">${m.l}</span><span class="fund-value"${m.accent ? ' style="color:var(--accent);font-weight:800"' : ''}>${m.v}</span></div>`).join('');
+      html += `</div>`;
+    }
+
+    // Tabella storico
+    if (divHistory.length > 0) {
+      html += `<table class="earnings-table"><thead><tr>
+        <th>Ex-Dividend Date</th><th style="text-align:right">Importo</th><th style="text-align:center">Anno</th>
+      </tr></thead><tbody>`;
+      // Raggruppa per anno per mostrare totale
+      const byYear = {};
+      divHistory.forEach(d2 => {
+        const y = d2.date.slice(0,4);
+        byYear[y] = (byYear[y]||0) + d2.amount;
+        html += `<tr>
+          <td>${fDate(d2.date)}</td>
+          <td style="text-align:right;font-weight:700;color:#4caf50">${d.currency||''} ${N(d2.amount,4)}</td>
+          <td style="text-align:center;color:var(--text3)">${y}</td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      // Totale per anno
+      const years = Object.keys(byYear).sort().reverse();
+      if (years.length > 1 || byYear[years[0]] !== divHistory[0]?.amount) {
+        html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">`;
+        years.forEach(y => {
+          html += `<div style="background:rgba(76,175,80,.1);border:1px solid rgba(76,175,80,.3);border-radius:8px;padding:4px 12px;font-size:11px">
+            <span style="color:var(--text3)">${y}</span>
+            <span style="font-weight:800;color:#4caf50;margin-left:6px">${d.currency||''} ${N(byYear[y],2)}</span>
+          </div>`;
+        });
+        html += `</div>`;
+      }
+    } else {
+      html += `<div style="color:var(--text3);font-size:11px;padding:8px 0">Nessun dividendo registrato negli ultimi 3 anni.</div>`;
+    }
+  }
+
   // ── Consensus analisti ───────────────────────────────────────
   const CONS_STYLE = {
     'strong_buy':  {label:'Strong Buy',   color:'#4caf50', bg:'rgba(76,175,80,.18)'},
