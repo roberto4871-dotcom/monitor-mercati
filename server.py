@@ -25,16 +25,22 @@ PORT = int(os.environ.get('PORT', 8080))
 # ── Semaforo globale: max 6 richieste Yahoo Finance in parallelo ──────────
 _yf_semaphore = threading.Semaphore(6)
 
-import concurrent.futures as _cf
-
 def _yf_call(fn, timeout=10, default=None):
-    """Esegue fn() in un thread separato con timeout. Evita blocchi su t.info ecc."""
-    with _cf.ThreadPoolExecutor(max_workers=1) as ex:
-        fut = ex.submit(fn)
-        try:
-            return fut.result(timeout=timeout)
-        except (_cf.TimeoutError, Exception):
-            return default
+    """Esegue fn() in un thread daemon con timeout — non blocca mai il thread chiamante."""
+    result = [default]
+    exc    = [None]
+    def _run():
+        try:    result[0] = fn()
+        except Exception as e: exc[0] = e
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout=timeout)
+    if t.is_alive():
+        print(f'  [yf_call] timeout {timeout}s — thread lasciato girare in background')
+        return default
+    if exc[0] and not isinstance(exc[0], Exception):
+        pass  # ignora eccezioni non critiche
+    return result[0]
 _yf_cooldown_until = 0.0   # timestamp: se > now, aspetta prima di fare richieste YF
 _yf_cooldown_lock  = threading.Lock()
 
