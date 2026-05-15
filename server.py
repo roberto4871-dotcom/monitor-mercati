@@ -20,10 +20,19 @@ except ImportError:
     print("Installa yfinance: pip3 install yfinance")
     raise
 
+# ── Timeout globale su TUTTE le richieste HTTP (incluse quelle di yfinance) ──
+# Previene blocchi infiniti quando Yahoo Finance è lento o fa rate-limit
+import requests as _req
+_orig_session_request = _req.Session.request
+def _session_request_timeout(self, method, url, **kwargs):
+    kwargs.setdefault('timeout', 20)   # max 20s per qualsiasi richiesta HTTP
+    return _orig_session_request(self, method, url, **kwargs)
+_req.Session.request = _session_request_timeout
+
 PORT = int(os.environ.get('PORT', 8080))
 
-# ── Semaforo globale: max 6 richieste Yahoo Finance in parallelo ──────────
-_yf_semaphore = threading.Semaphore(6)
+# ── Semaforo globale: max 3 richieste Yahoo Finance in parallelo ──────────
+_yf_semaphore = threading.Semaphore(3)
 
 def _yf_call(fn, timeout=10, default=None):
     """Esegue fn() in un thread daemon con timeout — non blocca mai il thread chiamante."""
@@ -1980,6 +1989,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
+        if self.path == '/health':
+            self.send_response(200)
+            self.send_header('Content-Type','application/json')
+            self.end_headers()
+            self.wfile.write(b'{"status":"ok"}')
+            return
         if self.path.startswith('/yf/batch'):
             self.handle_batch()
         elif self.path.startswith('/yf/'):
