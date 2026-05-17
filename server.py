@@ -50,6 +50,19 @@ def _yf_call(fn, timeout=10, default=None):
     if exc[0] and not isinstance(exc[0], Exception):
         pass  # ignora eccezioni non critiche
     return result[0]
+
+def _yf_history(ticker, timeout=15, **kwargs):
+    """Wrapper sicuro per ticker.history() con timeout."""
+    import pandas as pd
+    r = _yf_call(lambda: ticker.history(**kwargs), timeout=timeout, default=None)
+    return r if r is not None else pd.DataFrame()
+
+def _yf_download(*args, timeout=30, **kwargs):
+    """Wrapper sicuro per yf.download() con timeout."""
+    import pandas as pd
+    r = _yf_call(lambda: yf.download(*args, **kwargs), timeout=timeout, default=None)
+    return r if r is not None else pd.DataFrame()
+
 _yf_cooldown_until = 0.0   # timestamp: se > now, aspetta prima di fare richieste YF
 _yf_cooldown_lock  = threading.Lock()
 
@@ -147,15 +160,14 @@ def fetch_symbol(symbol, period='3mo', interval='1d'):
         today  = datetime.date.today()
         if period in LONG_PERIODS:
             start = today.replace(year=today.year - LONG_PERIODS[period])
-            hist  = ticker.history(start=start, end=today, interval=interval, auto_adjust=False)
+            hist  = _yf_history(ticker, timeout=20, start=start, end=today, interval=interval, auto_adjust=False)
         elif period == 'max':
-            hist  = ticker.history(start='1970-01-01', end=today, interval=interval, auto_adjust=False)
+            hist  = _yf_history(ticker, timeout=25, start='1970-01-01', end=today, interval=interval, auto_adjust=False)
         else:
-            hist  = ticker.history(period=period, interval=interval, auto_adjust=False)
+            hist  = _yf_history(ticker, timeout=15, period=period, interval=interval, auto_adjust=False)
+        if hist is None or hist.empty:
+            return {'error': f'Nessun dato per {symbol} (timeout o dati mancanti)'}
         info   = ticker.fast_info
-
-        if hist.empty:
-            return {'error': f'Nessun dato per {symbol}'}
 
         closes     = hist['Close'].tolist()
         opens      = hist['Open'].tolist()
@@ -172,7 +184,7 @@ def fetch_symbol(symbol, period='3mo', interval='1d'):
         yield_pct = None
         if period in ('3mo', '6mo'):
             try:
-                full_info = ticker.info
+                full_info = _yf_call(lambda: ticker.info, timeout=10, default={}) or {}
                 raw = (full_info.get('yield') or full_info.get('dividendYield')
                        or full_info.get('trailingAnnualDividendYield'))
                 if raw and raw > 0:
@@ -182,8 +194,8 @@ def fetch_symbol(symbol, period='3mo', interval='1d'):
             # Fallback: calcola yield da dividendi degli ultimi 12 mesi
             if yield_pct is None:
                 try:
-                    divs = ticker.dividends
-                    if not divs.empty:
+                    divs = _yf_call(lambda: ticker.dividends, timeout=8, default=None)
+                    if divs is not None and not divs.empty:
                         annual_div = float(divs.last('365D').sum())
                         if annual_div > 0 and cur_price > 0:
                             yield_pct = round(annual_div / cur_price * 100, 2)
@@ -246,20 +258,22 @@ def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
     try:
         if period in LONG_PERIODS:
             start = today.replace(year=today.year - LONG_PERIODS[period])
-            raw = yf.download(to_fetch, start=str(start), end=str(today),
+            raw = _yf_download(to_fetch, start=str(start), end=str(today),
                               interval=interval, auto_adjust=False,
                               group_by='ticker', progress=False, threads=True)
         elif period == 'max':
-            raw = yf.download(to_fetch, start='1970-01-01', end=str(today),
+            raw = _yf_download(to_fetch, start='1970-01-01', end=str(today),
                               interval=interval, auto_adjust=False,
                               group_by='ticker', progress=False, threads=True)
         else:
             # 400 giorni garantisce: priceAtDec31 (fine anno prec.) + p180 (118 barre) + p365 (240 barre)
             start = today - datetime.timedelta(days=400)
             end   = today + datetime.timedelta(days=1)
-            raw = yf.download(to_fetch, start=str(start), end=str(end),
+            raw = _yf_download(to_fetch, start=str(start), end=str(end),
                               interval=interval, auto_adjust=False,
                               group_by='ticker', progress=False, threads=True)
+        if raw is None or raw.empty:
+            raise Exception('timeout o dati vuoti da yf.download')
     except Exception as e:
         print(f'  [batch] yf.download fallito ({e}), uso fetch individuale a chunk')
         if is_rate_limit_error(e):
@@ -387,7 +401,7 @@ def fetch_ma_batch(symbols):
 
     try:
         import pandas as pd
-        raw = yf.download(
+        raw = _yf_download(
             to_fetch,
             start=str(start),
             end=str(today + datetime.timedelta(days=1)),
@@ -397,6 +411,8 @@ def fetch_ma_batch(symbols):
             progress=False,
             threads=True,
         )
+        if raw is None or raw.empty:
+            raise Exception('timeout o dati vuoti da yf.download per MA')
 
         is_multi = isinstance(raw.columns, pd.MultiIndex)
 
@@ -434,10 +450,9 @@ def fetch_ma_batch(symbols):
             try:
                 today_l = datetime.date.today()
                 start_l = today_l - datetime.timedelta(days=365)
-                hist = yf.Ticker(sym).history(
-                    start=str(start_l), end=str(today_l),
-                    interval='1d', auto_adjust=False
-                )
+                _tk = yf.Ticker(sym)
+                hist = _yf_history(_tk, timeout=12, start=str(start_l), end=str(today_l),
+                    interval='1d', auto_adjust=False)
                 if hist.empty:
                     return sym, {'above50': None, 'above200': None, 'ma50': None, 'ma200': None}
                 closes = [float(v) for v in hist['Close'].tolist() if v == v]
@@ -775,11 +790,14 @@ def fetch_correlation(symbols, days=252):
         # evitando il problema di timestamp con fusi orari diversi per borsa.
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            raw = yf.download(
+            raw = _yf_download(
                 symbols, start=str(start), end=str(end_date),
                 interval='1d', auto_adjust=False,
-                group_by='ticker', progress=False, threads=True
+                group_by='ticker', progress=False, threads=True,
+                timeout=35
             )
+        if raw is None or raw.empty:
+            return {'error': 'Timeout download dati correlazione'}
 
         is_multi = isinstance(raw.columns, pd.MultiIndex)
         prices = {}
@@ -1180,7 +1198,8 @@ def fetch_global_yields():
         try:
             _yf_wait_cooldown()
             with _yf_semaphore:
-                hist = yf.Ticker(sym).history(period='5d', interval='1d')
+                _tk = yf.Ticker(sym)
+                hist = _yf_history(_tk, timeout=10, period='5d', interval='1d')
             if not hist.empty:
                 closes = hist['Close'].dropna()
                 if len(closes) >= 1:
@@ -1637,7 +1656,8 @@ def fetch_macro_data():
         try:
             _yf_wait_cooldown()
             with _yf_semaphore:
-                hist = yf.Ticker(sym).history(period='5d', interval='1d')
+                _tk = yf.Ticker(sym)
+                hist = _yf_history(_tk, timeout=10, period='5d', interval='1d')
             if hist.empty:
                 continue
             closes = hist['Close'].dropna()
@@ -1721,21 +1741,22 @@ def fetch_news(symbol):
     data = []
     try:
         # ── Tentativo 1: news diretta per ticker (funziona per azioni) ──
-        news = yf.Ticker(symbol).news or []
+        _tk_news = yf.Ticker(symbol)
+        news = _yf_call(lambda: _tk_news.news, timeout=10, default=[]) or []
 
         # ── Tentativo 2: ricerca per keyword da simbolo (indici/valute) ──
         if not news:
             query = _symbol_to_query(symbol)
             try:
-                sr   = yf.Search(query, news_count=8, enable_fuzzy_query=False)
-                news = getattr(sr, 'news', []) or []
+                sr   = _yf_call(lambda: yf.Search(query, news_count=8, enable_fuzzy_query=False), timeout=8, default=None)
+                news = getattr(sr, 'news', []) or [] if sr else []
             except Exception:
                 pass
 
         # ── Tentativo 3: nome completo da info (ETF europei) ─────────────
         if not news:
             try:
-                info       = yf.Ticker(symbol).info or {}
+                info       = _yf_call(lambda: yf.Ticker(symbol).info, timeout=10, default={}) or {}
                 short_name = info.get('shortName') or info.get('longName', '')
                 if short_name:
                     sr   = yf.Search(short_name, news_count=8, enable_fuzzy_query=False)
@@ -1775,9 +1796,8 @@ def fetch_monthly(symbol):
         today = datetime.date.today()
         start    = datetime.date(today.year - 5, 1, 1)
         end_date = datetime.date(today.year + 1, 12, 31)
-        hist  = yf.Ticker(symbol).history(
-            start=str(start), end=str(end_date), interval='1mo', auto_adjust=False
-        )
+        _tk_m = yf.Ticker(symbol)
+        hist  = _yf_history(_tk_m, timeout=15, start=str(start), end=str(end_date), interval='1mo', auto_adjust=False)
         if hist.empty:
             return {'error': 'Nessun dato mensile disponibile'}
 
@@ -1833,9 +1853,8 @@ def fetch_weekly(symbol):
         # della settimana 1 dell'anno corrente, che spesso inizia a fine dicembre ISO)
         start    = datetime.date(cur_year - 1, 12, 1)
         end_date = today + datetime.timedelta(days=7)
-        hist  = yf.Ticker(symbol).history(
-            start=str(start), end=str(end_date), interval='1wk', auto_adjust=False
-        )
+        _tk_w = yf.Ticker(symbol)
+        hist  = _yf_history(_tk_w, timeout=15, start=str(start), end=str(end_date), interval='1wk', auto_adjust=False)
         if hist.empty:
             return {'error': 'Nessun dato settimanale'}
 
@@ -1879,9 +1898,8 @@ def fetch_seasonal(symbol):
     try:
         today = datetime.date.today()
         start = datetime.date(today.year - 10, 1, 1)
-        hist  = yf.Ticker(symbol).history(
-            start=str(start), end=str(today), interval='1mo', auto_adjust=False
-        )
+        _tk_s = yf.Ticker(symbol)
+        hist  = _yf_history(_tk_s, timeout=20, start=str(start), end=str(today), interval='1mo', auto_adjust=False)
         if hist.empty:
             result = {'error': 'Nessun dato stagionale disponibile'}
         else:
@@ -2125,5 +2143,11 @@ if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     print(f'\n  Monitor Mercati — http://localhost:{PORT}/monitor-mercati.html\n')
     print('  (Ctrl+C per fermare)\n')
-    with http.server.ThreadingHTTPServer(('', PORT), Handler) as srv:
+    class _Server(http.server.ThreadingHTTPServer):
+        daemon_threads = True          # I thread hung non bloccano il restart
+        request_queue_size = 50        # Coda connessioni OS
+        allow_reuse_address = True
+
+    with _Server(('', PORT), Handler) as srv:
+        print(f'  Server avviato (daemon_threads=True, max queue={srv.request_queue_size})')
         srv.serve_forever()
