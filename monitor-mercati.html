@@ -6540,18 +6540,17 @@ function renderScatterBar() {
 
   const labels  = instruments.map(r => r.i || r.m);
   const momData = instruments.map(r => r._momentum);
-  const colors  = instruments.map(r => {
-    if (r._momentum >= 50 && r._rs >= 0) return 'rgba(76,175,80,.75)';
-    if (r._momentum <  50 && r._rs >= 0) return 'rgba(33,150,243,.75)';
-    if (r._momentum >= 50 && r._rs <  0) return 'rgba(255,152,0,.75)';
-    return 'rgba(239,83,80,.75)';
-  });
-  const borders = instruments.map(r => {
-    if (r._momentum >= 50 && r._rs >= 0) return '#4caf50';
-    if (r._momentum <  50 && r._rs >= 0) return '#2196f3';
-    if (r._momentum >= 50 && r._rs <  0) return '#ff9800';
-    return '#ef5350';
-  });
+
+  // Gradiente continuo rosso→verde basato sul valore momentum (0=rosso, 100=verde)
+  function momColor(m, alpha) {
+    // HSL: 0→hue 4 (rosso), 50→hue 38 (ambra), 100→hue 118 (verde)
+    const hue = Math.round(4 + (m / 100) * 114);
+    const sat = m < 20 ? 78 : m < 40 ? 80 : m < 60 ? 75 : m < 80 ? 68 : 62;
+    const lig = m < 20 ? 40 : m < 40 ? 44 : m < 60 ? 48 : m < 80 ? 42 : 36;
+    return `hsla(${hue},${sat}%,${lig}%,${alpha})`;
+  }
+  const colors  = instruments.map(r => momColor(r._momentum, .82));
+  const borders = instruments.map(r => momColor(r._momentum, 1));
 
   // Altezza dinamica: 30px per riga, min 400px — l'inner div cresce e il wrapper scrolla
   const rowH   = 30;
