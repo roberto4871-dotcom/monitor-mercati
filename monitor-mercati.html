@@ -4856,8 +4856,8 @@ function renderCharts() {
   // ── KPI cards ─────────────────────────────────────
   const kpiEl = document.getElementById('chart-kpis');
   if (data.length) {
-    const best  = data[data.length - 1];
-    const worst = data[0];
+    const best  = data[0];
+    const worst = data[data.length - 1];
     const avg   = data.reduce((s, r) => s + r[metric], 0) / data.length;
     const pos   = data.filter(r => r[metric] > 0).length;
     const neg   = data.length - pos;
@@ -5022,7 +5022,7 @@ function renderCharts() {
           afterDataLimits: s => { s.min = Math.min(s.min, 0); s.max = Math.max(s.max, 0); }
         },
         y: {
-          reverse: true,
+          reverse: false,
           ticks: { color:'#dce6f5', font:{size:12, weight:'600'}, autoSkip:false },
           grid:  { display: false },
         }
