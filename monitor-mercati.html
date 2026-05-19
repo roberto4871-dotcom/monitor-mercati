@@ -972,6 +972,7 @@ body.light .cal-item{background:var(--bg3)}
     <span class="controls-label" id="hm-count"></span>
   </div>
   <div class="hm-legend" id="hm-legend" style="padding-left:16px;padding-right:16px"></div>
+  <div id="hm-filter-banner" style="display:none;margin:0 16px 6px;padding:5px 12px;border-radius:6px;background:rgba(255,214,0,.12);color:#ffd700;font-size:11px;font-weight:600;border:1px solid rgba(255,214,0,.25)"></div>
   <div id="heatmap-grid" style="padding:4px 16px 16px;overflow-y:auto;flex:1"></div>
 </div>
 
@@ -1778,7 +1779,24 @@ function applyFavNames() {
   });
 }
 let heatMetric = 'varAtt';
-let heatSort   = 'none'; // 'none' | 'desc' | 'asc'
+let heatSort        = 'none'; // 'none' | 'desc' | 'asc'
+let heatLegendFilter = null;  // null | 0..6
+
+const HEAT_BANDS = [
+  { label: '< −5%',        min: -Infinity, max: -5    },
+  { label: '−2% → −5%',    min: -5,        max: -2    },
+  { label: '−0.5% → −2%',  min: -2,        max: -0.5  },
+  { label: '≈ 0',           min: -0.5,      max:  0.5  },
+  { label: '+0.5% → +2%',  min:  0.5,      max:  2    },
+  { label: '+2% → +5%',    min:  2,        max:  5    },
+  { label: '> +5%',         min:  5,        max:  Infinity },
+];
+
+function setHeatLegendFilter(idx) {
+  heatLegendFilter = (heatLegendFilter === idx) ? null : idx;
+  renderHeatLegend();
+  renderHeatmap();
+}
 
 function setHeatSort(val) {
   heatSort = val;
@@ -1792,20 +1810,29 @@ function setHeatSort(val) {
 function renderHeatLegend() {
   const el = document.getElementById('hm-legend');
   if (!el) return;
-  const bands = [
-    { val: -6,   label: '< −5%'         },
-    { val: -3.5, label: '−2% → −5%'     },
-    { val: -1,   label: '−0.5% → −2%'   },
-    { val: 0,    label: '≈ 0'            },
-    { val: 1,    label: '+0.5% → +2%'   },
-    { val: 3.5,  label: '+2% → +5%'     },
-    { val: 6,    label: '> +5%'          },
-  ];
+  const repVals = [-6, -3.5, -1, 0, 1, 3.5, 6];
+  const active = heatLegendFilter;
   el.innerHTML = `<span class="hm-legend-lbl">Legenda:</span>` +
-    bands.map(b => {
-      const { bg, text } = heatColor(b.val);
-      return `<div class="hm-legend-swatch" style="background:${bg};color:${text}">${b.label}</div>`;
+    HEAT_BANDS.map((b, i) => {
+      const { bg, text } = heatColor(repVals[i]);
+      const isActive = active === i;
+      const outline  = isActive ? `box-shadow:0 0 0 2px #fff,0 0 0 4px ${text};` : '';
+      const opacity  = (active !== null && !isActive) ? 'opacity:.4;' : '';
+      return `<div class="hm-legend-swatch" onclick="setHeatLegendFilter(${i})"
+        style="background:${bg};color:${text};cursor:pointer;${outline}${opacity}transition:opacity .15s,box-shadow .15s">
+        ${b.label}${isActive ? ' ✕' : ''}
+      </div>`;
     }).join('');
+  // Mostra banner filtro attivo
+  const banner = document.getElementById('hm-filter-banner');
+  if (banner) {
+    if (active !== null) {
+      banner.textContent = `Filtro attivo: ${HEAT_BANDS[active].label} — clicca di nuovo per rimuovere`;
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
 }
 let modalTA = {bb: false, rsi: false};
 let modalRsiChart = null;
@@ -5303,9 +5330,19 @@ function heatColor(val) {
 }
 
 function renderHeatmap() {
-  const loaded = rows.filter(r => !r._loading && !r._err);
+  let loaded = rows.filter(r => !r._loading && !r._err);
 
   renderHeatLegend();
+
+  // Filtra per banda legenda se attiva
+  if (heatLegendFilter !== null) {
+    const band = HEAT_BANDS[heatLegendFilter];
+    loaded = loaded.filter(r => {
+      const v = r[heatMetric];
+      if (v === null || v === undefined || isNaN(v)) return false;
+      return v > band.min && v <= band.max;
+    });
+  }
 
   const countEl = document.getElementById('hm-count');
   if (countEl) countEl.textContent = `${loaded.length} strumenti`;
