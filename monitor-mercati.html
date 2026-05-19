@@ -6540,7 +6540,7 @@ function renderScatterBar() {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { right: 72, left: 4, top: 4, bottom: 24 } },
+      layout: { padding: { right: 12, left: 4, top: 4, bottom: 24 } },
       scales: {
         x: {
           position: 'top',
@@ -6586,24 +6586,6 @@ function renderScatterBar() {
       }
     },
     plugins: [{
-      id: 'barRsLabel',
-      afterDatasetsDraw(chart) {
-        const { ctx, scales: { x } } = chart;
-        ctx.save();
-        instruments.forEach((r, i) => {
-          const el = chart.getDatasetMeta(0).data[i];
-          if (!el) return;
-          const rs  = r._rs;
-          const txt = (rs > 0 ? '+' : '') + rs.toFixed(1) + '%';
-          ctx.font      = 'bold 10px system-ui';
-          ctx.fillStyle = rs >= 0 ? '#4caf50' : '#ef5350';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(txt, x.getPixelForValue(r._momentum) + 6, el.y);
-        });
-        ctx.restore();
-      }
-    }, {
       id: 'neutralLine',
       beforeDraw(chart) {
         const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
