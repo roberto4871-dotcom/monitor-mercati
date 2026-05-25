@@ -5637,23 +5637,42 @@ function buildModalSignalHTML(row) {
 
   let _vixOk, _vixTxt, _regOk, _regTxt, _logicNote;
   if (_isBull) {
-    _vixOk    = _vixVal !== null && _vixVal < 20;
-    _vixTxt   = _vixVal !== null ? `VIX ${_vixVal.toFixed(1)} — soglia <20 (risk-on)` : 'VIX non disponibile';
-    _regOk    = _smoothR !== null && _smoothR >= 2;
-    _regTxt   = `Regime ${_regLbl} — serve Cauto▲ o Favorevole`;
-    _logicNote= 'basta 1 su 2';
+    _vixOk  = _vixVal !== null && _vixVal < 20;
+    _vixTxt = _vixVal === null ? 'VIX non disponibile'
+            : _vixOk               ? `VIX ${_vixVal.toFixed(1)} — mercato calmo, favorevole agli acquisti`
+            : _vixVal < 25         ? `VIX ${_vixVal.toFixed(1)} — volatilità moderata, non ideale per BUY`
+            :                        `VIX ${_vixVal.toFixed(1)} — mercato nervoso, sconsiglia posizioni long`;
+    _regOk  = _smoothR !== null && _smoothR >= 2;
+    _regTxt = _smoothR === null   ? 'Regime macro non disponibile'
+            : _smoothR === 3      ? `Regime ${_regLbl} — contesto macro ottimale per BUY`
+            : _smoothR === 2      ? `Regime ${_regLbl} — macro in miglioramento, supporta il rialzo`
+            : _smoothR === 1      ? `Regime ${_regLbl} — macro in deterioramento, non ancora allineato al BUY`
+            :                       `Regime ${_regLbl} — contesto macro sfavorevole, sconsiglia BUY`;
+    _logicNote = 'basta 1 su 2 per confermare';
   } else if (_isBear) {
-    _vixOk    = _vixVal !== null && _vixVal > 25;
-    _vixTxt   = _vixVal !== null ? `VIX ${_vixVal.toFixed(1)} — soglia >25 (risk-off)` : 'VIX non disponibile';
-    _regOk    = _smoothR !== null && _smoothR <= 1;
-    _regTxt   = `Regime ${_regLbl} — serve Avverso o Cauto▼`;
-    _logicNote= 'basta 1 su 2';
+    _vixOk  = _vixVal !== null && _vixVal > 25;
+    _vixTxt = _vixVal === null ? 'VIX non disponibile'
+            : _vixOk               ? `VIX ${_vixVal.toFixed(1)} — alta volatilità, conferma il clima di vendita`
+            : _vixVal > 20         ? `VIX ${_vixVal.toFixed(1)} — tensione presente ma non sufficiente a confermare il SELL`
+            :                        `VIX ${_vixVal.toFixed(1)} — mercato calmo, non supporta un segnale ribassista`;
+    _regOk  = _smoothR !== null && _smoothR <= 1;
+    _regTxt = _smoothR === null   ? 'Regime macro non disponibile'
+            : _smoothR === 0      ? `Regime ${_regLbl} — macro allineato al ribasso`
+            : _smoothR === 1      ? `Regime ${_regLbl} — macro in deterioramento, conferma il segnale SELL`
+            : _smoothR === 2      ? `Regime ${_regLbl} — macro in miglioramento, non supporta il ribasso`
+            :                       `Regime ${_regLbl} — contesto macro favorevole, in contrasto col segnale SELL`;
+    _logicNote = 'basta 1 su 2 per confermare';
   } else {
-    _vixOk    = _vixVal !== null && _vixVal < 25;
-    _vixTxt   = _vixVal !== null ? `VIX ${_vixVal.toFixed(1)}` : 'VIX non disponibile';
-    _regOk    = _smoothR !== null && _smoothR >= 1 && _smoothR <= 2;
-    _regTxt   = `Regime ${_regLbl} — serve Cauto▼ o Cauto▲`;
-    _logicNote= 'entrambi';
+    _vixOk  = _vixVal !== null && _vixVal < 25;
+    _vixTxt = _vixVal === null ? 'VIX non disponibile'
+            : _vixOk           ? `VIX ${_vixVal.toFixed(1)} — volatilità nella norma`
+            :                    `VIX ${_vixVal.toFixed(1)} — volatilità elevata, attenzione`;
+    _regOk  = _smoothR !== null && _smoothR >= 1 && _smoothR <= 2;
+    _regTxt = _smoothR === null ? 'Regime macro non disponibile'
+            : _regOk           ? `Regime ${_regLbl} — contesto in equilibrio, coerente con una fase neutrale`
+            : _smoothR === 3   ? `Regime ${_regLbl} — macro troppo positivo per giustificare neutralità`
+            :                    `Regime ${_regLbl} — macro avverso, la neutralità è difensiva`;
+    _logicNote = 'serve regime moderato';
   }
 
   const mkMacroRow = () => `
