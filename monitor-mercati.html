@@ -5626,20 +5626,56 @@ function buildModalSignalHTML(row) {
 
   const trendDetail    = tc ? tc.label : '—';
   const momentumDetail = `Score ${rawScore}/100${row._ma200 !== null && row._ma200 !== undefined ? ' · ' + (row._ma200 ? 'sopra MM200' : 'sotto MM200') : ''}`;
-  const macroDetail    = (() => {
-    const vix = getVixLevel();
-    const parts = [];
-    if (vix !== null) {
-      const vl = vix < 18 ? 'basso' : vix > 28 ? 'elevato' : 'moderato';
-      parts.push(`VIX ${vix.toFixed(1)} (${vl})`);
-    }
-    const reg = _lastSmoothedRegime;
-    if (reg !== null) {
-      const regLabels = ['Avverso','Cauto ▼','Cauto ▲','Favorevole'];
-      parts.push(regLabels[reg] ?? '—');
-    }
-    return parts.join(' · ') || '—';
-  })();
+  // ── Macro: sub-criteri espliciti con ✓/✗ ──
+  const _vixVal   = getVixLevel();
+  const _regScore = _cachedRegimeScore;
+  const _smoothR  = _lastSmoothedRegime ?? _regScore;
+  const _regNames = ['Avverso','Cauto ▼','Cauto ▲','Favorevole'];
+  const _regLbl   = _smoothR !== null ? (_regNames[_smoothR] ?? '—') : 'N/D';
+  const _isBull   = sig.key === 'buy'    || sig.key === 'hold';
+  const _isBear   = sig.key === 'reduce' || sig.key === 'caution';
+
+  let _vixOk, _vixTxt, _regOk, _regTxt, _logicNote;
+  if (_isBull) {
+    _vixOk    = _vixVal !== null && _vixVal < 20;
+    _vixTxt   = _vixVal !== null ? `VIX ${_vixVal.toFixed(1)} — soglia <20 (risk-on)` : 'VIX non disponibile';
+    _regOk    = _smoothR !== null && _smoothR >= 2;
+    _regTxt   = `Regime ${_regLbl} — serve Cauto▲ o Favorevole`;
+    _logicNote= 'basta 1 su 2';
+  } else if (_isBear) {
+    _vixOk    = _vixVal !== null && _vixVal > 25;
+    _vixTxt   = _vixVal !== null ? `VIX ${_vixVal.toFixed(1)} — soglia >25 (risk-off)` : 'VIX non disponibile';
+    _regOk    = _smoothR !== null && _smoothR <= 1;
+    _regTxt   = `Regime ${_regLbl} — serve Avverso o Cauto▼`;
+    _logicNote= 'basta 1 su 2';
+  } else {
+    _vixOk    = _vixVal !== null && _vixVal < 25;
+    _vixTxt   = _vixVal !== null ? `VIX ${_vixVal.toFixed(1)}` : 'VIX non disponibile';
+    _regOk    = _smoothR !== null && _smoothR >= 1 && _smoothR <= 2;
+    _regTxt   = `Regime ${_regLbl} — serve Cauto▼ o Cauto▲`;
+    _logicNote= 'entrambi';
+  }
+
+  const mkMacroRow = () => `
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:3px 0">
+      <span style="font-size:13px;flex-shrink:0;line-height:1.3">${conds.macro ? '✅' : '❌'}</span>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:700;color:${conds.macro ? 'var(--text)' : 'var(--text3)'}">Allineamento macro</span>
+          <span style="font-size:9px;color:var(--text3);background:rgba(255,255,255,.06);padding:1px 7px;border-radius:4px;font-weight:600">${_logicNote}</span>
+        </div>
+        <div style="margin-top:5px;display:flex;flex-direction:column;gap:3px">
+          <div style="font-size:10px;display:flex;align-items:center;gap:5px">
+            <span style="font-size:11px;font-weight:800;color:${_vixOk ? '#4caf50' : '#ef5350'}">${_vixOk ? '✓' : '✗'}</span>
+            <span style="color:${_vixOk ? 'var(--text2)' : 'var(--text3)'}">${_vixTxt}</span>
+          </div>
+          <div style="font-size:10px;display:flex;align-items:center;gap:5px">
+            <span style="font-size:11px;font-weight:800;color:${_regOk ? '#4caf50' : '#ef5350'}">${_regOk ? '✓' : '✗'}</span>
+            <span style="color:${_regOk ? 'var(--text2)' : 'var(--text3)'}">${_regTxt}</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
 
   // Barre forza 3/3
   const bars = [0,1,2].map(i =>
@@ -5661,9 +5697,9 @@ function buildModalSignalHTML(row) {
       <!-- Condizioni attivate -->
       <div style="background:rgba(255,255,255,.03);border-radius:8px;padding:8px 12px;margin-bottom:8px">
         <div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.7px;text-transform:uppercase;margin-bottom:4px">Condizioni attivate</div>
-        ${mkCondRow(conds.trend,    'Trend',             trendDetail)}
-        ${mkCondRow(conds.momentum, 'Momentum',          momentumDetail)}
-        ${mkCondRow(conds.macro,    'Allineamento macro', macroDetail)}
+        ${mkCondRow(conds.trend,    'Trend',    trendDetail)}
+        ${mkCondRow(conds.momentum, 'Momentum', momentumDetail)}
+        ${mkMacroRow()}
       </div>
       <!-- Forza 3/3 -->
       <div style="display:flex;align-items:center;justify-content:space-between">
