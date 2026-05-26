@@ -323,6 +323,8 @@ def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
             volumes    = [int(v) if v == v else 0 for v in hist['Volume'].tolist()]
             timestamps = [int(dt.timestamp()) for dt in hist.index]
 
+            # prev_close = ultimo close storico (sempre il giorno prima dell'ultimo bar)
+            # cur_price  = last close dal download — potrebbe essere ieri se borsa aperta oggi
             cur_price  = closes[-1]
             prev_close = closes[-2] if len(closes) > 1 else None
             cur_time   = timestamps[-1]
@@ -335,6 +337,7 @@ def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
                     'regularMarketTime':    cur_time,
                     'exchangeTimezoneName': tz,
                     'currency': 'N/A',
+                    '_stale': False,  # verrà marcato True se i dati sono di ieri
                 },
                 'timestamp': timestamps,
                 'closes':    closes,
@@ -345,12 +348,59 @@ def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
                 'yield_pct': None,
             }
 
+            # Marca come stale se l'ultimo bar non è di oggi
+            today_midnight = int(datetime.datetime.combine(today, datetime.time.min).timestamp())
+            if cur_time < today_midnight:
+                data['meta']['_stale'] = True
+
             results[sym] = data
             with _cache_lock:
                 _cache[f'{sym}|{period}|{interval}'] = {'data': data, 'ts': time.time()}
 
         except Exception as e:
             results[sym] = {'error': str(e)}
+
+    # ── Aggiornamento prezzi real-time per simboli con dati stantii ────────
+    # Se l'ultimo bar storico è di ieri (borsa ancora aperta oggi), prova a
+    # ottenere il prezzo live tramite fast_info (quota real-time / 15min delay).
+    stale_syms = [s for s in to_fetch
+                  if isinstance(results.get(s), dict) and results[s].get('meta', {}).get('_stale')]
+    if stale_syms:
+        print(f'  [batch] {len(stale_syms)} simboli con dati di ieri → fetch real-time prices')
+
+        def _rt_price(sym):
+            try:
+                with _yf_semaphore:
+                    _yf_wait_cooldown()
+                    fi = yf.Ticker(sym).fast_info
+                    price = getattr(fi, 'last_price', None)
+                    prev  = getattr(fi, 'previous_close', None)
+                    ts    = getattr(fi, 'last_fetch_time', None) or time.time()
+                    if price and float(price) > 0:
+                        return sym, float(price), float(prev) if prev else None, int(ts)
+            except Exception as e:
+                if is_rate_limit_error(e):
+                    _yf_set_cooldown(15)
+            return sym, None, None, None
+
+        with ThreadPoolExecutor(max_workers=min(len(stale_syms), 4)) as pool:
+            rt_res = list(pool.map(_rt_price, stale_syms))
+
+        for sym, rt_price, rt_prev, rt_ts in rt_res:
+            if rt_price and sym in results and isinstance(results[sym], dict):
+                m = results[sym]['meta']
+                # prev_close corretto = storico close di ieri (già in chartPreviousClose)
+                # cur_price aggiornato = real-time
+                m['regularMarketPrice'] = rt_price
+                m['regularMarketTime']  = rt_ts or int(time.time())
+                m['_stale'] = False
+                print(f'  [rt] {sym}: {rt_price:.4f}')
+                # Aggiorna cache con prezzo live
+                key = f'{sym}|{period}|{interval}'
+                with _cache_lock:
+                    if key in _cache:
+                        _cache[key]['data']['meta']['regularMarketPrice'] = rt_price
+                        _cache[key]['data']['meta']['regularMarketTime']  = m['regularMarketTime']
 
     return results
 
