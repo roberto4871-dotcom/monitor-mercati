@@ -1975,34 +1975,62 @@ def fetch_weekly(symbol):
 
 
 def fetch_seasonal(symbol):
-    """Stagionalità: rendimento medio mensile su 10 anni — cache 6h."""
+    """Stagionalità: rendimento medio mensile su 10 anni — cache 6h.
+
+    Usa dati giornalieri + resample pandas per evitare il bug di yfinance
+    con interval='1mo' (attribuzione errata del mese).
+    """
     with _seasonal_lock:
         c = _seasonal_cache.get(symbol)
         if c and (time.time() - c['ts']) < SEASONAL_TTL:
             return c['data']
     try:
+        import pandas as pd
         today = datetime.date.today()
-        start = datetime.date(today.year - 10, 1, 1)
+        # Inizia da novembre dell'anno -10 per avere dicembre come riferimento per gennaio
+        start    = datetime.date(today.year - 11, 12, 1)
+        end_date = today + datetime.timedelta(days=1)
         _tk_s = yf.Ticker(symbol)
-        hist  = _yf_history(_tk_s, timeout=20, start=str(start), end=str(today), interval='1mo', auto_adjust=False)
-        if hist.empty:
+        hist  = _yf_history(_tk_s, timeout=25, start=str(start), end=str(end_date),
+                            interval='1d', auto_adjust=True)
+        if hist is None or hist.empty:
             result = {'error': 'Nessun dato stagionale disponibile'}
         else:
-            closes = [float(v) for v in hist['Close'].tolist()]
-            dates  = hist.index.tolist()
+            closes_daily = hist['Close'].dropna()
+            # Ultimo close di ogni mese — etichetta = fine mese (es. 2023-04-30)
+            monthly_closes = closes_daily.resample('ME').last().dropna()
 
             MONTHS_IT = ['Gen','Feb','Mar','Apr','Mag','Giu',
                          'Lug','Ago','Set','Ott','Nov','Dic']
             by_month = {m: [] for m in range(1, 13)}
             yearly   = {}
-            for i in range(1, len(closes)):
-                dt  = dates[i]
-                ret = round((closes[i] / closes[i - 1] - 1) * 100, 2)
-                by_month[dt.month].append(ret)
+
+            prev_price = None
+            for dt, price in monthly_closes.items():
+                price = float(price)
+                if math.isnan(price) or price <= 0:
+                    prev_price = price
+                    continue
+                if prev_price is None or math.isnan(prev_price) or prev_price <= 0:
+                    prev_price = price
+                    continue
+
+                # dt = fine mese → dt.month è il mese corretto del ritorno
+                ret  = round((price / prev_price - 1) * 100, 2)
                 year = str(dt.year)
-                if year not in yearly:
-                    yearly[year] = {}
-                yearly[year][str(dt.month)] = ret
+                mon  = dt.month
+
+                # Includi solo gli ultimi 10 anni completi
+                if dt.year < today.year - 10:
+                    prev_price = price
+                    continue
+
+                if not math.isnan(ret):
+                    by_month[mon].append(ret)
+                    if year not in yearly:
+                        yearly[year] = {}
+                    yearly[year][str(mon)] = ret
+                prev_price = price
 
             avg_by_month = {}
             pos_rate     = {}
