@@ -83,6 +83,13 @@ def is_rate_limit_error(e):
     s = str(e).lower()
     return '429' in s or 'too many' in s or 'rate limit' in s or 'rate-limit' in s
 
+# Helper resample mensile — compatibile pandas <2.2 ('M') e >=2.2 ('ME')
+def _resample_month_end(series):
+    try:
+        return series.resample('ME').last().dropna()   # pandas >= 2.2
+    except Exception:
+        return series.resample('M').last().dropna()    # pandas < 2.2 fallback
+
 # Cache: chiave = "symbol|period|interval"
 _cache = {}
 _cache_lock = threading.Lock()
@@ -1841,7 +1848,7 @@ def fetch_monthly(symbol):
 
     USA DATI GIORNALIERI + resample pandas per evitare il bug di yfinance
     con interval='1mo' (etichettatura barre ambigua tra versioni).
-    auto_adjust=True: aggiustati per dividendi e split — rendimenti reali.
+    auto_adjust=False: prezzi raw (coerente col resto del dashboard).
     """
     with _monthly_lock:
         c = _monthly_cache.get(symbol)
@@ -1857,7 +1864,7 @@ def fetch_monthly(symbol):
         _tk_m = yf.Ticker(symbol)
         # Dati giornalieri auto-adjusted (dividendi + split già incorporati)
         hist = _yf_history(_tk_m, timeout=25, start=str(start), end=str(end_date),
-                           interval='1d', auto_adjust=True)
+                           interval='1d', auto_adjust=False)
         if hist is None or hist.empty:
             return {'error': 'Nessun dato disponibile'}
 
@@ -1866,7 +1873,7 @@ def fetch_monthly(symbol):
         if len(closes_daily) < 2:
             return {'error': 'Dati insufficienti'}
 
-        monthly_closes = closes_daily.resample('ME').last().dropna()
+        monthly_closes = _resample_month_end(closes_daily)
         if len(monthly_closes) < 2:
             return {'error': 'Dati mensili insufficienti'}
 
@@ -1932,7 +1939,7 @@ def fetch_weekly(symbol):
         end_date = today + datetime.timedelta(days=1)
         _tk_w = yf.Ticker(symbol)
         hist  = _yf_history(_tk_w, timeout=20, start=str(start), end=str(end_date),
-                            interval='1d', auto_adjust=True)
+                            interval='1d', auto_adjust=False)
         if hist is None or hist.empty:
             return {'error': 'Nessun dato settimanale'}
 
@@ -1992,13 +1999,13 @@ def fetch_seasonal(symbol):
         end_date = today + datetime.timedelta(days=1)
         _tk_s = yf.Ticker(symbol)
         hist  = _yf_history(_tk_s, timeout=25, start=str(start), end=str(end_date),
-                            interval='1d', auto_adjust=True)
+                            interval='1d', auto_adjust=False)
         if hist is None or hist.empty:
             result = {'error': 'Nessun dato stagionale disponibile'}
         else:
             closes_daily = hist['Close'].dropna()
             # Ultimo close di ogni mese — etichetta = fine mese (es. 2023-04-30)
-            monthly_closes = closes_daily.resample('ME').last().dropna()
+            monthly_closes = _resample_month_end(closes_daily)
 
             MONTHS_IT = ['Gen','Feb','Mar','Apr','Mag','Giu',
                          'Lug','Ago','Set','Ott','Nov','Dic']
