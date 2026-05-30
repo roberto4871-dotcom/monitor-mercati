@@ -1837,38 +1837,63 @@ def fetch_news(symbol):
 
 
 def fetch_monthly(symbol):
-    """Rendimenti mensili per matrice anno×mese — cache 1h."""
+    """Rendimenti mensili per matrice anno×mese — cache 1h.
+
+    USA DATI GIORNALIERI + resample pandas per evitare il bug di yfinance
+    con interval='1mo' (etichettatura barre ambigua tra versioni).
+    auto_adjust=True: aggiustati per dividendi e split — rendimenti reali.
+    """
     with _monthly_lock:
         c = _monthly_cache.get(symbol)
         if c and (time.time() - c['ts']) < MONTHLY_TTL:
             return c['data']
     try:
-        today = datetime.date.today()
-        start    = datetime.date(today.year - 5, 1, 1)
-        end_date = datetime.date(today.year + 1, 12, 31)
-        _tk_m = yf.Ticker(symbol)
-        hist  = _yf_history(_tk_m, timeout=15, start=str(start), end=str(end_date), interval='1mo', auto_adjust=False)
-        if hist.empty:
-            return {'error': 'Nessun dato mensile disponibile'}
+        import pandas as pd
+        today    = datetime.date.today()
+        # Partiamo da dicembre 5 anni fa → serve per calcolare gennaio dell'anno successivo
+        start    = datetime.date(today.year - 6, 12, 1)
+        end_date = today + datetime.timedelta(days=1)
 
-        closes = [float(v) for v in hist['Close'].tolist()]
-        dates  = hist.index.tolist()
+        _tk_m = yf.Ticker(symbol)
+        # Dati giornalieri auto-adjusted (dividendi + split già incorporati)
+        hist = _yf_history(_tk_m, timeout=25, start=str(start), end=str(end_date),
+                           interval='1d', auto_adjust=True)
+        if hist is None or hist.empty:
+            return {'error': 'Nessun dato disponibile'}
+
+        # Ultimo close di ogni mese (Month End) — attributo inequivocabile
+        closes_daily = hist['Close'].dropna()
+        if len(closes_daily) < 2:
+            return {'error': 'Dati insufficienti'}
+
+        monthly_closes = closes_daily.resample('ME').last().dropna()
+        if len(monthly_closes) < 2:
+            return {'error': 'Dati mensili insufficienti'}
 
         monthly = {}
-        for i in range(1, len(closes)):
-            c_cur, c_prev = closes[i], closes[i - 1]
-            # Salta righe con NaN o zero (evita JSON invalido e divisione per zero)
-            if math.isnan(c_cur) or math.isnan(c_prev) or c_prev == 0:
+        prev_price = None
+        for dt, price in monthly_closes.items():
+            price = float(price)
+            if math.isnan(price) or price <= 0:
+                prev_price = price
                 continue
-            dt    = dates[i]
+            if prev_price is None or math.isnan(prev_price) or prev_price <= 0:
+                prev_price = price
+                continue
+
+            # Il ritorno appartiene al MESE della barra corrente (dt = fine mese)
             year  = str(dt.year)
             month = str(dt.month)
-            ret   = round((c_cur / c_prev - 1) * 100, 2)
-            if math.isnan(ret):
-                continue
-            if year not in monthly:
-                monthly[year] = {}
-            monthly[year][month] = ret
+            ret   = round((price / prev_price - 1) * 100, 2)
+            if not math.isnan(ret):
+                if year not in monthly:
+                    monthly[year] = {}
+                monthly[year][month] = ret
+            prev_price = price
+
+        # Filtra solo anni richiesti (ultimi 6)
+        min_year = str(today.year - 5)
+        monthly = {y: m for y, m in monthly.items() if y >= min_year}
 
         # YTD composto per ogni anno
         ytd = {}
@@ -1901,33 +1926,43 @@ def fetch_weekly(symbol):
         # Partiamo da dicembre dell'anno precedente per avere il close di chiusura
         # dell'ultima settimana dell'anno scorso (necessario per calcolare il rendimento
         # della settimana 1 dell'anno corrente, che spesso inizia a fine dicembre ISO)
+        # Usa dati giornalieri + resample settimanale (W-FRI = settimana chiusa venerdì)
+        # per evitare bug di yfinance con interval='1wk'
         start    = datetime.date(cur_year - 1, 12, 1)
-        end_date = today + datetime.timedelta(days=7)
+        end_date = today + datetime.timedelta(days=1)
         _tk_w = yf.Ticker(symbol)
-        hist  = _yf_history(_tk_w, timeout=15, start=str(start), end=str(end_date), interval='1wk', auto_adjust=False)
-        if hist.empty:
+        hist  = _yf_history(_tk_w, timeout=20, start=str(start), end=str(end_date),
+                            interval='1d', auto_adjust=True)
+        if hist is None or hist.empty:
             return {'error': 'Nessun dato settimanale'}
 
-        closes = [float(v) for v in hist['Close'].tolist()]
-        dates  = hist.index.tolist()
+        import pandas as pd
+        closes_daily = hist['Close'].dropna()
+        # Resample a settimane (venerdì come fine settimana ISO)
+        weekly_closes = closes_daily.resample('W').last().dropna()
 
         weekly = {}
-        for i in range(1, len(closes)):
-            c_cur, c_prev = closes[i], closes[i - 1]
-            if math.isnan(c_cur) or math.isnan(c_prev) or c_prev == 0:
+        prev_price = None
+        for dt, price in weekly_closes.items():
+            price = float(price)
+            if math.isnan(price) or price <= 0:
+                prev_price = price
                 continue
-            dt  = dates[i]
+            if prev_price is None or math.isnan(prev_price) or prev_price <= 0:
+                prev_price = price
+                continue
             iso      = dt.isocalendar()
             iso_year = str(iso[0])
             iso_week = str(iso[1])
             if iso_year != str(cur_year):
+                prev_price = price
                 continue
-            ret = round((c_cur / c_prev - 1) * 100, 2)
-            if math.isnan(ret):
-                continue
-            if iso_year not in weekly:
-                weekly[iso_year] = {}
-            weekly[iso_year][iso_week] = ret
+            ret = round((price / prev_price - 1) * 100, 2)
+            if not math.isnan(ret):
+                if iso_year not in weekly:
+                    weekly[iso_year] = {}
+                weekly[iso_year][iso_week] = ret
+            prev_price = price
 
         years = sorted(weekly.keys())
         result = {'data': weekly, 'years': years}
