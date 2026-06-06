@@ -3898,7 +3898,7 @@ function showTopSignals(btn) {
   // ── Callbacks globali (closure) ─────────────────────────────────
   window._tsTab = (tab) => {
     currentTab = tab;
-    currentCat = null;  // reset categoria quando si cambia tab
+    // NON resettare currentCat: la categoria selezionata rimane attiva su BUY e SELL
     const tb = document.getElementById('ts-tab-buy');
     const ts = document.getElementById('ts-tab-sell');
     if (tab === 'buy') {
