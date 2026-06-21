@@ -66,6 +66,34 @@ def _yf_download(*args, timeout=30, **kwargs):
 _yf_cooldown_until = 0.0   # timestamp: se > now, aspetta prima di fare richieste YF
 _yf_cooldown_lock  = threading.Lock()
 
+# ── Reset automatico crumb Yahoo Finance ogni 2 ore ───────────────────────────
+# Il crumb (token di sessione) scade periodicamente → 401 "Invalid Crumb" su tutte
+# le richieste. Il reset forza yfinance a ottenerne uno nuovo senza riavviare il server.
+def _yf_reset_crumb():
+    try:
+        import requests
+        session = requests.Session()
+        session.headers.update({'User-Agent': 'Mozilla/5.0'})
+        # Endpoint pubblico Yahoo Finance: richiesta di handshake che rigenera il crumb
+        session.get('https://finance.yahoo.com', timeout=10)
+        # Resetta la sessione interna di yfinance
+        if hasattr(yf, 'shared') and hasattr(yf.shared, '_session'):
+            yf.shared._session = None
+        print(f'  [crumb] reset sessione Yahoo Finance — {time.strftime("%H:%M:%S")}')
+    except Exception as e:
+        print(f'  [crumb] reset fallito (non critico): {e}')
+
+def _schedule_crumb_reset():
+    """Avvia un thread daemon che resetta il crumb ogni 2 ore."""
+    def _loop():
+        while True:
+            time.sleep(7200)   # 2 ore
+            _yf_reset_crumb()
+    t = threading.Thread(target=_loop, daemon=True, name='crumb-reset')
+    t.start()
+
+_schedule_crumb_reset()
+
 def _yf_wait_cooldown():
     """Aspetta se siamo in cooldown da rate limit."""
     with _yf_cooldown_lock:
