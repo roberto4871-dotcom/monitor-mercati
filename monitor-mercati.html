@@ -1759,14 +1759,37 @@ function favName(n) {
 }
 function renameFav(n) {
   const cur = favName(n);
-  const val = prompt(`Nuovo nome per la lista ${n}:`, cur);
-  if (val === null) return;
-  const trimmed = val.trim();
-  if (!trimmed) return;
-  const key = n === 1 ? 'mm_fav_name' : `mm_fav${n}_name`;
-  localStorage.setItem(key, trimmed);
-  _saveListsToServer();
-  applyFavNames();
+  // Dialog inline (evita blocco Chrome sui prompt nativi)
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:#1a2340;border:1px solid rgba(255,215,0,.3);border-radius:14px;padding:24px 28px;min-width:300px;box-shadow:0 8px 40px rgba(0,0,0,.6)">
+      <div style="color:var(--accent);font-weight:800;font-size:14px;margin-bottom:14px">✏ Rinomina lista ${n}</div>
+      <input id="_ren_inp" type="text" value="${cur.replace(/"/g,'&quot;')}"
+        style="width:100%;box-sizing:border-box;background:#0d1626;border:1px solid rgba(255,215,0,.35);border-radius:8px;
+               color:#fff;font-size:14px;padding:9px 12px;outline:none;margin-bottom:16px"
+        maxlength="20">
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button id="_ren_cancel" style="background:transparent;border:1px solid rgba(255,255,255,.2);color:var(--text3);border-radius:8px;padding:7px 18px;cursor:pointer;font-size:13px">Annulla</button>
+        <button id="_ren_ok"     style="background:var(--accent);border:none;color:#000;font-weight:800;border-radius:8px;padding:7px 18px;cursor:pointer;font-size:13px">Salva</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const inp = document.getElementById('_ren_inp');
+  inp.focus(); inp.select();
+  const save = () => {
+    const trimmed = inp.value.trim();
+    document.body.removeChild(overlay);
+    if (!trimmed) return;
+    const key = n === 1 ? 'mm_fav_name' : `mm_fav${n}_name`;
+    localStorage.setItem(key, trimmed);
+    _saveListsToServer();
+    applyFavNames();
+  };
+  document.getElementById('_ren_ok').onclick     = save;
+  document.getElementById('_ren_cancel').onclick = () => document.body.removeChild(overlay);
+  overlay.addEventListener('keydown', e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') document.body.removeChild(overlay); });
+  overlay.addEventListener('click', e => { if (e.target === overlay) document.body.removeChild(overlay); });
 }
 function applyFavNames() {
   [[1,'fav-filter-1','chart-fav-1','★'],[2,'fav-filter-2','chart-fav-2','★'],
