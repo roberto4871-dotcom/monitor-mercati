@@ -83,6 +83,17 @@ def is_rate_limit_error(e):
     s = str(e).lower()
     return '429' in s or 'too many' in s or 'rate limit' in s or 'rate-limit' in s
 
+def _is_market_hours():
+    """Restituisce True solo se almeno un mercato rilevante potrebbe essere aperto.
+    Weekend e notte → False: i dati storici di ieri sono già quelli definitivi,
+    inutile fare fast_info per ogni simbolo rallentando il caricamento."""
+    now_utc = datetime.datetime.utcnow()
+    if now_utc.weekday() >= 5:   # sabato=5, domenica=6
+        return False
+    h = now_utc.hour
+    # Europa apre ~7 UTC, USA chiude ~21 UTC
+    return 7 <= h <= 21
+
 # Helper resample mensile — compatibile pandas <2.2 ('M') e >=2.2 ('ME')
 def _resample_month_end(series):
     try:
@@ -372,6 +383,11 @@ def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
     # ottenere il prezzo live tramite fast_info (quota real-time / 15min delay).
     stale_syms = [s for s in to_fetch
                   if isinstance(results.get(s), dict) and results[s].get('meta', {}).get('_stale')]
+    # Salta fast_info fuori orario di mercato (weekend/notte): i dati di ieri
+    # sono già quelli definitivi — inutile fare 400 chiamate individuali e rallentare il load.
+    if stale_syms and not _is_market_hours():
+        print(f'  [batch] {len(stale_syms)} simboli stale ma mercati chiusi — skip fast_info')
+        stale_syms = []
     if stale_syms:
         print(f'  [batch] {len(stale_syms)} simboli con dati di ieri → fetch real-time prices')
 
