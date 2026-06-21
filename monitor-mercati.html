@@ -435,6 +435,20 @@ td.ora{color:#64b5f6;font-size:10px}
 .corr-legend .leg-box{padding:3px 12px;border-radius:4px;font-weight:700;font-size:11px}
 body.light .corr-table th{background:#1e2ea8}
 body.light .corr-table td.corr-label{background:var(--bg3) !important}
+/* ── Correlazione Coppie ─────────────────────────────── */
+.corr-pairs-wrap{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:4px 0}
+@media(max-width:900px){.corr-pairs-wrap{grid-template-columns:1fr}}
+.corr-pairs-col{display:flex;flex-direction:column;gap:0}
+.corr-pairs-title{font-size:12px;font-weight:800;letter-spacing:.5px;padding:10px 14px 4px;text-transform:uppercase}
+.corr-pairs-subtitle{font-size:10px;color:var(--text3);padding:0 14px 10px;border-bottom:1px solid var(--border)}
+.corr-pair-row{display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid rgba(255,255,255,.04);transition:background .12s}
+.corr-pair-row:hover{background:rgba(255,255,255,.04)}
+.corr-pair-a,.corr-pair-b{font-size:11px;font-weight:700;color:var(--text);min-width:80px;max-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.corr-pair-b{color:var(--text2)}
+.corr-pair-sep{font-size:10px;color:var(--text3);flex-shrink:0}
+.corr-pair-bar-wrap{flex:1;height:6px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden;min-width:40px}
+.corr-pair-bar{height:100%;border-radius:3px;transition:width .3s}
+.corr-pair-val{font-size:11px;font-weight:800;padding:2px 7px;border-radius:4px;min-width:38px;text-align:center;flex-shrink:0}
 /* ── NEWS FEED TAB ──────────────────────────────────── */
 .nf-controls{background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0}
 .nf-wrap{flex:1;overflow-y:auto;padding:0}
@@ -979,11 +993,16 @@ body.light .cal-item{background:var(--bg3)}
 <div class="tab-content" id="tab-correlation">
   <div class="controls" style="flex-wrap:wrap;gap:8px 16px">
     <span class="controls-label">Periodo:</span>
-    <button class="filter-btn" data-corrdays="63">3 Mesi</button>
-    <button class="filter-btn active" data-corrdays="252">1 Anno</button>
-    <button class="filter-btn" data-corrdays="504">2 Anni</button>
-    <button class="filter-btn" data-corrdays="756">3 Anni</button>
-    <span class="controls-label" style="margin-left:8px">Strumenti:</span>
+    <button class="filter-btn" data-corrdays="63">3M</button>
+    <button class="filter-btn active" data-corrdays="252">1A</button>
+    <button class="filter-btn" data-corrdays="504">2A</button>
+    <button class="filter-btn" data-corrdays="756">3A</button>
+    <div style="width:1px;height:18px;background:var(--border);align-self:center"></div>
+    <span class="controls-label">Vista:</span>
+    <button class="filter-btn active" data-corrview="pairs">🔗 Coppie</button>
+    <button class="filter-btn" data-corrview="matrix">🔢 Matrice</button>
+    <div style="width:1px;height:18px;background:var(--border);align-self:center"></div>
+    <span class="controls-label">Gruppo:</span>
     <button class="filter-btn active" data-corrgroup="_sintesi">📊 Sintesi</button>
     <button class="filter-btn" data-corrgroup="_asset_globale">🌍 Asset Globale</button>
     <button class="filter-btn" data-corrgroup="_indici">📈 Indici</button>
@@ -1003,12 +1022,11 @@ body.light .cal-item{background:var(--bg3)}
     <button class="filter-btn" data-corrgroup="TITOLI USA">Titoli USA</button>
     <button class="filter-btn" data-corrgroup="SVIZZERA">Svizzera</button>
     <button class="filter-btn" data-corrgroup="ULTRABIG">Ultrabig</button>
-    <button class="btn-refresh" id="btn-corr-calc">Calcola ↻</button>
     <button class="btn-refresh" id="btn-corr-pdf" style="border-color:var(--text2);color:var(--text2)" onclick="printCorrMatrix()">🖨 PDF</button>
   </div>
   <div style="flex:1;overflow:auto;padding:16px 20px" id="corr-wrap">
     <div id="corr-matrix" style="color:var(--text3);text-align:center;padding:60px;font-size:13px">
-      Seleziona periodo e gruppo, poi clicca <strong style="color:var(--accent)">Calcola ↻</strong>
+      <span style="opacity:.5">⏳ Caricamento…</span>
     </div>
   </div>
 </div>
@@ -5316,6 +5334,7 @@ document.querySelectorAll('.tab').forEach(t => {
     if (t.dataset.tab === 'charts') renderCharts();
     if (t.dataset.tab === 'heatmap') renderHeatmap();
     if (t.dataset.tab === 'scatter') renderScatterBar();
+    if (t.dataset.tab === 'correlation') renderCorrelation();
     if (t.dataset.tab === 'newsfeed') { loadNewsTab(); nfStartAutoRefresh(); buildNfTicker(); nfClearBadge(); }
     if (t.dataset.tab !== 'newsfeed') nfStopAutoRefresh();
     if (t.dataset.tab === 'macro') loadMacroTab();
@@ -7454,6 +7473,8 @@ function renderNews(articles) {
 // ═══════════════════════════════════════════════════
 let corrDays  = 252;
 let corrGroup = '_sintesi';
+let corrView  = 'pairs';
+let _lastCorrData = null;
 
 function corrBg(v) {
   if (v === null || v === undefined) return 'rgba(128,128,128,.12)';
@@ -7502,6 +7523,90 @@ function getCorrSymbols() {
   return ready.filter(r => r.a === corrGroup).map(r => r.s);
 }
 
+function renderCorrMatrix(data) {
+  const { symbols, matrix, days } = data;
+  const labels    = symbols.map(corrLabel);
+  const fullNames = symbols.map(corrFullName);
+  let html = '<div style="overflow:auto"><table class="corr-table"><thead><tr><th></th>';
+  labels.forEach((l, i) => html += `<th title="${fullNames[i]}">${l}</th>`);
+  html += '</tr></thead><tbody>';
+  matrix.forEach((row, i) => {
+    html += `<tr><td class="corr-label" title="${fullNames[i]}">${labels[i]}</td>`;
+    row.forEach((v, j) => {
+      const diag = i === j;
+      const vEff = diag ? 1 : v;
+      const val  = v !== null ? (diag ? '●' : v.toFixed(2)) : '—';
+      const tip  = `${labels[i]} ↔ ${labels[j]}: ${diag ? '1.00' : (v !== null ? v.toFixed(2) : '—')}`;
+      html += `<td style="background:${corrBg(vEff)};color:${corrFg(vEff)};${diag?'font-size:16px':''}" title="${tip}">${val}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  html += `<div class="corr-legend">
+    <span class="leg-box" style="background:rgba(239,83,80,.8);color:#fff">-1.0 Inversa</span>
+    <span class="leg-box" style="background:rgba(239,83,80,.45)">-0.5</span>
+    <span class="leg-box" style="background:rgba(128,128,128,.25)">0 Nessuna</span>
+    <span class="leg-box" style="background:rgba(76,175,80,.45)">+0.5</span>
+    <span class="leg-box" style="background:rgba(76,175,80,.8);color:#fff">+1.0 Perfetta</span>
+    <span style="margin-left:8px;color:var(--text3);font-size:10px">Calcolato su ${days} giorni · ${symbols.length} strumenti</span>
+  </div>`;
+  return html;
+}
+
+function renderCorrPairs(data) {
+  const { symbols, matrix, days } = data;
+  const labels    = symbols.map(corrLabel);
+  const fullNames = symbols.map(corrFullName);
+  const pairs = [];
+  for (let i = 0; i < symbols.length; i++) {
+    for (let j = i + 1; j < symbols.length; j++) {
+      const v = matrix[i][j];
+      if (v !== null) pairs.push({ a: labels[i], b: labels[j], fa: fullNames[i], fb: fullNames[j], v });
+    }
+  }
+  if (!pairs.length) return '<div style="color:var(--text3);text-align:center;padding:50px">Nessuna coppia disponibile</div>';
+  pairs.sort((a, b) => b.v - a.v);
+  const N = Math.min(12, Math.floor(pairs.length / 2));
+  const topPairs = pairs.slice(0, N);
+  const botPairs = pairs.slice(-N);
+
+  function pairRow(p) {
+    const bg  = corrBg(p.v);
+    const fg  = corrFg(p.v);
+    const pct = Math.round(Math.abs(p.v) * 100);
+    const barColor = p.v >= 0 ? 'rgba(76,175,80,.75)' : 'rgba(239,83,80,.75)';
+    return `<div class="corr-pair-row" title="${p.fa} ↔ ${p.fb}">
+      <span class="corr-pair-a">${p.a}</span>
+      <span class="corr-pair-sep">↔</span>
+      <span class="corr-pair-b">${p.b}</span>
+      <div class="corr-pair-bar-wrap"><div class="corr-pair-bar" style="width:${pct}%;background:${barColor}"></div></div>
+      <span class="corr-pair-val" style="background:${bg};color:${fg}">${p.v.toFixed(2)}</span>
+    </div>`;
+  }
+
+  return `<div class="corr-pairs-wrap">
+    <div class="corr-pairs-col">
+      <div class="corr-pairs-title" style="color:var(--red)">⚠ Alta correlazione</div>
+      <div class="corr-pairs-subtitle">Si muovono insieme — scarsa diversificazione</div>
+      ${topPairs.map(pairRow).join('')}
+    </div>
+    <div class="corr-pairs-col">
+      <div class="corr-pairs-title" style="color:#4caf50">✓ Bassa / Inversa correlazione</div>
+      <div class="corr-pairs-subtitle">Si muovono indipendentemente — buona diversificazione</div>
+      ${botPairs.map(pairRow).join('')}
+    </div>
+  </div>
+  <div class="corr-legend">
+    <span style="color:var(--text3);font-size:10px">Calcolato su ${days} giorni · ${symbols.length} strumenti · ${pairs.length} coppie analizzate</span>
+  </div>`;
+}
+
+function showCorrView() {
+  const el = document.getElementById('corr-matrix');
+  if (!_lastCorrData) return;
+  el.innerHTML = corrView === 'pairs' ? renderCorrPairs(_lastCorrData) : renderCorrMatrix(_lastCorrData);
+}
+
 async function renderCorrelation() {
   const el = document.getElementById('corr-matrix');
   el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:50px">⏳ Calcolo in corso… (può richiedere 5-15 secondi)</div>';
@@ -7514,44 +7619,20 @@ async function renderCorrelation() {
     const r = await fetch(`/correlation?symbols=${syms.join(',')}&days=${corrDays}`);
     const d = await r.json();
     if (d.error) throw new Error(d.error);
-    const { symbols, matrix } = d;
-    const labels   = symbols.map(corrLabel);
-    const fullNames = symbols.map(corrFullName);
-    let html = '<div style="overflow:auto"><table class="corr-table"><thead><tr><th></th>';
-    labels.forEach((l, i) => html += `<th title="${fullNames[i]}">${l}</th>`);
-    html += '</tr></thead><tbody>';
-    matrix.forEach((row, i) => {
-      html += `<tr><td class="corr-label" title="${fullNames[i]}">${labels[i]}</td>`;
-      row.forEach((v, j) => {
-        const diag = i === j;
-        const vEff = diag ? 1 : v;
-        const val  = v !== null ? (diag ? '●' : v.toFixed(2)) : '—';
-        const tip  = `${labels[i]} ↔ ${labels[j]}: ${diag ? '1.00' : (v !== null ? v.toFixed(2) : '—')}`;
-        html += `<td style="background:${corrBg(vEff)};color:${corrFg(vEff)};${diag?'font-size:16px':''}" title="${tip}">${val}</td>`;
-      });
-      html += '</tr>';
-    });
-    html += '</tbody></table></div>';
-    html += `<div class="corr-legend">
-      <span class="leg-box" style="background:rgba(239,83,80,.8);color:#fff">-1.0 Inversa</span>
-      <span class="leg-box" style="background:rgba(239,83,80,.45)">-0.5</span>
-      <span class="leg-box" style="background:rgba(128,128,128,.25)">0 Nessuna</span>
-      <span class="leg-box" style="background:rgba(76,175,80,.45)">+0.5</span>
-      <span class="leg-box" style="background:rgba(76,175,80,.8);color:#fff">+1.0 Perfetta</span>
-      <span style="margin-left:8px;color:var(--text3);font-size:10px">Calcolato su ${d.days} giorni · ${symbols.length} strumenti</span>
-    </div>`;
-    el.innerHTML = html;
+    _lastCorrData = d;
+    showCorrView();
   } catch(e) {
     el.innerHTML = `<div style="color:var(--red);padding:20px;font-size:12px">⚠ ${e.message}</div>`;
   }
 }
 
-// Gestione pulsanti periodo/gruppo
+// Gestione pulsanti periodo/gruppo/vista
 document.querySelectorAll('[data-corrdays]').forEach(b => {
   b.addEventListener('click', () => {
     document.querySelectorAll('[data-corrdays]').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
     corrDays = parseInt(b.dataset.corrdays);
+    renderCorrelation();
   });
 });
 document.querySelectorAll('[data-corrgroup]').forEach(b => {
@@ -7559,9 +7640,17 @@ document.querySelectorAll('[data-corrgroup]').forEach(b => {
     document.querySelectorAll('[data-corrgroup]').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
     corrGroup = b.dataset.corrgroup;
+    renderCorrelation();
   });
 });
-document.getElementById('btn-corr-calc').addEventListener('click', renderCorrelation);
+document.querySelectorAll('[data-corrview]').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('[data-corrview]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    corrView = b.dataset.corrview;
+    showCorrView();
+  });
+});
 
 // ═══════════════════════════════════════════════════
 //  INIT
@@ -8082,9 +8171,9 @@ function printScatter() {
 // ── PRINT: CORRELAZIONE ─────────────────────────────────────
 function printCorrMatrix() {
   const wrap = document.getElementById('corr-matrix');
-  if (!wrap || !wrap.querySelector('table')) {
-    alert('Calcola prima la matrice di correlazione.'); return;
-  }
+  if (!wrap || !_lastCorrData) { alert('Nessun dato di correlazione disponibile.'); return; }
+  // Stampa sempre la matrice completa (indipendentemente dalla vista attiva)
+  const matrixHtml = renderCorrMatrix(_lastCorrData);
   const group  = document.querySelector('[data-corrgroup].active')?.textContent?.trim() || '';
   const period = document.querySelector('[data-corrdays].active')?.textContent?.trim()  || '';
   const now    = new Date().toLocaleDateString('it-IT', {day:'2-digit', month:'long', year:'numeric'});
@@ -8119,7 +8208,7 @@ function printCorrMatrix() {
       <span class="hdr-meta">Market Compass · ${now}</span>
     </div>
     <div class="matrix-wrap">
-      <div class="matrix-scale" id="ms">${wrap.innerHTML}</div>
+      <div class="matrix-scale" id="ms">${matrixHtml}</div>
     </div>
     <div class="footer">Generato da Market Compass — dati a scopo informativo</div>
   </div>
