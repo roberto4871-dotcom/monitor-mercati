@@ -6701,6 +6701,16 @@ function renderScatterBar() {
           ticks: { color: textC, font: { size: 11 }, autoSkip: false }
         }
       },
+      onClick(evt, elems) {
+        if (!elems.length) return;
+        const inst = instruments[elems[0].index];
+        if (!inst) return;
+        const rowIdx = rows.findIndex(r => r.s === inst.s);
+        if (rowIdx >= 0) openModal(rowIdx);
+      },
+      onHover(evt, elems) {
+        evt.native.target.style.cursor = elems.length ? 'pointer' : 'default';
+      },
       plugins: {
         legend: { display: false },
         tooltip: {
