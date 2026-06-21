@@ -5055,6 +5055,16 @@ function renderCharts() {
       maintainAspectRatio: false,
       animation: { duration: 350, easing: 'easeOutQuart' },
       layout: { padding: { right: 60 } }, // spazio per etichette fuori barra
+      onClick(evt, elems) {
+        if (!elems.length) return;
+        const inst = data[elems[0].index];
+        if (!inst) return;
+        const rowIdx = rows.findIndex(r => r.s === inst.s);
+        if (rowIdx >= 0) openModal(rowIdx);
+      },
+      onHover(evt, elems) {
+        evt.native.target.style.cursor = elems.length ? 'pointer' : 'default';
+      },
       plugins: {
         legend: { display: false },
         tooltip: {
