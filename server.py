@@ -185,6 +185,7 @@ _rss_cache   = {}; _rss_lock   = threading.Lock(); RSS_TTL   = 600   # 10 min
 _macro_cache     = {}; _macro_lock     = threading.Lock(); MACRO_TTL     = 900   # 15 min
 _sovereign_cache = {}; _sovereign_lock = threading.Lock(); SOVEREIGN_TTL = 1800  # 30 min
 _global_yields_cache = None; _global_yields_ts = 0.0; GLOBAL_YIELDS_TTL = 900  # 15 min
+_ecb_irs_cache = {}; _ecb_irs_ts = 0.0; ECB_IRS_TTL = 86400  # 24h (dati mensili ECB)
 _macro_live_cache = None; _macro_live_ts = 0.0; MACRO_LIVE_TTL = 1800  # 30 min
 # ISIN cache — permanente (ISIN non cambia mai)
 
@@ -1291,6 +1292,59 @@ def _boc_fetch():
         return None
 
 
+def _ecb_irs_10y_all():
+    """Rendimento 10A governativo ufficiale (IRS convergence) per paesi eurozona.
+    Fonte: ECB Data API — mensile, nessuna API key.
+    Cache 24h (i dati ECB si aggiornano ogni mese).
+    """
+    global _ecb_irs_cache, _ecb_irs_ts
+    if _ecb_irs_cache and (time.time() - _ecb_irs_ts) < ECB_IRS_TTL:
+        return _ecb_irs_cache
+
+    import requests as req
+    IRS_CCS = ['DE', 'IT', 'ES', 'FR', 'NL', 'BE', 'AT', 'PT', 'GR']
+    hdrs = {'User-Agent': 'Mozilla/5.0'}
+
+    def _one(cc):
+        try:
+            url = (f'https://data-api.ecb.europa.eu/service/data/'
+                   f'IRS/M.{cc}.L.L40.CI.0000.EUR.N.Z'
+                   f'?lastNObservations=1&format=csvdata')
+            r = req.get(url, timeout=10, headers=hdrs)
+            if r.status_code != 200:
+                return cc, None
+            for line in reversed(r.text.splitlines()):
+                if not line or line.startswith('KEY') or not line.strip():
+                    continue
+                parts = line.split(',')
+                # IRS CSV: TIME_PERIOD(col10), OBS_VALUE(col11)
+                if len(parts) >= 12:
+                    try:
+                        return cc, {'v': float(parts[11]), 'date': parts[10][:7]}
+                    except (ValueError, IndexError):
+                        pass
+        except Exception as e:
+            print(f'  [global-yields] ECB IRS {cc}: {e}')
+        return cc, None
+
+    result = {}
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futures = [ex.submit(_one, cc) for cc in IRS_CCS]
+        for fut in as_completed(futures, timeout=20):
+            try:
+                cc, data = fut.result()
+                if data:
+                    result[cc] = data
+            except Exception:
+                pass
+
+    if result:
+        _ecb_irs_cache = result
+        _ecb_irs_ts    = time.time()
+        print(f'  [global-yields] ECB IRS 10A: {", ".join(f"{c}={d[\"v\"]:.3f}%" for c,d in sorted(result.items()))}')
+    return result
+
+
 def fetch_global_yields():
     """Rendimenti governativi internazionali: USA/EU live, UK/JP/CA se API raggiungibili."""
     global _global_yields_cache, _global_yields_ts
@@ -1342,21 +1396,45 @@ def fetch_global_yields():
 
     if ecb_yields:
         out['DE'] = {'name':'Germania','flag':'🇩🇪','yields':ecb_yields,'source':'ECB YC','live':True}
-        # Paesi EU: spread medio storico su Bund (stabile nel medio periodo)
+
+        # Spread di riferimento (fallback aggiornati al giu-2026, calibrati su ECB IRS)
+        # Struttura: 10Y è il riferimento; 3M/2Y/5Y/30Y calcolati proporzionalmente
         EU_OFFSETS = {
-            'NL': {'name':'Olanda',     'flag':'🇳🇱','off':{'3M':0.05,'2Y':0.05,'5Y':0.07,'10Y':0.08,'30Y':0.10}},
-            'AT': {'name':'Austria',    'flag':'🇦🇹','off':{'3M':0.25,'2Y':0.22,'5Y':0.28,'10Y':0.37,'30Y':0.48}},
-            'BE': {'name':'Belgio',     'flag':'🇧🇪','off':{'3M':0.30,'2Y':0.30,'5Y':0.42,'10Y':0.47,'30Y':0.62}},
-            'FR': {'name':'Francia',    'flag':'🇫🇷','off':{'3M':0.40,'2Y':0.35,'5Y':0.38,'10Y':0.65,'30Y':0.85}},
-            'ES': {'name':'Spagna',     'flag':'🇪🇸','off':{'3M':0.52,'2Y':0.47,'5Y':0.52,'10Y':0.77,'30Y':1.08}},
-            'PT': {'name':'Portogallo', 'flag':'🇵🇹','off':{'3M':0.60,'2Y':0.55,'5Y':0.65,'10Y':0.72,'30Y':0.92}},
+            'NL': {'name':'Olanda',     'flag':'🇳🇱','off':{'3M':0.16,'2Y':0.16,'5Y':0.22,'10Y':0.25,'30Y':0.31}},
+            'AT': {'name':'Austria',    'flag':'🇦🇹','off':{'3M':0.26,'2Y':0.23,'5Y':0.29,'10Y':0.38,'30Y':0.49}},
+            'BE': {'name':'Belgio',     'flag':'🇧🇪','off':{'3M':0.43,'2Y':0.43,'5Y':0.61,'10Y':0.68,'30Y':0.90}},
+            'FR': {'name':'Francia',    'flag':'🇫🇷','off':{'3M':0.50,'2Y':0.44,'5Y':0.48,'10Y':0.82,'30Y':1.07}},
+            'ES': {'name':'Spagna',     'flag':'🇪🇸','off':{'3M':0.38,'2Y':0.35,'5Y':0.38,'10Y':0.57,'30Y':0.80}},
+            'PT': {'name':'Portogallo', 'flag':'🇵🇹','off':{'3M':0.42,'2Y':0.38,'5Y':0.45,'10Y':0.50,'30Y':0.64}},
             'IT': {'name':'Italia',     'flag':'🇮🇹','off':{'3M':0.60,'2Y':0.55,'5Y':0.65,'10Y':0.92,'30Y':1.16}},
-            'GR': {'name':'Grecia',     'flag':'🇬🇷','off':{'3M':0.70,'2Y':0.65,'5Y':0.80,'10Y':0.92,'30Y':1.12}},
+            'GR': {'name':'Grecia',     'flag':'🇬🇷','off':{'3M':0.63,'2Y':0.59,'5Y':0.72,'10Y':0.83,'30Y':1.01}},
         }
+
+        # ECB IRS 10A: rendimento governativo ufficiale mensile per ciascun paese
+        # Quando disponibile, usa IRS direttamente per 10A e scala le altre scadenze
+        irs_10y    = _ecb_irs_10y_all()
+        ecb_10y_base = ecb_yields.get('10Y')
+
         for cc, info in EU_OFFSETS.items():
-            yields = {m: round(ecb_yields[m] + info['off'].get(m, 0), 3) for m in ecb_yields}
+            irs   = irs_10y.get(cc) if ecb_10y_base else None
+            if irs and ecb_10y_base:
+                actual_10y        = irs['v']
+                implied_spread_10y = actual_10y - ecb_10y_base
+                hardcoded_10y_off  = info['off']['10Y']
+                # Scala tutti gli offset proporzionalmente allo spread 10A osservato
+                scale = implied_spread_10y / hardcoded_10y_off if hardcoded_10y_off else 1.0
+                yields = {}
+                for m, base_v in ecb_yields.items():
+                    if m == '10Y':
+                        yields[m] = round(actual_10y, 3)
+                    else:
+                        yields[m] = round(base_v + info['off'].get(m, 0) * scale, 3)
+                src = f'ECB IRS {irs["date"]}'
+            else:
+                yields = {m: round(ecb_yields[m] + info['off'].get(m, 0), 3) for m in ecb_yields}
+                src = 'ECB+spread'
             out[cc] = {'name':info['name'],'flag':info['flag'],'yields':yields,
-                       'source':'ECB+spread','live':True}
+                       'source':src,'live':True}
     # Se ECB fallisce → nessun dato EU (nessun fallback statico)
 
     # --- Giappone: MOF Japan CSV ---
