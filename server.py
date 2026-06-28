@@ -1459,32 +1459,69 @@ def _fred_rate(series_id):
 
 def _ecb_policy_rates():
     """Tasso BCE depositi (DFR) e rifinanziamento principale (MRR). Restituisce dict."""
-    try:
-        import requests as req
-        result = {}
-        for key, series in [('dfr', 'FM/B.U2.EUR.4F.KR.DFR.LEV'),
-                             ('mrr', 'FM/B.U2.EUR.4F.KR.MRR_FR.LEV')]:
-            url = (f'https://data-api.ecb.europa.eu/service/data/{series}'
-                   f'?lastNObservations=1&format=csvdata')
-            r = req.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
-            if r.status_code != 200:
+    import requests as req
+
+    def _parse_ecb_csv(text):
+        """Estrae (value, date) dall'ultima riga dati CSV ECB."""
+        for line in reversed(text.splitlines()):
+            if not line or line.startswith('KEY') or line.startswith('#') or line.startswith('{'):
                 continue
-            for line in reversed(r.text.splitlines()):
-                if not line or line.startswith('KEY') or line.startswith('#') or line.startswith('{'):
+            parts = line.split(',')
+            # CSV: KEY(0)…DATA_TYPE_FM(7),TIME_PERIOD(8),OBS_VALUE(9)
+            if len(parts) >= 10:
+                try:
+                    return float(parts[9]), parts[8][:10]
+                except (ValueError, IndexError):
                     continue
-                parts = line.split(',')
-                # CSV header: KEY(0),FREQ(1),REF_AREA(2),CURRENCY(3),PROVIDER_FM(4),
-                # INSTRUMENT_FM(5),PROVIDER_FM_ID(6),DATA_TYPE_FM(7),TIME_PERIOD(8),OBS_VALUE(9)
-                if len(parts) >= 10:
-                    try:
-                        result[key] = {'v': float(parts[9]), 'date': parts[8][:10]}
-                        break
-                    except ValueError:
-                        continue
-        return result
-    except Exception as e:
-        print(f'  [macro-live] ECB rates: {e}')
-        return {}
+        return None, None
+
+    result = {}
+    hdrs = {'User-Agent': 'Mozilla/5.0 (compatible; MarketMonitor/1.0)'}
+
+    for key, series_id in [('dfr', 'B.U2.EUR.4F.KR.DFR.LEV'),
+                            ('mrr', 'B.U2.EUR.4F.KR.MRR_FR.LEV')]:
+        v, date = None, None
+
+        # Tentativo 1: ECB Data API principale (CSV)
+        try:
+            url = f'https://data-api.ecb.europa.eu/service/data/FM/{series_id}?lastNObservations=1&format=csvdata'
+            r = req.get(url, timeout=12, headers=hdrs)
+            if r.status_code == 200:
+                v, date = _parse_ecb_csv(r.text)
+        except Exception as e:
+            print(f'  [macro-live] ECB CSV {key}: {e}')
+
+        # Tentativo 2: ECB Data API — formato JSON (stesso server, path diverso)
+        if v is None:
+            try:
+                url = f'https://data-api.ecb.europa.eu/service/data/FM/{series_id}?lastNObservations=1&format=jsondata&detail=dataonly'
+                r = req.get(url, timeout=12, headers={**hdrs, 'Accept': 'application/json'})
+                if r.status_code == 200:
+                    d = r.json()
+                    datasets = d.get('dataSets', [{}])
+                    series = datasets[0].get('series', {}) if datasets else {}
+                    for sv in series.values():
+                        obs = sv.get('observations', {})
+                        if obs:
+                            last_key = max(obs.keys(), key=int)
+                            v = float(obs[last_key][0])
+                            # data dalla struttura structure
+                            try:
+                                struct = d['structure']['dimensions']['observation']
+                                times  = next(dim for dim in struct if dim['id'] == 'TIME_PERIOD')
+                                date   = times['values'][int(last_key)]['id'][:10]
+                            except Exception:
+                                date = str(datetime.date.today())
+                            break
+            except Exception as e:
+                print(f'  [macro-live] ECB JSON {key}: {e}')
+
+        if v is not None:
+            result[key] = {'v': v, 'date': date or str(datetime.date.today())}
+        else:
+            print(f'  [macro-live] ECB {key}: tutti i tentativi falliti')
+
+    return result
 
 
 def _boe_base_rate():
