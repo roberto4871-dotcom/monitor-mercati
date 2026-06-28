@@ -7163,6 +7163,13 @@ function renderFundamentals(d) {
     return `Q${Math.ceil(m/3)} ${y}`;
   };
 
+  // ── Descrizione azienda ──────────────────────────────────────
+  let html = '';
+  if (d.description) {
+    html += `<div class="fund-section-title" style="margin-top:0;border-top:none">🏢 Chi è</div>`;
+    html += `<div class="fund-desc" style="border-top:none;padding-top:0;margin-bottom:16px;font-size:12px;color:var(--text1)">${d.description}</div>`;
+  }
+
   // ── Griglia metriche principali ──────────────────────────────
   const items = [
     {l:'P/E Trailing',     v: N(d.trailingPE)},
@@ -7180,7 +7187,7 @@ function renderFundamentals(d) {
     {l:'Industria',        v: d.industry || '—'},
     {l:'Paese',            v: d.country || '—'},
   ];
-  let html = '<div class="fund-grid">';
+  html += '<div class="fund-grid">';
   html += items.map(i => `<div class="fund-item"><span class="fund-label">${i.l}</span><span class="fund-value">${i.v}</span></div>`).join('');
   html += '</div>';
 
@@ -7437,7 +7444,6 @@ function renderFundamentals(d) {
     }
   }
 
-  if (d.description) html += `<div class="fund-desc">${d.description}</div>`;
   el.innerHTML = html;
 }
 
