@@ -1350,7 +1350,7 @@ def fetch_global_yields():
             'FR': {'name':'Francia',    'flag':'🇫🇷','off':{'3M':0.40,'2Y':0.35,'5Y':0.38,'10Y':0.65,'30Y':0.85}},
             'ES': {'name':'Spagna',     'flag':'🇪🇸','off':{'3M':0.52,'2Y':0.47,'5Y':0.52,'10Y':0.77,'30Y':1.08}},
             'PT': {'name':'Portogallo', 'flag':'🇵🇹','off':{'3M':0.60,'2Y':0.55,'5Y':0.65,'10Y':0.72,'30Y':0.92}},
-            'IT': {'name':'Italia',     'flag':'🇮🇹','off':{'3M':0.80,'2Y':0.75,'5Y':0.85,'10Y':1.12,'30Y':1.36}},
+            'IT': {'name':'Italia',     'flag':'🇮🇹','off':{'3M':0.60,'2Y':0.55,'5Y':0.65,'10Y':0.92,'30Y':1.16}},
             'GR': {'name':'Grecia',     'flag':'🇬🇷','off':{'3M':0.70,'2Y':0.65,'5Y':0.80,'10Y':0.92,'30Y':1.12}},
         }
         for cc, info in EU_OFFSETS.items():
@@ -1733,8 +1733,8 @@ def fetch_sovereign_yields():
 
     # Fallback finale: valori statici etichettati (quando tutte le fonti sono bloccate)
     STATIC_FALLBACK = {
-        'DE': 2.50, 'IT': 3.58, 'ES': 3.38,
-        'FR': 3.22, 'PT': 2.97, 'PL': 5.25,
+        'DE': 2.92, 'IT': 3.84, 'ES': 3.69,
+        'FR': 3.57, 'PT': 3.64, 'PL': 5.25,
     }
     still_missing = [cc for cc in SPREAD_BONDS if f'sov_{cc}' not in raw]
     if still_missing:
