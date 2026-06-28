@@ -8684,6 +8684,7 @@ function renderGlobalYields() {
     if (src === 'MOF')           return { cls:'live',    txt:'● MOF JP' };
     if (src === 'BOC')           return { cls:'live',    txt:'● BOC' };
     if (src === 'ECB+spread')    return { cls:'derived', txt:'≈ ECB+Δ' };
+    if (src.startsWith('ECB IRS')) return { cls:'live', txt:'● ECB IRS' };
     return { cls:'static', txt:'⚠ statico' };
   };
 
