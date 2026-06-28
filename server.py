@@ -31,8 +31,8 @@ _req.Session.request = _session_request_timeout
 
 PORT = int(os.environ.get('PORT', 8080))
 
-# ── Semaforo globale: max 3 richieste Yahoo Finance in parallelo ──────────
-_yf_semaphore = threading.Semaphore(3)
+# ── Semaforo globale: max 2 richieste Yahoo Finance in parallelo ──────────
+_yf_semaphore = threading.Semaphore(2)
 
 def _yf_call(fn, timeout=10, default=None):
     """Esegue fn() in un thread daemon con timeout — non blocca mai il thread chiamante."""
@@ -132,15 +132,15 @@ def _resample_month_end(series):
 # Cache: chiave = "symbol|period|interval"
 _cache = {}
 _cache_lock = threading.Lock()
-CACHE_TTL = 300  # 5 minuti (periodi lunghi durano di più)
+CACHE_TTL = 900   # 15 minuti (era 5 — riduce carico CPU/Railway)
 CACHE_TTL_LONG = 3600  # 1 ora per 2Y/3Y/5Y/max
 
 # Cache per fondamentali, news, calendario, AI
-_fund_cache    = {}; _fund_lock    = threading.Lock(); FUND_TTL    = 3600
-_news_cache    = {}; _news_lock    = threading.Lock(); NEWS_TTL    = 900
-_cal_cache     = {}; _cal_lock     = threading.Lock(); CAL_TTL     = 1800
-_monthly_cache = {}; _monthly_lock = threading.Lock(); MONTHLY_TTL = 3600
-_weekly_cache  = {}; _weekly_lock  = threading.Lock(); WEEKLY_TTL  = 3600
+_fund_cache    = {}; _fund_lock    = threading.Lock(); FUND_TTL    = 7200   # 2h (era 1h)
+_news_cache    = {}; _news_lock    = threading.Lock(); NEWS_TTL    = 1800   # 30min (era 15)
+_cal_cache     = {}; _cal_lock     = threading.Lock(); CAL_TTL     = 3600   # 1h (era 30min)
+_monthly_cache = {}; _monthly_lock = threading.Lock(); MONTHLY_TTL = 7200   # 2h (era 1h)
+_weekly_cache  = {}; _weekly_lock  = threading.Lock(); WEEKLY_TTL  = 7200   # 2h (era 1h)
 
 # ── Liste preferiti condivise (sync multi-PC) ──────────────────────────────
 # LISTS_PATH può essere impostato come variabile d'ambiente Railway (es. /data/lists.json)
@@ -178,15 +178,15 @@ def _save_lists(data):
 _lists_data = _load_lists()
 print(f'  [lists] file={LISTS_FILE} | fav:{len(_lists_data["mm_fav"])} fav2:{len(_lists_data["mm_fav2"])} fav3:{len(_lists_data["mm_fav3"])} fav4:{len(_lists_data["mm_fav4"])} fav5:{len(_lists_data["mm_fav5"])}')
 # ───────────────────────────────────────────────────────────────────────────
-_ma_cache      = {}; _ma_lock      = threading.Lock(); MA_TTL      = 300
-_seasonal_cache= {}; _seasonal_lock= threading.Lock(); SEASONAL_TTL= 21600  # 6 ore
-_corr_cache  = {}; _corr_lock  = threading.Lock(); CORR_TTL  = 1800
-_rss_cache   = {}; _rss_lock   = threading.Lock(); RSS_TTL   = 600   # 10 min
-_macro_cache     = {}; _macro_lock     = threading.Lock(); MACRO_TTL     = 900   # 15 min
-_sovereign_cache = {}; _sovereign_lock = threading.Lock(); SOVEREIGN_TTL = 1800  # 30 min
-_global_yields_cache = None; _global_yields_ts = 0.0; GLOBAL_YIELDS_TTL = 900  # 15 min
+_ma_cache      = {}; _ma_lock      = threading.Lock(); MA_TTL      = 900    # 15min (era 5)
+_seasonal_cache= {}; _seasonal_lock= threading.Lock(); SEASONAL_TTL= 43200  # 12h (era 6h)
+_corr_cache  = {}; _corr_lock  = threading.Lock(); CORR_TTL  = 7200    # 2h (era 30min)
+_rss_cache   = {}; _rss_lock   = threading.Lock(); RSS_TTL   = 1800    # 30min (era 10)
+_macro_cache     = {}; _macro_lock     = threading.Lock(); MACRO_TTL     = 7200   # 2h (era 15min)
+_sovereign_cache = {}; _sovereign_lock = threading.Lock(); SOVEREIGN_TTL = 7200   # 2h (era 30min)
+_global_yields_cache = None; _global_yields_ts = 0.0; GLOBAL_YIELDS_TTL = 3600   # 1h (era 15min)
 _ecb_irs_cache = {}; _ecb_irs_ts = 0.0; ECB_IRS_TTL = 86400  # 24h (dati mensili ECB)
-_macro_live_cache = None; _macro_live_ts = 0.0; MACRO_LIVE_TTL = 1800  # 30 min
+_macro_live_cache = None; _macro_live_ts = 0.0; MACRO_LIVE_TTL = 7200   # 2h (era 30min)
 # ISIN cache — permanente (ISIN non cambia mai)
 
 
@@ -330,7 +330,7 @@ def fetch_batch_bulk(symbols, period='3mo', interval='1d'):
         for i in range(0, len(to_fetch), CHUNK):
             chunk = to_fetch[i:i + CHUNK]
             _yf_wait_cooldown()
-            with ThreadPoolExecutor(max_workers=5) as ex:
+            with ThreadPoolExecutor(max_workers=3) as ex:
                 futures = {ex.submit(fetch_symbol, sym, period, interval): sym for sym in chunk}
                 for future in as_completed(futures):
                     sym = futures[future]
@@ -562,7 +562,7 @@ def fetch_ma_batch(symbols):
             except Exception:
                 return sym, {'above50': None, 'above200': None, 'ma50': None, 'ma200': None}
 
-        with ThreadPoolExecutor(max_workers=10) as ex:
+        with ThreadPoolExecutor(max_workers=4) as ex:
             for sym, data in ex.map(_fetch_one, to_fetch):
                 results[sym] = data
                 with _ma_lock:
@@ -1328,7 +1328,7 @@ def _ecb_irs_10y_all():
         return cc, None
 
     result = {}
-    with ThreadPoolExecutor(max_workers=8) as ex:
+    with ThreadPoolExecutor(max_workers=4) as ex:
         futures = [ex.submit(_one, cc) for cc in IRS_CCS]
         for fut in as_completed(futures, timeout=20):
             try:
@@ -1768,7 +1768,7 @@ def fetch_sovereign_yields():
     def _fetch(key, sym):
         return key, _stooq_fetch(sym)
 
-    with ThreadPoolExecutor(max_workers=8) as ex:
+    with ThreadPoolExecutor(max_workers=4) as ex:
         futures = {ex.submit(_fetch, k, v): k for k, v in all_tasks.items()}
         for fut in as_completed(futures, timeout=20):
             try:
@@ -1787,7 +1787,7 @@ def fetch_sovereign_yields():
             if not series:
                 return cc, None
             return cc, _fred_fetch_yield(series)
-        with ThreadPoolExecutor(max_workers=6) as ex:
+        with ThreadPoolExecutor(max_workers=3) as ex:
             for cc, d in ex.map(_fred_fallback, missing_countries):
                 if d:
                     raw[f'sov_{cc}'] = d
@@ -1838,7 +1838,7 @@ def fetch_sovereign_yields():
                 print(f'  [sovereign] ECB {cc}: {e}')
                 return cc, None
 
-        with ThreadPoolExecutor(max_workers=5) as ex:
+        with ThreadPoolExecutor(max_workers=3) as ex:
             for cc, d in ex.map(_ecb_fetch, missing_ecb):
                 if d:
                     raw[f'sov_{cc}'] = d
@@ -1957,7 +1957,7 @@ def fetch_aggregated_news():
             return c['data']
 
     all_items = []
-    with ThreadPoolExecutor(max_workers=12) as ex:
+    with ThreadPoolExecutor(max_workers=4) as ex:
         futures = {ex.submit(_parse_rss_source, src): src for src in RSS_SOURCES}
         for fut in as_completed(futures, timeout=18):
             try:
@@ -1973,7 +1973,7 @@ def fetch_aggregated_news():
             if item['summary']:
                 item['summary'] = _translate_it(item['summary'][:300])
             return item
-        with ThreadPoolExecutor(max_workers=10) as ex:
+        with ThreadPoolExecutor(max_workers=4) as ex:
             list(ex.map(_tr, to_tr))
 
     # Ordina per data, deduplicazione per titolo (primi 55 caratteri)
