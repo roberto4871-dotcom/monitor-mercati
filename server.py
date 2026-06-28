@@ -1341,7 +1341,8 @@ def _ecb_irs_10y_all():
     if result:
         _ecb_irs_cache = result
         _ecb_irs_ts    = time.time()
-        print(f'  [global-yields] ECB IRS 10A: {", ".join(f"{c}={d[\"v\"]:.3f}%" for c,d in sorted(result.items()))}')
+        irs_summary = ', '.join(f'{c}={d["v"]:.3f}%' for c, d in sorted(result.items()))
+        print(f'  [global-yields] ECB IRS 10A: {irs_summary}')
     return result
 
 
