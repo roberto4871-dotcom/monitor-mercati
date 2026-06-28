@@ -1473,9 +1473,11 @@ def _ecb_policy_rates():
                 if not line or line.startswith('KEY') or line.startswith('#') or line.startswith('{'):
                     continue
                 parts = line.split(',')
-                if len(parts) >= 9:
+                # CSV header: KEY(0),FREQ(1),REF_AREA(2),CURRENCY(3),PROVIDER_FM(4),
+                # INSTRUMENT_FM(5),PROVIDER_FM_ID(6),DATA_TYPE_FM(7),TIME_PERIOD(8),OBS_VALUE(9)
+                if len(parts) >= 10:
                     try:
-                        result[key] = {'v': float(parts[8]), 'date': parts[7][:10]}
+                        result[key] = {'v': float(parts[9]), 'date': parts[8][:10]}
                         break
                     except ValueError:
                         continue
