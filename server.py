@@ -1485,28 +1485,62 @@ def _bls_fetch():
 
 
 def _ecb_hicp(country_code):
-    """HICP variazione annua (%) per paese — serie ECB ICP. Restituisce {'v':..., 'date':...}."""
+    """HICP variazione annua (%) per paese.
+    Fonte primaria: BIS WS_LONG_CPI (aggiornato mensile, dati 2026).
+    Fallback: ECB ICP (serie discontinued, ultima obs dic-2025).
+    country_code: codice ECB (U2=eurozona, DE, IT, FR, ES).
+    """
+    import requests as req
+    # Mappa codici ECB → BIS (U2=eurozona in ECB, XM=eurozona in BIS)
+    BIS_MAP = {'U2': 'XM', 'DE': 'DE', 'IT': 'IT', 'FR': 'FR', 'ES': 'ES',
+               'GB': 'GB', 'US': 'US', 'JP': 'JP'}
+    bis_cc = BIS_MAP.get(country_code, country_code)
+    hdrs = {'User-Agent': 'Mozilla/5.0'}
+
+    # 1) Prova BIS WS_LONG_CPI — dati mensili aggiornati
     try:
-        import requests as req
+        url = (f'https://stats.bis.org/api/v1/data/BIS,WS_LONG_CPI,1.0/'
+               f'M.{bis_cc}.771?lastNObservations=3&format=csvdata')
+        r = req.get(url, timeout=10, headers=hdrs)
+        if r.status_code == 200:
+            best = None
+            for line in r.text.splitlines():
+                if not line or line.startswith('FREQ'):
+                    continue
+                parts = line.split(',')
+                # Cols: FREQ(0) REF_AREA(1) UNIT_MEASURE(2) ... TIME_PERIOD(9) OBS_VALUE(10)
+                if len(parts) >= 11:
+                    try:
+                        period = parts[9]  # YYYY-MM
+                        val    = float(parts[10])
+                        if best is None or period > best['date']:
+                            best = {'v': round(val, 2), 'date': period, 'src': 'BIS'}
+                    except (ValueError, IndexError):
+                        pass
+            if best:
+                return best
+    except Exception as e:
+        print(f'  [macro-live] BIS HICP {bis_cc}: {e}')
+
+    # 2) Fallback ECB ICP (discontinuato feb-2026, ultima obs dic-2025)
+    try:
         url = (f'https://data-api.ecb.europa.eu/service/data/'
                f'ICP/M.{country_code}.N.000000.4.ANR'
                f'?lastNObservations=2&format=csvdata')
-        r = req.get(url, timeout=10, headers={'User-Agent': 'Mozilla/5.0'})
-        if r.status_code != 200:
-            return None
-        for line in reversed(r.text.splitlines()):
-            if not line or line.startswith('KEY') or line.startswith('#') or line.startswith('{'):
-                continue
-            parts = line.split(',')
-            if len(parts) >= 9:
-                try:
-                    return {'v': float(parts[8]), 'date': parts[7][:7]}  # YYYY-MM
-                except ValueError:
+        r = req.get(url, timeout=10, headers=hdrs)
+        if r.status_code == 200:
+            for line in reversed(r.text.splitlines()):
+                if not line or line.startswith('KEY') or line.startswith('#') or line.startswith('{'):
                     continue
-        return None
+                parts = line.split(',')
+                if len(parts) >= 9:
+                    try:
+                        return {'v': float(parts[8]), 'date': parts[7][:7], 'src': 'ECB'}
+                    except ValueError:
+                        continue
     except Exception as e:
         print(f'  [macro-live] ECB HICP {country_code}: {e}')
-        return None
+    return None
 
 
 def _fred_rate(series_id):
