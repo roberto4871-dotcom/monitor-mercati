@@ -7135,7 +7135,7 @@ async function loadFundamentals(row) {
     renderFundamentals(d);
     el.dataset.loaded = '1';
   } catch(e) {
-    el.innerHTML = `<div style="color:var(--red);padding:20px;font-size:12px">⚠ Errore: ${e.message}</div>`;
+    el.innerHTML = `<div style="color:var(--red);padding:20px;font-size:12px">⚠ Errore: ${e.message}<br><br><button onclick="loadFundamentals(modalRow)" style="margin-top:8px;padding:6px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px">↻ Riprova</button></div>`;
   }
 }
 

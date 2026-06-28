@@ -584,10 +584,12 @@ def fetch_fundamentals(symbol):
         _yf_wait_cooldown()
         try:
             with _yf_semaphore:
-                info = _yf_call(lambda: t.info, timeout=12)
+                info = _yf_call(lambda: t.info, timeout=25)
             if info is None:
-                print(f'  [fundamentals] timeout t.info per {symbol}')
-                return {'error': 'Timeout dati fondamentali. Riprova.'}
+                wait = 3 * (attempt + 1)
+                print(f'  [fundamentals] timeout t.info per {symbol}, retry {attempt+1} fra {wait}s')
+                time.sleep(wait)
+                continue
             # yfinance a volte restituisce una stringa di errore come valore
             if not info or (isinstance(list(info.values())[0] if info else None, str) and 'Too Many' in str(list(info.values())[0])):
                 raise Exception('Too Many Requests')
@@ -602,7 +604,7 @@ def fetch_fundamentals(symbol):
             # Errore non-rate-limit: esci subito
             return {'error': str(e)}
     else:
-        return {'error': 'Troppi tentativi, riprova tra qualche secondo.'}
+        return {'error': 'Timeout dati fondamentali. Riprova.'}
     if info is None:
         return {'error': 'Nessun dato disponibile.'}
     try:
