@@ -7952,7 +7952,9 @@ async function loadNewsTab(force = false) {
   el.innerHTML = '<div class="nf-empty">⏳ Caricamento flusso news…</div>';
   document.getElementById('nf-btn-refresh').disabled = true;
   try {
-    const data = await fetch('/news-feed').then(r => r.json());
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 60000);
+    const data = await fetch('/news-feed', {signal: ctrl.signal}).then(r => { clearTimeout(tid); return r.json(); });
     const raw = Array.isArray(data) ? data : [];
     _nfAllItems = nfDeduplicate(raw);
     const lastUpd = document.getElementById('nf-lastupdate');
@@ -7960,10 +7962,13 @@ async function loadNewsTab(force = false) {
     nfApplyFilter(_nfActiveCat);
     nfCheckSpike();
     nfUpdateBadge();
-    // Auto-refresh side panel if open
     if (_sideNewsOpen) renderSideNews(_snpActiveCat);
   } catch(e) {
-    el.innerHTML = `<div class="nf-empty">⚠ Errore caricamento: ${e.message}</div>`;
+    const isTimeout = e.name === 'AbortError';
+    const msg = isTimeout
+      ? 'Il server si sta avviando. Riprova tra 30 secondi.'
+      : `⚠ Errore: ${e.message}`;
+    el.innerHTML = `<div class="nf-empty">${msg} &nbsp;<button onclick="loadNewsTab(true)" style="padding:3px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px">↻ Riprova</button></div>`;
   } finally {
     document.getElementById('nf-btn-refresh').disabled = false;
   }

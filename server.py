@@ -2480,6 +2480,11 @@ def _start_cache_warmup():
             print('[warmup] macro-live OK')
         except Exception as e:
             print(f'[warmup] macro-live: {e}')
+        try:
+            fetch_aggregated_news()
+            print('[warmup] news-feed OK')
+        except Exception as e:
+            print(f'[warmup] news-feed: {e}')
         print('[warmup] Pre-riscaldamento completato.')
     threading.Thread(target=_run, daemon=True, name='cache-warmup').start()
 
