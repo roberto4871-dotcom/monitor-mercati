@@ -2322,6 +2322,7 @@ function loadCachedRows() {
     if (!raw) return false;
     const {ts, data} = JSON.parse(raw);
     if (Date.now() - ts > 20 * 60 * 1000) return false; // scaduta dopo 20 min
+    if (data.length !== INSTRUMENTS.length) return false; // lista strumenti cambiata: invalida cache
     rows = data;
     renderTable();
     renderCharts();
