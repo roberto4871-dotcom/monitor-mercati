@@ -8586,15 +8586,25 @@ let _macroLoaded  = false;
 
 async function loadMacroTab(force = false) {
   if (!force && _macroLoaded) { renderMacro(); return; }
-  document.getElementById('macro-lastupd').textContent = '⏳ Caricamento…';
+  const upd = document.getElementById('macro-lastupd');
+  upd.textContent = '⏳ Caricamento dati macro…';
+
+  // Fetch con timeout: il server può impiegare fino a 40s a freddo (serverless cold start)
+  function fetchWithTimeout(url, ms) {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), ms);
+    return fetch(url, {signal: ctrl.signal})
+      .then(r => { clearTimeout(tid); return r.json(); })
+      .catch(e => { clearTimeout(tid); throw e; });
+  }
+
   try {
-    // Fetch in parallelo: rendimenti globali + macro live (inflazione/tassi)
     [_globalYields, _macroLive] = await Promise.all([
-      fetch('/global-yields').then(r => r.json()),
-      fetch('/macro-live').then(r => r.json()),
+      fetchWithTimeout('/global-yields', 60000),
+      fetchWithTimeout('/macro-live', 60000),
     ]);
     _macroLoaded = true;
-    document.getElementById('macro-lastupd').textContent =
+    upd.textContent =
       'Aggiornato: ' + new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
     renderMacro();
     // Ricalcola segnali obbligazionari e azionari (yield curve + VIX ora disponibili)
@@ -8607,7 +8617,11 @@ async function loadMacroTab(force = false) {
       }
     });
   } catch(e) {
-    document.getElementById('macro-lastupd').textContent = '⚠ Errore: ' + e.message;
+    const isTimeout = e.name === 'AbortError';
+    const msg = isTimeout
+      ? 'Il server si sta avviando (cold start). Riprova tra 30 secondi.'
+      : '⚠ Errore: ' + e.message;
+    upd.innerHTML = `${msg} &nbsp;<button onclick="loadMacroTab(true)" style="padding:3px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px">↻ Riprova</button>`;
   }
 }
 

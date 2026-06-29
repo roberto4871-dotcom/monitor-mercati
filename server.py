@@ -2465,6 +2465,27 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self._json(fetch_symbol(symbol, period=period, interval=interval))
 
 
+def _start_cache_warmup():
+    """Popola le cache macro/yields in background all'avvio, così il primo utente non aspetta."""
+    def _run():
+        time.sleep(3)  # breve pausa per completare il binding del server
+        print('[warmup] Avvio pre-riscaldamento cache macro e rendimenti…')
+        try:
+            fetch_global_yields()
+            print('[warmup] global-yields OK')
+        except Exception as e:
+            print(f'[warmup] global-yields: {e}')
+        try:
+            fetch_macro_live()
+            print('[warmup] macro-live OK')
+        except Exception as e:
+            print(f'[warmup] macro-live: {e}')
+        print('[warmup] Pre-riscaldamento completato.')
+    threading.Thread(target=_run, daemon=True, name='cache-warmup').start()
+
+_start_cache_warmup()
+
+
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     print(f'\n  Monitor Mercati — http://localhost:{PORT}/monitor-mercati.html\n')
