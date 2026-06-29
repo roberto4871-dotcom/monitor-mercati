@@ -773,6 +773,7 @@ body.light .cal-item{background:var(--bg3)}
     <button class="filter-btn" data-filter="SVIZZERA">Svizzera</button>
     <button class="filter-btn" data-filter="ETF INDICI">ETF Indici</button>
     <button class="filter-btn" data-filter="ETF SETTORIALE">ETF Settoriali</button>
+    <button class="filter-btn" data-filter="ETF OBB. MIL">ETF Obb. MIL</button>
     <button class="filter-btn" data-filter="INFRASTRUTTURA ENERGETICA AI">Infra Energetica AI</button>
     <button class="filter-btn" data-filter="favorites" id="fav-filter-1">★ Lista 1</button><button class="fav-rename" onclick="renameFav(1)" title="Rinomina">✏</button>
     <button class="filter-btn" data-filter="favorites2" id="fav-filter-2" style="color:#64b5f6;border-color:rgba(100,181,246,.35)">★ Lista 2</button><button class="fav-rename" onclick="renameFav(2)" title="Rinomina" style="color:#64b5f6">✏</button>
@@ -914,6 +915,7 @@ body.light .cal-item{background:var(--bg3)}
         <button class="chart-btn" data-cat="ETF SINGLE COUNTRY">ETF Paese</button>
         <button class="chart-btn" data-cat="ETF INDICI">ETF Indici</button>
         <button class="chart-btn" data-cat="ETF SETTORIALE">ETF Settoriali</button>
+        <button class="chart-btn" data-cat="ETF OBB. MIL">ETF Obb. MIL</button>
         <button class="chart-btn" data-cat="INFRASTRUTTURA ENERGETICA AI">Infra AI</button>
         <button class="chart-btn" data-cat="_favorites"  id="chart-fav-1" style="color:#ffd700;border-color:rgba(255,215,0,.35)">★ Lista 1</button>
         <button class="chart-btn" data-cat="_favorites2" id="chart-fav-2" style="color:#64b5f6;border-color:rgba(100,181,246,.35)">★ Lista 2</button>
@@ -1018,6 +1020,7 @@ body.light .cal-item{background:var(--bg3)}
     <button class="filter-btn" data-corrgroup="ETF MEGATREND">Megatrend</button>
     <button class="filter-btn" data-corrgroup="ETF INDICI">ETF Indici</button>
     <button class="filter-btn" data-corrgroup="ETF SETTORIALE">ETF Settoriali</button>
+    <button class="filter-btn" data-corrgroup="ETF OBB. MIL">ETF Obb. MIL</button>
     <button class="filter-btn" data-corrgroup="INFRASTRUTTURA ENERGETICA AI">Infra AI</button>
     <button class="filter-btn" data-corrgroup="ETF SINGLE COUNTRY">Single Country</button>
     <button class="filter-btn" data-corrgroup="TITOLI IT BIG CAP">Titoli IT</button>
@@ -1052,6 +1055,7 @@ body.light .cal-item{background:var(--bg3)}
     <button class="filter-btn" data-scatter="ETF MEGATREND">Megatrend</button>
     <button class="filter-btn" data-scatter="ETF INDICI">ETF Indici</button>
     <button class="filter-btn" data-scatter="ETF SETTORIALE">ETF Settoriali</button>
+    <button class="filter-btn" data-scatter="ETF OBB. MIL">ETF Obb. MIL</button>
     <button class="filter-btn" data-scatter="INFRASTRUTTURA ENERGETICA AI">Infra AI</button>
     <button class="filter-btn" data-scatter="ETF SINGLE COUNTRY">Single Country</button>
     <button class="filter-btn" data-scatter="TITOLI IT BIG CAP">Titoli IT</button>
@@ -1672,7 +1676,71 @@ const INSTRUMENTS = [
   {s:'ETN',      a:'INFRASTRUTTURA ENERGETICA AI', m:'ETN',   i:'Eaton Corporation',                c:'USD'},
   {s:'PRY.MI',   a:'INFRASTRUTTURA ENERGETICA AI', m:'PRY',   i:'Prysmian',                         c:'EUR'},
   {s:'SU.PA',    a:'INFRASTRUTTURA ENERGETICA AI', m:'SU',    i:'Schneider Electric',               c:'EUR'},
-  {s:'PWR',      a:'INFRASTRUTTURA ENERGETICA AI', m:'PWR',   i:'Quanta Services',                  c:'USD'}
+  {s:'PWR',      a:'INFRASTRUTTURA ENERGETICA AI', m:'PWR',   i:'Quanta Services',                  c:'USD'},
+  // ── ETF OBBLIGAZIONARIO MIL ──────────────────────────────────
+  // 1 - Gov EUR tutte scadenze
+  {s:'VECP.MI',  a:'ETF OBB. MIL', m:'VECP',  i:'Vanguard EUR Eurozone Govt Bond',           c:'EUR'},
+  {s:'IEAG.MI',  a:'ETF OBB. MIL', m:'IEAG',  i:'iSh. Core Euro Govt Bond',                  c:'EUR'},
+  {s:'XGLE.MI',  a:'ETF OBB. MIL', m:'XGLE',  i:'Xtrackers Eurozone Govt Bond',              c:'EUR'},
+  {s:'AGED.MI',  a:'ETF OBB. MIL', m:'AGED',  i:'Amundi Euro Govt Bond',                     c:'EUR'},
+  // 2 - Gov EUR breve (1-3Y)
+  {s:'C3S.MI',   a:'ETF OBB. MIL', m:'C3S',   i:'Amundi Euro Govt Bond 1-3Y',                c:'EUR'},
+  {s:'IBGS.MI',  a:'ETF OBB. MIL', m:'IBGS',  i:'iSh. EUR Govt Bond 1-3yr',                  c:'EUR'},
+  {s:'XG13.MI',  a:'ETF OBB. MIL', m:'XG13',  i:'Xtrackers Eurozone Govt Bond 1-3',          c:'EUR'},
+  {s:'PR1G.MI',  a:'ETF OBB. MIL', m:'PR1G',  i:'Amundi Prime Euro Govt Bond 0-1Y',          c:'EUR'},
+  // 3 - Gov EUR lunga duration
+  {s:'IBGM.MI',  a:'ETF OBB. MIL', m:'IBGM',  i:'iSh. EUR Govt Bond 7-10yr',                 c:'EUR'},
+  {s:'MTS.MI',   a:'ETF OBB. MIL', m:'MTS',   i:'Lyxor Euro Govt Bond 25+Y',                 c:'EUR'},
+  // 4 - Gov Globale EUR hdg
+  {s:'XGSH.MI',  a:'ETF OBB. MIL', m:'XGSH',  i:'Xtrackers II Global Govt Bond EUR Hdg',    c:'EUR'},
+  {s:'IGLO.MI',  a:'ETF OBB. MIL', m:'IGLO',  i:'iSh. Global Govt Bond EUR Hdg',             c:'EUR'},
+  // 5 - Treasury USA
+  {s:'IB01.MI',  a:'ETF OBB. MIL', m:'IB01',  i:'iSh. USD Treasury Bond 0-1yr',              c:'EUR'},
+  {s:'IBTS.MI',  a:'ETF OBB. MIL', m:'IBTS',  i:'iSh. USD Treasury Bond 1-3yr',              c:'EUR'},
+  {s:'IDTM.MI',  a:'ETF OBB. MIL', m:'IDTM',  i:'iSh. USD Treasury Bond 7-10yr',             c:'EUR'},
+  {s:'DBXG.MI',  a:'ETF OBB. MIL', m:'DBXG',  i:'Xtrackers US Treasuries 10+ EUR Hdg',       c:'EUR'},
+  // 6 - Aggregate Globale EUR hdg
+  {s:'AGGH.MI',  a:'ETF OBB. MIL', m:'AGGH',  i:'iSh. Core Global Aggregate EUR Hdg',        c:'EUR'},
+  {s:'VAGF.MI',  a:'ETF OBB. MIL', m:'VAGF',  i:'Vanguard Global Aggregate EUR Hdg',         c:'EUR'},
+  {s:'AGGG.MI',  a:'ETF OBB. MIL', m:'AGGG',  i:'iSh. Core Global Aggregate Bond',           c:'EUR'},
+  {s:'IUAA.MI',  a:'ETF OBB. MIL', m:'IUAA',  i:'iSh. US Aggregate Bond',                    c:'EUR'},
+  // 7 - Corporate EUR IG
+  {s:'IEAC.MI',  a:'ETF OBB. MIL', m:'IEAC',  i:'iSh. Core Euro Corporate Bond',             c:'EUR'},
+  {s:'XBLC.MI',  a:'ETF OBB. MIL', m:'XBLC',  i:'Xtrackers EUR Corporate Bond',              c:'EUR'},
+  {s:'CRPE.MI',  a:'ETF OBB. MIL', m:'CRPE',  i:'Amundi EUR Corp SRI 0-3Y',                  c:'EUR'},
+  {s:'SYBH.MI',  a:'ETF OBB. MIL', m:'SYBH',  i:'SPDR Bloomberg 0-3Y Euro Corp Bond',        c:'EUR'},
+  // 8 - Corporate USD IG
+  {s:'LQDH.MI',  a:'ETF OBB. MIL', m:'LQDH',  i:'iSh. USD Corp Bond EUR Hdg',                c:'EUR'},
+  {s:'VUCP.MI',  a:'ETF OBB. MIL', m:'VUCP',  i:'Vanguard USD Corporate 1-3 Bond',           c:'EUR'},
+  // 9 - High Yield EUR
+  {s:'IHYG.MI',  a:'ETF OBB. MIL', m:'IHYG',  i:'iSh. EUR High Yield Corp Bond',             c:'EUR'},
+  {s:'AH11.MI',  a:'ETF OBB. MIL', m:'AH11',  i:'Amundi EUR HY Liq Bond iBoxx',              c:'EUR'},
+  {s:'XHY9.MI',  a:'ETF OBB. MIL', m:'XHY9',  i:'Xtrackers EUR High Yield Corp Bond',        c:'EUR'},
+  // 10 - High Yield USD
+  {s:'HYLD.MI',  a:'ETF OBB. MIL', m:'HYLD',  i:'iSh. USD High Yield Corp Bond EUR Hdg',     c:'EUR'},
+  // 11 - Inflation-Linked
+  {s:'IBCI.MI',  a:'ETF OBB. MIL', m:'IBCI',  i:'iSh. EUR Inflation Linked Govt Bond',       c:'EUR'},
+  {s:'XINF.MI',  a:'ETF OBB. MIL', m:'XINF',  i:'Xtrackers II Global Infl-Linked EUR Hdg',   c:'EUR'},
+  {s:'TIPH.MI',  a:'ETF OBB. MIL', m:'TIPH',  i:'SPDR Bloomberg US TIPS EUR Hdg',            c:'EUR'},
+  // 12 - EM Hard Currency
+  {s:'EMBE.MI',  a:'ETF OBB. MIL', m:'EMBE',  i:'iSh. J.P. Morgan USD EM Bond EUR Hdg',     c:'EUR'},
+  {s:'XEMB.MI',  a:'ETF OBB. MIL', m:'XEMB',  i:'Xtrackers USD Emerging Mkts Bond EUR Hdg',  c:'EUR'},
+  // 13 - EM Local Currency
+  {s:'SEML.MI',  a:'ETF OBB. MIL', m:'SEML',  i:'iSh. J.P. Morgan EM Local Govt Bond',      c:'EUR'},
+  {s:'SEMB.MI',  a:'ETF OBB. MIL', m:'SEMB',  i:'SPDR Bloomberg EM Local Bond',              c:'EUR'},
+  // 14 - Subordinati / AT1 / CoCo
+  {s:'AT1.MI',   a:'ETF OBB. MIL', m:'AT1',   i:'Invesco AT1 Capital Bond',                  c:'EUR'},
+  {s:'CCBO.MI',  a:'ETF OBB. MIL', m:'CCBO',  i:'WisdomTree AT1 CoCo Bond',                  c:'EUR'},
+  {s:'EHYB.MI',  a:'ETF OBB. MIL', m:'EHYB',  i:'Invesco Euro Corporate Hybrid Bond',        c:'EUR'},
+  // 15 - iBonds / Target Maturity
+  {s:'IB26.MI',  a:'ETF OBB. MIL', m:'IB26',  i:'iSh. iBonds Dec 2026 Corp EUR',             c:'EUR'},
+  {s:'IB27.MI',  a:'ETF OBB. MIL', m:'IB27',  i:'iSh. iBonds Dec 2027 Corp EUR',             c:'EUR'},
+  {s:'IB28.MI',  a:'ETF OBB. MIL', m:'IB28',  i:'iSh. iBonds Dec 2028 Corp EUR',             c:'EUR'},
+  {s:'IB30.MI',  a:'ETF OBB. MIL', m:'IB30',  i:'iSh. iBonds Dec 2030 Corp EUR',             c:'EUR'},
+  // 16 - Mercato Monetario
+  {s:'ERNE.MI',  a:'ETF OBB. MIL', m:'ERNE',  i:'iSh. EUR Ultrashort Bond',                  c:'EUR'},
+  {s:'CSH2.MI',  a:'ETF OBB. MIL', m:'CSH2',  i:'Amundi EUR Overnight Return',               c:'EUR'},
+  {s:'XEON.MI',  a:'ETF OBB. MIL', m:'XEON',  i:'Xtrackers EUR Overnight Rate Swap',         c:'EUR'}
 ];
 
 // FX pairs to fetch for EUR conversion of non-EUR assets
