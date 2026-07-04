@@ -3046,11 +3046,12 @@ function computeMomentumScores() {
   updateTopSignalsBtn();
 }
 
-function updateTopSignalsBtn() {
+function updateTopSignalsBtn(filteredRows) {
   const el = document.getElementById('btn-top-signals-counts');
   if (!el) return;
-  const nBuy  = rows.filter(r => r._signal?.key === 'buy'    && !r._loading && !r._err).length;
-  const nSell = rows.filter(r => r._signal?.key === 'reduce' && !r._loading && !r._err).length;
+  const src = filteredRows || rows;
+  const nBuy  = src.filter(r => r._signal?.key === 'buy'    && !r._loading && !r._err).length;
+  const nSell = src.filter(r => r._signal?.key === 'reduce' && !r._loading && !r._err).length;
   if (!nBuy && !nSell) { el.textContent = ''; return; }
   el.innerHTML = `<span style="color:#a5d6a7">▲${nBuy}</span> <span style="color:#ef9a9a">▼${nSell}</span>`;
 }
@@ -3759,15 +3760,32 @@ function showTopSignals(btn) {
 
   const strOrd = {strong:3, medium:2, weak:1};
 
-  const allBuy = rows
-    .filter(r => r._signal?.key === 'buy' && !r._loading && !r._err)
+  // Usa le righe del filtro attivo (stessa sorgente del bias strip e del contatore)
+  const _signalSrc = _biasStripData.length ? _biasStripData
+    : rows.filter(r => r._signal && !r._loading && !r._err);
+
+  const _filterLbls = {
+    '_sintesi':'Sintesi', '_asset_globale':'Asset Globale', '_indici':'Indici',
+    'INDICE AZIONARIO':'Indici Azionari', 'INDICE OBBLIGAZIONARIO':'Indici Obbligazionari',
+    'MATERIA PRIMA':'Materie Prime', 'VALUTA':'Valute', 'VOLATILITA':'Volatilità',
+    'TITOLI EUROPA':'Titoli Europa', 'TITOLI IT BIG CAP':'Big Cap IT', 'TITOLI USA':'Titoli USA',
+    'ETF AZ. MASTER':'ETF Azionari', 'ETF OBB. MASTER':'ETF Obbligazionari',
+    'ETF COMM. MASTER':'ETF Commodities', 'ETF MEGATREND':'ETF Megatrend',
+    'ETF SINGLE COUNTRY':'ETF Single Country', 'ULTRABIG':'Ultrabig',
+    'SVIZZERA':'Svizzera', 'ETF INDICI':'ETF Indici', 'ETF SETTORIALE':'ETF Settoriali',
+    'ETF OBB. MIL':'ETF Obb. MIL', 'INFRASTRUTTURA ENERGETICA AI':'Infra Energetica AI',
+  };
+  const _activeLabel = _filterLbls[activeFilter] || activeFilter || 'Tutti';
+
+  const allBuy = _signalSrc
+    .filter(r => r._signal.key === 'buy')
     .sort((a,b) => {
       const sd = (strOrd[b._signal.strength]||0) - (strOrd[a._signal.strength]||0);
       return sd !== 0 ? sd : (b._signal.rawScore||0) - (a._signal.rawScore||0);
     });
 
-  const allSell = rows
-    .filter(r => r._signal?.key === 'reduce' && !r._loading && !r._err)
+  const allSell = _signalSrc
+    .filter(r => r._signal.key === 'reduce')
     .sort((a,b) => {
       const sd = (strOrd[b._signal.strength]||0) - (strOrd[a._signal.strength]||0);
       return sd !== 0 ? sd : (a._signal.rawScore||0) - (b._signal.rawScore||0);
@@ -3777,8 +3795,8 @@ function showTopSignals(btn) {
   let currentTab = 'buy';
   let currentCat = null;  // null = tutte le categorie
 
-  // Categorie disponibili: TUTTE quelle presenti in tabella (anche solo NEUTRAL/HOLD)
-  const allSignaled = rows.filter(r => r._signal && !r._loading && !r._err);
+  // Categorie disponibili: solo quelle presenti nelle righe filtrate
+  const allSignaled = _signalSrc;
   const allCats = [...new Set(allSignaled.map(r => r.a))].sort();
 
   // Riga compatta
@@ -3922,7 +3940,10 @@ function showTopSignals(btn) {
   header.style.cssText = 'padding:14px 18px 0;flex-shrink:0';
   header.innerHTML =
     `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-       <div style="font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.6px;text-transform:uppercase">🎯 Segnali Operativi</div>
+       <div>
+         <div style="font-size:12px;font-weight:800;color:var(--accent);letter-spacing:.6px;text-transform:uppercase">🎯 Segnali Operativi</div>
+         <div style="font-size:10px;color:var(--text3);margin-top:1px;font-weight:600">Filtro attivo: <span style="color:var(--text2)">${_activeLabel}</span></div>
+       </div>
        <div style="display:flex;align-items:center;gap:8px">
          ${ms !== null ? `<span style="font-size:11px;color:${msColor};font-weight:700">Score ${ms}/100</span>` : ''}
          <button onclick="window._tsInfo()" title="Come funzionano i segnali" style="font-size:10px;font-weight:700;background:rgba(100,149,237,.18);color:#90caf9;border:1px solid rgba(100,149,237,.4);border-radius:8px;padding:3px 10px;cursor:pointer;flex-shrink:0">ℹ Legenda</button>
@@ -4619,6 +4640,7 @@ function updateBiasStrip(visibleRows) {
   if (!strip) return;
   const data = (visibleRows || []).filter(r => r._signal && !r._loading && !r._err);
   if (!data.length) {
+    _biasStripData = [];
     strip.style.display     = 'none';
     if (toggleBar) toggleBar.style.display = 'none';
     return;
@@ -4724,6 +4746,7 @@ function renderTable() {
   const sorted   = applySort(screened);
   buildRows(sorted);
   updateBiasStrip(sorted);
+  updateTopSignalsBtn(sorted);
 }
 
 function updateRow(idx) {
