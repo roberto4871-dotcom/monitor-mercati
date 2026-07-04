@@ -4194,7 +4194,7 @@ function showBuySellSplit(btn) {
     const idx = rows.indexOf(r);
     const name = (r.i || r.m || r.s);
     const short = name.length > 26 ? name.slice(0,24)+'…' : name;
-    const score = sig.rawScore != null ? Math.round(sig.rawScore) : '—';
+    const score = r._momentum != null ? Math.round(r._momentum) : '—';
     const sc = strColor(sig.strength);
     return `<div onclick="document.getElementById('buysell-split-popup')?.remove();openModal(${idx})"
       style="display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:7px;cursor:pointer;transition:background .12s"
