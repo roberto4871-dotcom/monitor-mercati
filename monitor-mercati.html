@@ -930,7 +930,7 @@ body.light .cal-item{background:var(--bg3)}
         <button class="chart-metric active" data-metric="ytdEur">YTD €</button>
         <button class="chart-metric" data-metric="ytdLocal">YTD Locale</button>
         <button class="chart-metric" data-metric="varAtt">Oggi</button>
-        <button class="chart-metric" data-metric="p7">7 Giorni</button>
+        <button class="chart-metric" data-metric="p7">Settimana</button>
         <button class="chart-metric" data-metric="p30">30 Giorni</button>
         <button class="chart-metric" data-metric="p60">60 Giorni</button>
         <button class="chart-metric" data-metric="p90">90 Giorni</button>
@@ -973,7 +973,7 @@ body.light .cal-item{background:var(--bg3)}
     <button class="filter-btn active" data-hmmetric="varAtt">Oggi</button>
     <button class="filter-btn" data-hmmetric="ytdEur">YTD €</button>
     <button class="filter-btn" data-hmmetric="ytdLocal">YTD Locale</button>
-    <button class="filter-btn" data-hmmetric="p7">7 Giorni</button>
+    <button class="filter-btn" data-hmmetric="p7">Settimana</button>
     <button class="filter-btn" data-hmmetric="p30">30 Giorni</button>
     <button class="filter-btn" data-hmmetric="p60">60 Giorni</button>
     <button class="filter-btn" data-hmmetric="p90">90 Giorni</button>
@@ -1940,7 +1940,7 @@ const COLS = [
   {key:'fine2025', label:'Fine 2025',             cls:'num',              fmt:'num2'},
   {key:'ytdLocal', label:'Perf. YTD\nVal. Locale',cls:'num',             fmt:'pct'},
   {key:'ytdEur',   label:'Perf. YTD\nin €',      cls:'num',              fmt:'pct'},
-  {key:'p7',       label:'Ultima\nSettimana',    cls:'num',              fmt:'pct'},
+  {key:'p7',       label:'Settimana\n(lun–oggi)',  cls:'num',              fmt:'pct'},
   {key:'p30',      label:'Ultimi\n30 Giorni',    cls:'num',              fmt:'pct'},
   {key:'p60',      label:'Ultimi\n60 Giorni',    cls:'num',              fmt:'pct'},
   {key:'p90',      label:'Ultimi\n90 Giorni',    cls:'num',              fmt:'pct'},
@@ -2238,6 +2238,23 @@ function priceNAgo(pairs, n) {
   return pairs[pairs.length - 1 - n].c;
 }
 
+function priceAtWeekStart(pairs) {
+  // Ultimo close PRIMA del lunedì della settimana corrente (= venerdì scorso)
+  const now = new Date();
+  const dow = now.getUTCDay(); // 0=Dom,1=Lun,...,6=Sab
+  const daysToMon = dow === 0 ? 6 : dow - 1;
+  const mon = new Date(now);
+  mon.setUTCDate(now.getUTCDate() - daysToMon);
+  mon.setUTCHours(0, 0, 0, 0);
+  const monTs = mon.getTime() / 1000;
+  let last = null;
+  for (const p of pairs) {
+    if (p.t >= monTs) break;
+    last = p.c;
+  }
+  return last;
+}
+
 function formatTS(unixSec, tz) {
   if (!unixSec) return null;
   try {
@@ -2258,7 +2275,7 @@ function processChart(inst, res) {
   const prev  = meta.chartPreviousClose || meta.regularMarketPreviousClose;
   const varAtt = (prev && cur) ? (cur / prev - 1) * 100 : null;
   const fine2025 = priceAtDec31(pairs);
-  const p7raw    = priceNAgo(pairs, 5);    // ~7 giorni calendario = 5 giorni borsa
+  const p7raw    = priceAtWeekStart(pairs); // chiusura venerdì scorso = base settimana corrente
   const p30raw   = priceNAgo(pairs, 21);   // ~30 giorni calendario = 21 giorni borsa
   const p60raw   = priceNAgo(pairs, 42);   // ~60 giorni calendario = 42 giorni borsa
   const p90raw   = priceNAgo(pairs, 63);   // ~90 giorni calendario = 63 giorni borsa
@@ -4941,7 +4958,7 @@ const METRIC_META = {
   ytdEur:   { label:'Performance YTD in €',         unit:'%' },
   ytdLocal: { label:'Performance YTD (val. locale)', unit:'%' },
   varAtt:   { label:'Variazione Giornaliera',        unit:'%' },
-  p7:       { label:'Performance Ultimi 7 Giorni',   unit:'%' },
+  p7:       { label:'Performance Settimanale',         unit:'%' },
   p30:      { label:'Performance Ultimi 30 Giorni',  unit:'%' },
   p60:      { label:'Performance Ultimi 60 Giorni',  unit:'%' },
   p90:      { label:'Performance Ultimi 90 Giorni',  unit:'%' },
