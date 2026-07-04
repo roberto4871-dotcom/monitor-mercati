@@ -798,6 +798,12 @@ body.light .cal-item{background:var(--bg3)}
       🎯 <span>Segnali Operativi</span>
       <span id="btn-top-signals-counts" style="font-size:10px;opacity:.8"></span>
     </button>
+    <button id="btn-buysell-split" onclick="showBuySellSplit(this)"
+      style="background:linear-gradient(135deg,rgba(76,175,80,.18),rgba(239,83,80,.15));border:1.5px solid rgba(150,150,150,.4);color:#fff;padding:5px 14px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;letter-spacing:.3px;display:flex;align-items:center;gap:5px;transition:all .15s"
+      onmouseenter="this.style.background='linear-gradient(135deg,rgba(76,175,80,.32),rgba(239,83,80,.28))'"
+      onmouseleave="this.style.background='linear-gradient(135deg,rgba(76,175,80,.18),rgba(239,83,80,.15))'">
+      <span style="color:#a5d6a7">▲</span><span style="color:#ef9a9a">▼</span> <span>BUY / SELL</span>
+    </button>
     <button onclick="showBuySellLegend(this)" title="Legenda segnali — come funziona BUY/SELL"
       style="background:rgba(100,149,237,.18);border:1.5px solid rgba(100,149,237,.5);color:#90caf9;padding:5px 14px;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap;letter-spacing:.3px;transition:all .15s"
       onmouseenter="this.style.background='rgba(100,149,237,.32)'"
@@ -4151,6 +4157,104 @@ function showTopSignals(btn) {
     : Math.max(8, rect.top - Math.min(ph, window.innerHeight - 16) - 8);
   popup.style.top  = Math.max(8, top) + 'px';
   popup.style.left = left + 'px';
+
+  const close = e => { if (!popup.contains(e.target) && e.target !== btn) { popup.remove(); document.removeEventListener('click', close); } };
+  setTimeout(() => document.addEventListener('click', close), 50);
+}
+
+function showBuySellSplit(btn) {
+  const existing = document.getElementById('buysell-split-popup');
+  if (existing) { existing.remove(); return; }
+
+  const strOrd = {strong:3, medium:2, weak:1};
+  const src = _biasStripData.length ? _biasStripData
+    : rows.filter(r => r._signal && !r._loading && !r._err);
+
+  const _filterLbls = {
+    '_sintesi':'Sintesi', '_asset_globale':'Asset Globale', '_indici':'Indici',
+    'INDICE AZIONARIO':'Indici Azionari', 'INDICE OBBLIGAZIONARIO':'Indici Obbligazionari',
+    'MATERIA PRIMA':'Materie Prime', 'VALUTA':'Valute', 'VOLATILITA':'Volatilità',
+    'TITOLI EUROPA':'Titoli Europa', 'TITOLI IT BIG CAP':'Big Cap IT', 'TITOLI USA':'Titoli USA',
+    'ETF AZ. MASTER':'ETF Azionari', 'ETF OBB. MASTER':'ETF Obbligazionari',
+    'ETF COMM. MASTER':'ETF Commodities', 'ETF MEGATREND':'ETF Megatrend',
+    'ETF SINGLE COUNTRY':'ETF Single Country', 'ULTRABIG':'Ultrabig',
+    'SVIZZERA':'Svizzera', 'ETF INDICI':'ETF Indici', 'ETF SETTORIALE':'ETF Settoriali',
+    'ETF OBB. MIL':'ETF Obb. MIL', 'INFRASTRUTTURA ENERGETICA AI':'Infra Energetica AI',
+  };
+  const activeLabel = _filterLbls[activeFilter] || activeFilter || 'Tutti';
+
+  const buys  = src.filter(r => r._signal.key === 'buy')
+    .sort((a,b) => (strOrd[b._signal.strength]||0) - (strOrd[a._signal.strength]||0) || (b._signal.rawScore||0) - (a._signal.rawScore||0));
+  const sells = src.filter(r => r._signal.key === 'reduce')
+    .sort((a,b) => (strOrd[b._signal.strength]||0) - (strOrd[a._signal.strength]||0) || (a._signal.rawScore||0) - (b._signal.rawScore||0));
+
+  const strColor = s => s === 'strong' ? '#ff6f00' : s === 'medium' ? '#ffc107' : '#78909c';
+  const mkRow = (r, side) => {
+    const sig = r._signal;
+    const idx = rows.indexOf(r);
+    const name = (r.i || r.m || r.s);
+    const short = name.length > 26 ? name.slice(0,24)+'…' : name;
+    const score = sig.rawScore != null ? Math.round(sig.rawScore) : '—';
+    const sc = strColor(sig.strength);
+    return `<div onclick="document.getElementById('buysell-split-popup')?.remove();openModal(${idx})"
+      style="display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:7px;cursor:pointer;transition:background .12s"
+      onmouseenter="this.style.background='rgba(255,255,255,.06)'" onmouseleave="this.style.background='transparent'">
+      <span style="font-size:14px;flex-shrink:0">${sig.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${short}</div>
+        <div style="font-size:9px;color:var(--text3)">${r.m} · ${r.a}</div>
+      </div>
+      <span style="font-size:11px;font-weight:900;color:${sc};flex-shrink:0">${score}</span>
+    </div>`;
+  };
+
+  const col = (title, color, items, emptyMsg) => `
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+      <div style="font-size:11px;font-weight:800;color:${color};letter-spacing:.5px;padding:0 10px 6px;border-bottom:2px solid ${color}44;margin-bottom:4px">
+        ${title} <span style="font-size:10px;opacity:.7">(${items.length})</span>
+      </div>
+      <div style="flex:1;overflow-y:auto;max-height:360px">
+        ${items.length ? items.map(r => mkRow(r)).join('') : `<div style="padding:20px 10px;text-align:center;color:var(--text3);font-size:11px">${emptyMsg}</div>`}
+      </div>
+    </div>`;
+
+  const popup = document.createElement('div');
+  popup.id = 'buysell-split-popup';
+  Object.assign(popup.style, {
+    position:'fixed', zIndex:'9999',
+    background:'var(--bg2)', border:'1px solid var(--border)',
+    borderRadius:'12px', padding:'0',
+    boxShadow:'0 8px 48px rgba(0,0,0,.7)',
+    width:'600px', maxWidth:'96vw',
+    display:'flex', flexDirection:'column',
+  });
+
+  popup.innerHTML = `
+    <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div>
+        <div style="font-size:12px;font-weight:800;color:var(--text);letter-spacing:.4px">
+          <span style="color:#a5d6a7">▲ BUY</span> · <span style="color:#ef9a9a">▼ SELL</span>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:1px">Filtro attivo: <span style="color:var(--text2)">${activeLabel}</span></div>
+      </div>
+      <span onclick="document.getElementById('buysell-split-popup')?.remove()" style="cursor:pointer;font-size:16px;color:var(--text3);padding:2px 4px" title="Chiudi">✕</span>
+    </div>
+    <div style="display:flex;gap:0;padding:10px 6px 10px;min-height:100px">
+      ${col('<span style="color:#a5d6a7">▲ BUY</span>', '#4caf50', buys, 'Nessun segnale BUY')}
+      <div style="width:1px;background:var(--border);margin:0 6px;flex-shrink:0"></div>
+      ${col('<span style="color:#ef9a9a">▼ SELL</span>', '#ef5350', sells, 'Nessun segnale SELL')}
+    </div>`;
+
+  document.body.appendChild(popup);
+
+  // Posiziona sotto il bottone
+  const rect = btn.getBoundingClientRect();
+  const pw = 600, ph = popup.offsetHeight || 440;
+  let left = rect.left, top = rect.bottom + 6;
+  if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+  if (top + ph > window.innerHeight - 8) top = rect.top - ph - 6;
+  popup.style.top  = Math.max(8, top)  + 'px';
+  popup.style.left = Math.max(8, left) + 'px';
 
   const close = e => { if (!popup.contains(e.target) && e.target !== btn) { popup.remove(); document.removeEventListener('click', close); } };
   setTimeout(() => document.addEventListener('click', close), 50);
