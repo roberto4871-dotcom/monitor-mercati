@@ -7284,16 +7284,23 @@ function buildWeeklyTable(d) {
   const weeks    = Object.keys(yearData).map(Number).sort((a, b) => a - b);
   if (!weeks.length) return `<div style="color:var(--text3);font-size:11px">Nessun dato settimanale per il ${curYear}</div>`;
 
-  let html = '<table class="weekly-table"><thead><tr><th>Anno</th>';
-  weeks.forEach(w => html += `<th>W${String(w).padStart(2,'0')}</th>`);
-  html += '</tr></thead><tbody><tr>';
-  html += `<td>${curYear}</td>`;
-  weeks.forEach(w => {
-    const v = yearData[String(w)];
-    const s = v > 0 ? '+' : '';
-    html += `<td class="${mretClass(v)}" title="W${w}: ${s}${v.toFixed(2)}%">${s}${v.toFixed(1)}%</td>`;
-  });
-  return html + '</tr></tbody></table>';
+  const mid = Math.ceil(weeks.length / 2);
+  const halves = [weeks.slice(0, mid), weeks.slice(mid)];
+
+  function buildHalf(hw, yearLabel) {
+    let h = '<table class="weekly-table"><thead><tr><th>Anno</th>';
+    hw.forEach(w => h += `<th>W${String(w).padStart(2,'0')}</th>`);
+    h += '</tr></thead><tbody><tr>';
+    h += `<td>${yearLabel}</td>`;
+    hw.forEach(w => {
+      const v = yearData[String(w)];
+      const s = v > 0 ? '+' : '';
+      h += `<td class="${mretClass(v)}" title="W${w}: ${s}${v.toFixed(2)}%">${s}${v.toFixed(1)}%</td>`;
+    });
+    return h + '</tr></tbody></table>';
+  }
+
+  return halves.map((hw, i) => hw.length ? buildHalf(hw, i === 0 ? curYear : '') : '').join('<div style="margin-top:4px"></div>');
 }
 
 // ═══════════════════════════════════════════════════
