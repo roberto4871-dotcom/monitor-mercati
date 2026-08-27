@@ -1967,17 +1967,6 @@ def fetch_aggregated_news():
             except Exception:
                 pass
 
-    # Traduzione in parallelo — solo titoli (sommari in italiano già dall'utente)
-    to_tr = [it for it in all_items if it.get('lang') != 'it']
-    if to_tr:
-        def _tr(item):
-            item['title']   = _translate_it(item['title'])
-            if item['summary']:
-                item['summary'] = _translate_it(item['summary'][:300])
-            return item
-        with ThreadPoolExecutor(max_workers=4) as ex:
-            list(ex.map(_tr, to_tr))
-
     # Ordina per data, deduplicazione per titolo (primi 55 caratteri)
     all_items.sort(key=lambda x: x['ts'], reverse=True)
     seen, unique = set(), []
@@ -1987,7 +1976,20 @@ def fetch_aggregated_news():
             seen.add(key)
             unique.append(it)
 
-    result = unique[:150]
+    # Traduzione in italiano — solo le prime 150 (già deduplicate) e non italiane
+    # Limita a 150 PRIMA di tradurre per evitare rate-limit Google Translate
+    to_show = unique[:150]
+    to_tr = [it for it in to_show if it.get('lang') != 'it']
+    if to_tr:
+        def _tr(item):
+            item['title'] = _translate_it(item['title'])
+            if item['summary']:
+                item['summary'] = _translate_it(item['summary'][:300])
+            return item
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            list(ex.map(_tr, to_tr))
+
+    result = to_show
     with _rss_lock:
         _rss_cache['feed'] = {'data': result, 'ts': time.time()}
     return result
