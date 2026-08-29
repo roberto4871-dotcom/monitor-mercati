@@ -6377,7 +6377,18 @@ function toggleChartFullscreen() {
   const isMax   = modal.classList.toggle('modal-maximized');
   overlay.classList.toggle('modal-overlay-max', isMax);
   btn.textContent = isMax ? '✕ Riduci' : '⛶';
-  // autoSize:true — LightweightCharts rileva la nuova dimensione via ResizeObserver
+  // Forza resize esplicito dopo che il layout CSS si è aggiornato
+  requestAnimationFrame(() => {
+    const wrap = document.querySelector('.modal-canvas-wrap');
+    if (modalChart && wrap) {
+      modalChart.resize(wrap.clientWidth, wrap.clientHeight);
+      modalChart.timeScale().fitContent();
+    }
+    const rsiEl = document.getElementById('modal-rsi-chart');
+    if (modalRsiChart && rsiEl && rsiEl.style.display !== 'none') {
+      modalRsiChart.resize(rsiEl.clientWidth, rsiEl.clientHeight);
+    }
+  });
 }
 
 function closeModal() {
