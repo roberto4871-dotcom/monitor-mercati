@@ -139,6 +139,9 @@ body.light .mret-zero{background:rgba(0,0,0,.06);color:var(--text3)}
 .modal-overlay.open{display:flex}
 .modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:min(860px,96vw);min-width:480px;min-height:400px;max-height:95vh;overflow:auto;resize:both;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.6);position:relative}
 .modal-resize-handle{display:none}
+.modal:-webkit-full-screen,.modal:fullscreen{width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;resize:none!important}
+#btn-chart-fullscreen{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:3px 8px;cursor:pointer;font-size:13px;line-height:1;transition:background .15s}
+#btn-chart-fullscreen:hover{background:rgba(255,255,255,.18)}
 .modal-header{background:linear-gradient(135deg,var(--blue),var(--blue2));padding:16px 20px;display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid var(--accent)}
 .modal-title{color:var(--accent);font-size:16px;font-weight:800;letter-spacing:1px}
 .modal-subtitle{color:#90caf9;font-size:11px;margin-top:3px}
@@ -655,7 +658,10 @@ body.light .cal-item{background:var(--bg3)}
             <button class="period-btn" data-period="5A">5A</button>
             <button class="period-btn" data-period="MAX">Max</button>
           </div>
-          <a id="modal-justetf-chart" href="#" target="_blank" rel="noopener" style="display:none;font-size:11px;font-weight:700;color:#00bcd4;background:rgba(0,188,212,.12);border:1px solid rgba(0,188,212,.35);border-radius:10px;padding:3px 10px;text-decoration:none;white-space:nowrap;align-self:center">JustETF ↗</a>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button id="btn-chart-fullscreen" onclick="toggleChartFullscreen()" title="Espandi grafico a tutto schermo">⛶</button>
+            <a id="modal-justetf-chart" href="#" target="_blank" rel="noopener" style="display:none;font-size:11px;font-weight:700;color:#00bcd4;background:rgba(0,188,212,.12);border:1px solid rgba(0,188,212,.35);border-radius:10px;padding:3px 10px;text-decoration:none;white-space:nowrap">JustETF ↗</a>
+          </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
           <span style="color:var(--text3);font-size:11px">Indicatori:</span>
@@ -6362,6 +6368,27 @@ function drawModalChart(pairs, period) {
 
   chart.timeScale().fitContent();
 }
+
+function toggleChartFullscreen() {
+  const modal = document.querySelector('.modal');
+  if (!document.fullscreenElement) {
+    modal.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen();
+  }
+}
+document.addEventListener('fullscreenchange', () => {
+  const isFs = !!document.fullscreenElement;
+  const btn = document.getElementById('btn-chart-fullscreen');
+  if (btn) btn.textContent = isFs ? '✕' : '⛶';
+  setTimeout(() => {
+    if (modalChart) modalChart.resize();
+    const rsiEl = document.getElementById('modal-rsi-chart');
+    if (modalRsiChart && rsiEl) {
+      modalRsiChart.applyOptions({ width: rsiEl.clientWidth, height: rsiEl.clientHeight });
+    }
+  }, 120);
+});
 
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('open');
