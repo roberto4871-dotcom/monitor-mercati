@@ -661,6 +661,7 @@ body.light .cal-item{background:var(--bg3)}
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <button id="btn-chart-fullscreen" onclick="toggleChartFullscreen()" title="Espandi grafico a tutto schermo">⛶</button>
+            <button id="btn-chart-pdf" onclick="exportModalChartPDF()" title="Esporta grafico in PDF" style="background:rgba(255,215,0,.12);border:1.5px solid var(--accent);color:var(--accent);font-weight:800;font-size:11px;padding:3px 10px;border-radius:16px;cursor:pointer;white-space:nowrap">📄 PDF</button>
             <a id="modal-justetf-chart" href="#" target="_blank" rel="noopener" style="display:none;font-size:11px;font-weight:700;color:#00bcd4;background:rgba(0,188,212,.12);border:1px solid rgba(0,188,212,.35);border-radius:10px;padding:3px 10px;text-decoration:none;white-space:nowrap">JustETF ↗</a>
           </div>
         </div>
@@ -6389,6 +6390,57 @@ function toggleChartFullscreen() {
       modalRsiChart.resize(rsiEl.clientWidth, rsiEl.clientHeight);
     }
   });
+}
+
+function exportModalChartPDF() {
+  // Cattura il canvas di LightweightCharts
+  const canvas  = document.querySelector('#modal-chart canvas');
+  const imgSrc  = canvas ? canvas.toDataURL('image/png') : null;
+  const name    = modalRow ? (modalRow.n || modalRow.s || '') : '';
+  const sym     = modalRow ? (modalRow.s || '') : '';
+  const period  = document.querySelector('.period-btn.active')?.dataset?.period || '';
+  const perfEl  = document.getElementById('modal-perf');
+  const perf    = perfEl ? perfEl.textContent.trim() : '';
+  const now     = new Date().toLocaleDateString('it-IT', {day:'2-digit', month:'long', year:'numeric'});
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>${name} — Grafico ${period}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    @page{size:A4 landscape;margin:6mm}
+    html,body{width:100%;height:100%;background:#07090f;color:#dce6f5;font-family:'Segoe UI',system-ui,sans-serif}
+    .page{display:flex;flex-direction:column;height:100vh;padding:10px 14px;gap:8px}
+    .hdr{display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid #ffd700;padding-bottom:6px;flex-shrink:0}
+    .hdr-left{display:flex;align-items:baseline;gap:12px}
+    .hdr-title{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#ffd700}
+    .hdr-sym{font-size:11px;color:#8fa8c8}
+    .hdr-perf{font-size:13px;font-weight:800;color:${perf.startsWith('+') ? '#4caf50' : perf.startsWith('-') ? '#ef5350' : '#dce6f5'}}
+    .hdr-meta{font-size:9px;color:#546e7a}
+    .chart-wrap{flex:1;min-height:0;border:1px solid #1e2d45;border-radius:8px;overflow:hidden;background:#0d1220;display:flex;align-items:center;justify-content:center}
+    .chart-wrap img{width:100%;height:100%;object-fit:contain;display:block}
+    .footer{font-size:8px;color:#546e7a;text-align:right;flex-shrink:0}
+  </style></head><body>
+  <div class="page">
+    <div class="hdr">
+      <div class="hdr-left">
+        <span class="hdr-title">${name}</span>
+        <span class="hdr-sym">${sym} · ${period}</span>
+        ${perf ? `<span class="hdr-perf">${perf}</span>` : ''}
+      </div>
+      <span class="hdr-meta">Market Compass · ${now}</span>
+    </div>
+    <div class="chart-wrap">
+      ${imgSrc ? `<img src="${imgSrc}" alt="Grafico ${name}">` : '<p style="color:#546e7a;font-size:12px">Nessun grafico disponibile.</p>'}
+    </div>
+    <div class="footer">Generato da Market Compass — dati a scopo informativo</div>
+  </div>
+  <script>window.onload=()=>setTimeout(()=>window.print(),250)<\/script>
+  </body></html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { alert('Abilita i popup per esportare in PDF'); return; }
+  win.document.write(html);
+  win.document.close();
 }
 
 function closeModal() {
