@@ -6408,17 +6408,17 @@ function exportModalChartPDF() {
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     @page{size:A4 landscape;margin:6mm}
-    html,body{width:100%;height:100%;background:#07090f;color:#dce6f5;font-family:'Segoe UI',system-ui,sans-serif}
-    .page{display:flex;flex-direction:column;height:100vh;padding:10px 14px;gap:8px}
-    .hdr{display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid #ffd700;padding-bottom:6px;flex-shrink:0}
+    html,body{width:100%;background:#07090f;color:#dce6f5;font-family:'Segoe UI',system-ui,sans-serif}
+    .page{display:flex;flex-direction:column;padding:8px 12px;gap:6px}
+    .hdr{display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid #ffd700;padding-bottom:5px}
     .hdr-left{display:flex;align-items:baseline;gap:12px}
-    .hdr-title{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#ffd700}
-    .hdr-sym{font-size:11px;color:#8fa8c8}
-    .hdr-perf{font-size:13px;font-weight:800;color:${perf.startsWith('+') ? '#4caf50' : perf.startsWith('-') ? '#ef5350' : '#dce6f5'}}
+    .hdr-title{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#ffd700}
+    .hdr-sym{font-size:10px;color:#8fa8c8}
+    .hdr-perf{font-size:12px;font-weight:800;color:${perf.startsWith('+') ? '#4caf50' : perf.startsWith('-') ? '#ef5350' : '#dce6f5'}}
     .hdr-meta{font-size:9px;color:#546e7a}
-    .chart-wrap{flex:1;min-height:0;border:1px solid #1e2d45;border-radius:8px;overflow:hidden;background:#0d1220;display:flex;align-items:center;justify-content:center}
-    .chart-wrap img{width:100%;height:100%;object-fit:contain;display:block}
-    .footer{font-size:8px;color:#546e7a;text-align:right;flex-shrink:0}
+    .chart-wrap{width:100%;border:1px solid #1e2d45;border-radius:6px;overflow:hidden;background:#0d1220}
+    .chart-wrap img{width:100%;height:auto;display:block}
+    .footer{font-size:8px;color:#546e7a;text-align:right;margin-top:4px}
   </style></head><body>
   <div class="page">
     <div class="hdr">
@@ -6430,7 +6430,7 @@ function exportModalChartPDF() {
       <span class="hdr-meta">Market Compass · ${now}</span>
     </div>
     <div class="chart-wrap">
-      ${imgSrc ? `<img src="${imgSrc}" alt="Grafico ${name}">` : '<p style="color:#546e7a;font-size:12px">Nessun grafico disponibile.</p>'}
+      ${imgSrc ? `<img src="${imgSrc}" alt="Grafico ${name}">` : '<p style="color:#546e7a;font-size:12px;padding:20px">Nessun grafico disponibile.</p>'}
     </div>
     <div class="footer">Generato da Market Compass — dati a scopo informativo</div>
   </div>
