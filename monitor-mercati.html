@@ -5098,7 +5098,7 @@ document.getElementById('chart-metric-btns').addEventListener('click', e => {
 });
 
 // ── Click handler heatmap metric buttons ──────────────────
-document.querySelector('.hm-controls').addEventListener('click', e => {
+document.querySelector('.hm-controls')?.addEventListener('click', e => {
   const btn = e.target.closest('[data-hmmetric]');
   if (!btn) return;
   document.querySelectorAll('[data-hmmetric]').forEach(b => b.classList.remove('active'));
