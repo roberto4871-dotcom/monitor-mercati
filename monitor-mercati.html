@@ -92,9 +92,6 @@ body.light .fund-desc { border-top-color:var(--border); color:var(--text2); }
 body.light .next-earn-box { background:var(--bg3) !important; border-color:var(--border) !important; }
 body.light .next-earn-item { background:var(--bg2) !important; border-color:var(--border) !important; }
 body.light .earnings-table td { border-bottom-color:rgba(0,0,0,.05); }
-body.light .news-item { border-bottom-color:var(--border); }
-body.light .news-item:hover { background:var(--bg3); }
-body.light .news-title { color:var(--text); }
 body.light .ai-result-box { background:var(--bg3); border-color:var(--border); color:var(--text); }
 body.light .monthly-table td:first-child,
 body.light .weekly-table td:first-child { background:var(--bg3) !important; color:var(--text2) !important; border-right-color:var(--border) !important; }
@@ -313,16 +310,6 @@ td.ora{color:#64b5f6;font-size:10px}
 .earnings-table td.earn-neg{color:var(--red)}
 .earnings-table td.earn-pos{color:var(--green)}
 
-/* ── NEWS ───────────────────────────────────────── */
-.news-wrap{flex:1;overflow-y:auto}
-.news-item{padding:12px 16px;border-bottom:1px solid var(--border);transition:background .1s}
-.news-item:hover{background:var(--bg3)}
-.news-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
-.news-publisher{font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.4px}
-.news-time{font-size:10px;color:var(--text3)}
-.news-title{display:block;font-size:12px;font-weight:600;color:var(--text);text-decoration:none;line-height:1.4;margin-bottom:4px}
-.news-title:hover{color:var(--accent)}
-.news-summary{font-size:11px;color:var(--text2);line-height:1.5}
 
 /* ── AI ANALISI ──────────────────────────────────── */
 .ai-wrap{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
@@ -565,8 +552,7 @@ body.light .cal-item{background:var(--bg3)}
     <div class="modal-tabs">
       <button class="modal-tab active" data-mtab="chart">📊 Grafico</button>
       <button class="modal-tab" data-mtab="fundamentals">📈 Fondamentali</button>
-      <button class="modal-tab" data-mtab="news">📰 News</button>
-      <button class="modal-tab" data-mtab="monthly">📅 Performance</button>
+<button class="modal-tab" data-mtab="monthly">📅 Performance</button>
       <button class="modal-tab" data-mtab="seasonal">🌿 Stagionalità</button>
     </div>
 
@@ -641,14 +627,8 @@ body.light .cal-item{background:var(--bg3)}
       </div>
     </div>
 
-    <!-- ─ Tab: News ─ -->
-    <div class="mtab-panel" id="mtab-news">
-      <div class="news-wrap" id="modal-news-content">
-        <div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📰 News per caricare le ultime notizie</div>
-      </div>
-    </div>
 
-    <!-- ─ Tab: Stagionalità ─ -->
+<!-- ─ Tab: Stagionalità ─ -->
     <div class="mtab-panel" id="mtab-seasonal">
       <div class="seasonal-wrap" id="modal-seasonal-content">
         <div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 🌿 Stagionalità per caricare i dati</div>
@@ -6622,10 +6602,7 @@ document.querySelectorAll('.modal-tab').forEach(t => {
     if (t.dataset.mtab === 'fundamentals' && modalRow && !document.getElementById('modal-fund-content').dataset.loaded) {
       loadFundamentals(modalRow);
     }
-    if (t.dataset.mtab === 'news' && modalRow && !document.getElementById('modal-news-content').dataset.loaded) {
-      loadNews(modalRow);
-    }
-    if (t.dataset.mtab === 'monthly' && modalRow && !document.getElementById('modal-monthly-content').dataset.loaded) {
+if (t.dataset.mtab === 'monthly' && modalRow && !document.getElementById('modal-monthly-content').dataset.loaded) {
       loadPerformance(modalRow);
     }
     if (t.dataset.mtab === 'seasonal' && modalRow && !document.getElementById('modal-seasonal-content').dataset.loaded) {
@@ -6641,13 +6618,10 @@ function resetModalTabs() {
   document.getElementById('mtab-chart').classList.add('active');
   // Reset lazy-load flags
   document.getElementById('modal-fund-content').removeAttribute('data-loaded');
-  document.getElementById('modal-news-content').removeAttribute('data-loaded');
-  document.getElementById('modal-monthly-content').removeAttribute('data-loaded');
+document.getElementById('modal-monthly-content').removeAttribute('data-loaded');
   document.getElementById('modal-fund-content').innerHTML =
     '<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📈 Fondamentali per caricare i dati</div>';
-  document.getElementById('modal-news-content').innerHTML =
-    '<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📰 News per caricare le ultime notizie</div>';
-  document.getElementById('modal-monthly-content').innerHTML =
+document.getElementById('modal-monthly-content').innerHTML =
     '<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Clicca su 📅 Performance per caricare i dati</div>';
   document.getElementById('modal-seasonal-content').removeAttribute('data-loaded');
   document.getElementById('modal-seasonal-content').innerHTML =
@@ -7256,49 +7230,6 @@ function renderFundamentals(d) {
   }
 
   el.innerHTML = html;
-}
-
-// ═══════════════════════════════════════════════════
-//  NEWS
-// ═══════════════════════════════════════════════════
-async function loadNews(row) {
-  const el = document.getElementById('modal-news-content');
-  el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:40px">⏳ Caricamento news…</div>';
-  try {
-    const r = await fetch(`/news/${encodeURIComponent(row.s)}`);
-    const articles = await r.json();
-    renderNews(articles);
-    el.dataset.loaded = '1';
-  } catch(e) {
-    el.innerHTML = '<div style="color:var(--red);padding:20px;font-size:12px">⚠ Errore caricamento news</div>';
-  }
-}
-
-function renderNews(articles) {
-  const el = document.getElementById('modal-news-content');
-  if (!articles || !articles.length) {
-    el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:40px;font-size:12px">Nessuna news disponibile per questo simbolo</div>';
-    return;
-  }
-  el.innerHTML = articles.map(a => {
-    let timeStr = '';
-    if (a.time) {
-      try {
-        const d = typeof a.time === 'number' ? new Date(a.time * 1000) : new Date(a.time);
-        timeStr = d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-      } catch {}
-    }
-    return `<div class="news-item">
-      <div class="news-meta">
-        <span class="news-publisher">${a.publisher || ''}</span>
-        <span class="news-time">${timeStr}</span>
-      </div>
-      ${a.url
-        ? `<a class="news-title" href="${a.url}" target="_blank" rel="noopener noreferrer">${a.title}</a>`
-        : `<span class="news-title" style="cursor:default">${a.title}</span>`}
-      ${a.summary ? `<div class="news-summary">${a.summary}</div>` : ''}
-    </div>`;
-  }).join('');
 }
 
 
