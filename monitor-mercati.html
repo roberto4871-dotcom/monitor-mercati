@@ -750,11 +750,6 @@ body.light .cal-item{background:var(--bg3)}
 <div class="tabs">
   <div class="tab active" data-tab="table">Tabella</div>
   <div class="tab" data-tab="charts">Grafici</div>
-  <div class="tab" data-tab="heatmap">🔥 Heatmap</div>
-  <div class="tab" data-tab="correlation">📐 Correlazione</div>
-  <div class="tab" data-tab="scatter">🎯 Scatter</div>
-  <div class="tab" data-tab="newsfeed">📰 News</div>
-  <div class="tab" data-tab="macro">🌐 Macro</div>
 </div>
 
 <div class="tab-content active" id="tab-table">
@@ -973,230 +968,6 @@ body.light .cal-item{background:var(--bg3)}
       </div>
     </div>
   </div>
-</div>
-
-<div class="tab-content" id="tab-heatmap">
-  <div class="hm-controls" style="padding:12px 16px 0;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-    <span class="controls-label">Colore per:</span>
-    <button class="filter-btn active" data-hmmetric="varAtt">Oggi</button>
-    <button class="filter-btn" data-hmmetric="ytdEur">YTD €</button>
-    <button class="filter-btn" data-hmmetric="ytdLocal">YTD Locale</button>
-    <button class="filter-btn" data-hmmetric="p7">Settimana</button>
-    <button class="filter-btn" data-hmmetric="p30">30 Giorni</button>
-    <button class="filter-btn" data-hmmetric="p60">60 Giorni</button>
-    <button class="filter-btn" data-hmmetric="p90">90 Giorni</button>
-    <button class="filter-btn" data-hmmetric="p180">6 Mesi</button>
-    <button class="filter-btn" data-hmmetric="p1y">1 Anno</button>
-    <button class="filter-btn" data-hmmetric="p2y">2 Anni</button>
-    <button class="filter-btn" data-hmmetric="p3y">3 Anni</button>
-    <button class="filter-btn" data-hmmetric="p5y">5 Anni</button>
-    <span style="width:1px;height:20px;background:var(--border);margin:0 4px;flex-shrink:0"></span>
-    <span class="controls-label">Ordina:</span>
-    <button id="hm-sort-desc" class="filter-btn" onclick="setHeatSort('desc')" title="Migliori per primi">↓ Migliori</button>
-    <button id="hm-sort-asc"  class="filter-btn" onclick="setHeatSort('asc')"  title="Peggiori per primi">↑ Peggiori</button>
-    <button id="hm-sort-none" class="filter-btn active" onclick="setHeatSort('none')" title="Ordine originale">↕ Default</button>
-    <span class="controls-label" id="hm-count"></span>
-  </div>
-  <div class="hm-legend" id="hm-legend" style="padding-left:16px;padding-right:16px"></div>
-  <div id="hm-filter-banner" style="display:none;margin:0 16px 6px;padding:5px 12px;border-radius:6px;background:rgba(255,214,0,.12);color:#ffd700;font-size:11px;font-weight:600;border:1px solid rgba(255,214,0,.25)"></div>
-  <div id="heatmap-grid" style="padding:4px 16px 16px;overflow-y:auto;flex:1"></div>
-</div>
-
-<div class="tab-content" id="tab-correlation">
-  <div class="controls" style="flex-wrap:wrap;gap:8px 16px">
-    <span class="controls-label">Periodo:</span>
-    <button class="filter-btn" data-corrdays="63">3M</button>
-    <button class="filter-btn active" data-corrdays="252">1A</button>
-    <button class="filter-btn" data-corrdays="504">2A</button>
-    <button class="filter-btn" data-corrdays="756">3A</button>
-    <div style="width:1px;height:18px;background:var(--border);align-self:center"></div>
-    <span class="controls-label">Vista:</span>
-    <button class="filter-btn active" data-corrview="pairs">🔗 Coppie</button>
-    <button class="filter-btn" data-corrview="matrix">🔢 Matrice</button>
-    <div style="width:1px;height:18px;background:var(--border);align-self:center"></div>
-    <span class="controls-label">Gruppo:</span>
-    <button class="filter-btn active" data-corrgroup="_sintesi">📊 Sintesi</button>
-    <button class="filter-btn" data-corrgroup="_asset_globale">🌍 Asset Globale</button>
-    <button class="filter-btn" data-corrgroup="_indici">📈 Indici</button>
-    <button class="filter-btn" data-corrgroup="INDICE AZIONARIO">Azionari</button>
-    <button class="filter-btn" data-corrgroup="INDICE OBBLIGAZIONARIO">Obbligazionari</button>
-    <button class="filter-btn" data-corrgroup="MATERIA PRIMA">Materie Prime</button>
-    <button class="filter-btn" data-corrgroup="VALUTA">Valute</button>
-    <button class="filter-btn" data-corrgroup="ETF AZ. MASTER">ETF Az.</button>
-    <button class="filter-btn" data-corrgroup="ETF OBB. MASTER">ETF Obb.</button>
-    <button class="filter-btn" data-corrgroup="ETF COMM. MASTER">ETF Comm.</button>
-    <button class="filter-btn" data-corrgroup="ETF MEGATREND">Megatrend</button>
-    <button class="filter-btn" data-corrgroup="ETF INDICI">ETF Indici</button>
-    <button class="filter-btn" data-corrgroup="ETF SETTORIALE">ETF Settoriali</button>
-    <button class="filter-btn" data-corrgroup="ETF OBB. MIL">ETF Obb. MIL</button>
-    <button class="filter-btn" data-corrgroup="INFRASTRUTTURA ENERGETICA AI">Infra AI</button>
-    <button class="filter-btn" data-corrgroup="ETF SINGLE COUNTRY">Single Country</button>
-    <button class="filter-btn" data-corrgroup="TITOLI IT BIG CAP">Titoli IT</button>
-    <button class="filter-btn" data-corrgroup="TITOLI EUROPA">Europa</button>
-    <button class="filter-btn" data-corrgroup="TITOLI USA">Titoli USA</button>
-    <button class="filter-btn" data-corrgroup="SVIZZERA">Svizzera</button>
-    <button class="filter-btn" data-corrgroup="ULTRABIG">Ultrabig</button>
-    <button class="btn-refresh" id="btn-corr-pdf" style="border-color:var(--text2);color:var(--text2)" onclick="printCorrMatrix()">🖨 PDF</button>
-  </div>
-  <div style="flex:1;overflow:auto;padding:16px 20px" id="corr-wrap">
-    <div id="corr-matrix" style="color:var(--text3);text-align:center;padding:60px;font-size:13px">
-      <span style="opacity:.5">⏳ Caricamento…</span>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════ -->
-<!--  TAB: SCATTER PLOT  Forza Trend  vs  Forza Relativa   -->
-<!-- ══════════════════════════════════════════════════════ -->
-<div class="tab-content" id="tab-scatter">
-  <div class="controls" style="flex-wrap:wrap;gap:8px 12px">
-    <span class="controls-label">Gruppo:</span>
-    <button class="filter-btn active" data-scatter="_sintesi">📊 Sintesi</button>
-    <button class="filter-btn" data-scatter="_asset_globale">🌍 Asset Globale</button>
-    <button class="filter-btn" data-scatter="_indici">📈 Indici</button>
-    <button class="filter-btn" data-scatter="INDICE AZIONARIO">Azionari</button>
-    <button class="filter-btn" data-scatter="INDICE OBBLIGAZIONARIO">Obbligazionari</button>
-    <button class="filter-btn" data-scatter="MATERIA PRIMA">Materie Prime</button>
-    <button class="filter-btn" data-scatter="VALUTA">Valute</button>
-    <button class="filter-btn" data-scatter="ETF AZ. MASTER">ETF Az.</button>
-    <button class="filter-btn" data-scatter="ETF OBB. MASTER">ETF Obb.</button>
-    <button class="filter-btn" data-scatter="ETF MEGATREND">Megatrend</button>
-    <button class="filter-btn" data-scatter="ETF INDICI">ETF Indici</button>
-    <button class="filter-btn" data-scatter="ETF SETTORIALE">ETF Settoriali</button>
-    <button class="filter-btn" data-scatter="ETF OBB. MIL">ETF Obb. MIL</button>
-    <button class="filter-btn" data-scatter="INFRASTRUTTURA ENERGETICA AI">Infra AI</button>
-    <button class="filter-btn" data-scatter="ETF SINGLE COUNTRY">Single Country</button>
-    <button class="filter-btn" data-scatter="TITOLI IT BIG CAP">Titoli IT</button>
-    <button class="filter-btn" data-scatter="TITOLI EUROPA">Europa</button>
-    <button class="filter-btn" data-scatter="TITOLI USA">Titoli USA</button>
-    <button class="filter-btn" data-scatter="SVIZZERA">Svizzera</button>
-    <button class="filter-btn" data-scatter="ULTRABIG">Ultrabig</button>
-    <div class="spacer"></div>
-    <button class="btn-refresh" style="border-color:var(--text2);color:var(--text2)" onclick="printScatter()">🖨 PDF</button>
-  </div>
-  <div style="flex:1;min-height:0;overflow-y:auto;padding:10px 20px" id="scatter-bar-wrap">
-    <div id="scatter-bar-inner" style="position:relative;width:100%">
-      <canvas id="scatter-bar-canvas"></canvas>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════ -->
-<!--  TAB: NEWS FEED                                        -->
-<!-- ══════════════════════════════════════════════════════ -->
-<div class="tab-content" id="tab-newsfeed">
-  <div class="nf-controls">
-    <span class="controls-label">Filtra:</span>
-    <button class="filter-btn active" data-nfcat="all">🗞 Tutte</button>
-    <button class="filter-btn" data-nfcat="macro">🌐 Macro</button>
-    <button class="filter-btn" data-nfcat="equity">📈 Azionario</button>
-    <button class="filter-btn" data-nfcat="bonds">📉 Obbligazionario</button>
-    <button class="filter-btn" data-nfcat="fx">💱 Valute</button>
-    <button class="filter-btn" data-nfcat="comm">🛢 Commodities</button>
-    <button class="filter-btn" data-nfcat="crypto">₿ Cripto</button>
-    <div class="nf-sep"></div>
-    <span class="controls-label">⏱</span>
-    <button class="filter-btn active" data-nftf="all">Tutto</button>
-    <button class="filter-btn" data-nftf="today">Oggi</button>
-    <button class="filter-btn" data-nftf="6h">6h</button>
-    <button class="filter-btn" data-nftf="1h">1h</button>
-    <div class="nf-sep"></div>
-    <input class="nf-search" id="nf-search" placeholder="🔍 Cerca…" autocomplete="off">
-    <div class="spacer"></div>
-    <span id="nf-lastupdate" style="color:var(--text3);font-size:10px"></span>
-    <button class="btn-refresh" id="nf-btn-refresh">↺ Aggiorna</button>
-    <button class="btn-refresh" id="nf-btn-pdf" style="border-color:var(--text2);color:var(--text2)" onclick="printNewsTab()">🖨 PDF</button>
-  </div>
-  <div id="nf-ticker-wrap">
-    <div id="nf-ticker"><div id="nf-ticker-inner"></div><div id="nf-ticker-clone"></div></div>
-  </div>
-  <div class="nf-wrap" id="nf-content">
-    <div class="nf-empty">Clicca su 📰 News per caricare il flusso</div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════════════════ -->
-<!--  TAB: MACRO                                            -->
-<!-- ══════════════════════════════════════════════════════ -->
-<div class="tab-content" id="tab-macro">
-  <div class="macro-wrap">
-
-    <!-- Row 1: Banche Centrali | Yield Curve | Calendario -->
-    <div class="macro-row macro-row-3">
-
-      <!-- Banche Centrali -->
-      <div class="macro-panel">
-        <div class="macro-panel-title"><span>🏦</span>BANCHE CENTRALI — Tassi Ufficiali</div>
-        <div id="macro-cb-body" style="display:flex;flex-direction:column;gap:2px;flex:1">
-          <div class="nf-empty" style="padding:20px">Caricamento…</div>
-        </div>
-      </div>
-
-      <!-- Rendimenti Governativi Internazionali -->
-      <div class="macro-panel">
-        <div class="macro-panel-title">
-          <span>🌍</span>RENDIMENTI GOVERNATIVI — CONFRONTO INTERNAZIONALE
-          <span id="gy-lastupd" style="font-size:9px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0"></span>
-        </div>
-        <div id="macro-global-yields" style="overflow-x:auto;flex:1">
-          <div class="yc-section-loading">Caricamento…</div>
-        </div>
-      </div>
-
-      <!-- Calendario Economico -->
-      <div class="macro-panel">
-        <div class="macro-panel-title"><span>📅</span>CALENDARIO ECONOMICO</div>
-        <div class="cal-list" id="macro-cal-list">
-          <div class="nf-empty" style="padding:20px">Caricamento…</div>
-        </div>
-      </div>
-
-    </div><!-- /row1 -->
-
-    <!-- Row 2: Inflazione live | Tassi ufficiali live -->
-    <div class="macro-row macro-row-2">
-
-      <div class="macro-panel">
-        <div class="macro-panel-title">
-          <span>📈</span>INFLAZIONE — DATI LIVE
-          <span id="ml-infl-upd" style="font-size:9px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0"></span>
-        </div>
-        <div id="macro-infl-body" style="flex:1">
-          <div class="yc-section-loading">Caricamento…</div>
-        </div>
-      </div>
-
-      <div class="macro-panel">
-        <div class="macro-panel-title">
-          <span>🏦</span>TASSI UFFICIALI — BCE &amp; BOE LIVE
-          <span id="ml-rates-upd" style="font-size:9px;color:var(--text3);font-weight:400;margin-left:8px;text-transform:none;letter-spacing:0"></span>
-        </div>
-        <div id="macro-rates-body" style="flex:1">
-          <div class="yc-section-loading">Caricamento…</div>
-        </div>
-      </div>
-
-    </div><!-- /row2 -->
-
-    <div class="macro-panel" style="min-height:auto">
-      <div class="macro-panel-title"><span>ℹ️</span>NOTE & LEGGENDA</div>
-      <div style="font-size:12px;color:var(--text2);line-height:1.7;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:4px 24px">
-        <p>• <b style="color:var(--accent)">USA</b>: live Yahoo Finance. <b style="color:var(--accent)">Canada</b>: live Bank of Canada (Valet API). <b style="color:var(--accent)">UK</b>: live BOE Gilt par yield. <b style="color:var(--accent)">Giappone</b>: live MOF Japan CSV.</p>
-        <p>• <b style="color:var(--accent)">DE</b>: live ECB AAA YC. <b style="color:var(--accent)">NL/AT/BE/FR/ES/PT/IT/GR</b>: DE live + spread medio storico su Bund (approssimazione, spread stabile nel breve periodo).</p>
-        <p>• <b style="color:var(--accent)">Inflazione</b>: 🇺🇸 CPI/Core via BLS API (mensile). 🇪🇺 HICP via ECB API (mensile). Cache 30 min.</p>
-        <p>• <b style="color:var(--accent)">Tassi BCE live</b>: DFR (depositi) e MRR (rif. principale) via ECB API. <b style="color:var(--accent)">BOE</b> via BOE CSV API. Aggiornati a ogni cambio.</p>
-        <p>• <b style="color:var(--accent)">Tassi Banche Centrali (pannello sopra)</b>: Fed e BOJ — valori corretti all'ultimo meeting, aggiornati manualmente.</p>
-        <p>• <b style="color:var(--accent)">Calendario</b>: clicca su ogni evento per approfondimenti e cosa monitorare.</p>
-        <p style="color:var(--text3);font-size:10px">Dati a scopo informativo — non costituiscono consulenza finanziaria.</p>
-      </div>
-    </div>
-
-    <div class="macro-refresh-bar">
-      <span id="macro-lastupd">--</span>
-      <button class="btn-refresh" onclick="loadMacroTab(true)">↺ Aggiorna</button>
-    </div>
-
-  </div><!-- /macro-wrap -->
 </div>
 
 <div class="statusbar">
@@ -5572,12 +5343,6 @@ document.querySelectorAll('.tab').forEach(t => {
     t.classList.add('active');
     document.getElementById('tab-'+t.dataset.tab).classList.add('active');
     if (t.dataset.tab === 'charts') renderCharts();
-    if (t.dataset.tab === 'heatmap') renderHeatmap();
-    if (t.dataset.tab === 'scatter') renderScatterBar();
-    if (t.dataset.tab === 'correlation') renderCorrelation();
-    if (t.dataset.tab === 'newsfeed') { loadNewsTab(); nfStartAutoRefresh(); buildNfTicker(); nfClearBadge(); }
-    if (t.dataset.tab !== 'newsfeed') nfStopAutoRefresh();
-    if (t.dataset.tab === 'macro') loadMacroTab();
   });
 });
 
@@ -5622,6 +5387,7 @@ function heatColor(val) {
 }
 
 function renderHeatmap() {
+  if (!document.getElementById('heatmap-grid')) return;
   let loaded = rows.filter(r => !r._loading && !r._err);
 
   renderHeatLegend();
@@ -6975,6 +6741,7 @@ function renderScatter() {
 let scatterBarInst = null;
 
 function renderScatterBar() {
+  if (!document.getElementById('tab-scatter')) return;
   const instruments = getScatterInstruments()
     .slice()
     .sort((a, b) => b._momentum - a._momentum);
